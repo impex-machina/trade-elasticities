@@ -1,0 +1,137 @@
+
+========================================================================
+TIER 1: SYNTHETIC RECOVERY BATTERY
+========================================================================
+Running 1a, 1b, 1c in sequence. Total time: a few minutes.
+
+========================================================================
+TIER 1a: BIAS & SE COVERAGE AT FIXED SAMPLE SIZE
+========================================================================
+Sample size: J =25 exporters x T =30 periods
+Replications per (sigma, omega) pair: 200 
+
+ sigma_true omega_true success_rate sigma_med sigma_bias omega_med omega_bias
+          2        0.3        0.375      2.43     0.2126    0.3221     0.0737
+          2        1.0        0.355      1.85    -0.0742    0.1370    -0.8630
+          2        3.0        0.385      1.48    -0.2576    0.0001    -1.0000
+          3        0.3        0.305      3.21     0.0706    0.3653     0.2177
+          3        1.0        0.360      2.55    -0.1513    0.3099    -0.6901
+          3        3.0        0.375      1.60    -0.4674    0.0001    -1.0000
+          5        0.3        0.325      4.15    -0.1697    0.1745    -0.4184
+          5        1.0        0.400      3.05    -0.3907    0.2433    -0.7567
+          5        3.0        0.430      1.83    -0.6337    0.0001    -1.0000
+          8        0.3        0.320      5.70    -0.2870    0.1571    -0.4762
+          8        1.0        0.390      3.23    -0.5966    0.3357    -0.6643
+          8        3.0        0.580      2.01    -0.7486    0.0914    -0.9695
+ sigma_cov omega_cov med_fstat
+     0.827     0.960     11.40
+     0.831     0.944     11.22
+     0.805     0.883     11.58
+     0.803     0.984     11.10
+     0.778     0.861     11.66
+     0.680     0.840     11.41
+     0.708     0.877      9.37
+     0.625     0.812     10.65
+     0.605     0.814     10.65
+     0.609     0.841      9.93
+     0.513     0.692     10.51
+     0.509     0.784     10.82
+
+--- Tier 1a verdict ---
+  Worst median bias: 100.0% (CONDITIONAL on estimator success)
+  Median CI coverage: 81% (nominal 95%)
+  Success rate: min 30%, median 38% across grid
+  Status: INVESTIGATE 
+  Notes:
+    - Soderbery 2015/Galstyan 2016 simulations show 5-15% median bias
+      is expected at omega >= 1 even with correct Fuller(1) LIML.
+    - Coverage < 90% likely means SE formula needs investigation.
+    - Success rate < 50% means bias is heavily conditional on a
+      selected subsample; full-sample MSE may be much larger.
+
+========================================================================
+TIER 1b: CONSISTENCY (BIAS vs SAMPLE SIZE)
+========================================================================
+Fixed (sigma, omega) = (3, 1)
+Expectation: median bias decreases as J*T grows.
+
+  J  T n_obs sigma_bias omega_bias success_rate
+ 10 15   150    -0.2214     -0.385         0.39
+ 10 30   300    -0.0469     -0.542         0.44
+ 25 15   375    -0.1749     -0.581         0.47
+ 10 60   600    -0.0205     -0.790         0.50
+ 25 30   750    -0.0343     -0.543         0.32
+ 50 15   750    -0.1828     -0.487         0.32
+ 25 60  1500    -0.3224     -0.671         0.31
+ 50 30  1500    -0.3599     -0.810         0.30
+ 50 60  3000    -0.3746     -0.914         0.26
+
+--- Tier 1b verdict ---
+  INVESTIGATE: bias not monotonically decreasing.
+    sigma: -22.1% (n=150) -> -37.5% (n=3000): WORSENS
+    omega: -38.5% (n=150) -> -91.4% (n=3000): WORSENS
+    success_rate: 39% (n=150) -> 26% (n=3000): FALLS
+    NOTE: success rate falls with n. Bias measured on the
+    successful subsample may reflect selection bias rather
+    than estimator inconsistency. Full-sample MSE is the
+    correct quantity for consistency claims.
+
+========================================================================
+TIER 1c: BOUNDARY BEHAVIOR
+========================================================================
+Galstyan 2016 documents poor identification at high sigma or high omega.
+Test that the R port handles these regions without silent failures.
+
+--- high_sigma: sigma=20.0, omega=0.1 ---
+  Convergence rate: 25 / 100 (25%)
+  Sigma  true=20.00  med=10.000  IQR=[9.443, 10.000]
+  Omega  true=0.10  med=0.042  IQR=[0.010, 0.063]
+  Status breakdown:
+    
+all_inversions_failed                    ok 
+                   75                    25 
+
+--- high_omega: sigma=5.0, omega=10.0 ---
+  Convergence rate: 45 / 100 (45%)
+  Sigma  true=5.00  med=1.338  IQR=[1.185, 1.687]
+  Omega  true=10.00  med=0.000  IQR=[0.000, 0.000]
+  Status breakdown:
+    
+all_inversions_failed                    ok 
+                   55                    45 
+
+--- both_high: sigma=20.0, omega=10.0 ---
+  Convergence rate: 52 / 100 (52%)
+  Sigma  true=20.00  med=1.385  IQR=[1.209, 2.100]
+  Omega  true=10.00  med=0.000  IQR=[0.000, 0.260]
+  Status breakdown:
+    
+all_inversions_failed                    ok 
+                   48                    52 
+
+  Verdict: No pass/fail. Bug indicator: silent NA outputs without
+  status flag, or catastrophic convergence failure (<20%).
+
+========================================================================
+TIER 2: CLOSED-FORM SANITY CHECKS
+========================================================================
+
+--- Test 2.1: structural inversion round-trips ---
+  PASS: max round-trip error = 1.07e-14
+
+--- Test 2.2: invariance to exporter ID relabeling ---
+  SKIP: estimation failed on one or both runs.
+
+--- Test 2.3: invariance to time shift ---
+  SKIP: estimation failed on one or both runs.
+
+--- Test 2.4: Fuller kappa in plausible range ---
+  PASS: kappa range [1.034, 1.134], median 1.072
+
+--- Test 2.5: no silent NA from estimator ---
+  PASS: degenerate cell flagged with status 'all_inversions_failed'
+
+--- Tier 2 verdict ---
+  INCOMPLETE: some tests skipped because estimation failed on
+  the underlying simulated cell. No hard failures, but coverage
+  is partial. Skipped: exporter_invariance, time_invariance 
