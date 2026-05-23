@@ -29,7 +29,7 @@ console_txt <- file.path(out_dir, "liml_validation_console.txt")
 
 # Load the estimator and harness
 source("R/liml_estimator.R")
-source("tests/validate_liml.R")
+source("validation/validate_liml.R")
 
 # --- run validations, capturing console output ---
 cat("Running validate_tier1 and validate_tier2...\n")
@@ -81,10 +81,10 @@ md <- c(
   paste0("# LIML estimator validation -- ", format(Sys.Date(), "%B %d, %Y")),
   "",
   paste0("**Companion artifact** to `R/liml_estimator.R` and ",
-         "`tests/validate_liml.R`."),
+         "`validation/validate_liml.R`."),
   "",
   paste0("Runs the synthetic-recovery battery (Tier 1) and closed-form ",
-         "sanity checks (Tier 2) defined in `tests/validate_liml.R` against ",
+         "sanity checks (Tier 2) defined in `validation/validate_liml.R` against ",
          "the production HLIML estimator in `R/liml_estimator.R`. Tiers 3 ",
          "and 4 (data-dependent comparisons) are not included here."),
   "",
@@ -213,7 +213,7 @@ md <- c(md,
   "```r",
   "setwd('<repo_root>')",
   "source('R/liml_estimator.R')",
-  "source('tests/validate_liml.R')",
+  "source('validation/validate_liml.R')",
   "run_standalone_validations()",
   "```",
   "",
