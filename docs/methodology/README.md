@@ -39,8 +39,6 @@ legacy run and against ground truth.
 | File | Pillar | Coverage |
 |------|--------|----------|
 | `stage1_README.md` | 1 | Stage 1 production output schema, S3 location, downstream consumption |
-| `stage2a_parity.md` | 1 | Stage 2a (regional γ, fixed σ) parity vs legacy: bit-identical code, leading-zero-fix effects on chapters 01–09, bit-identical priors on 94% of joint goods |
-| `stage2b_parity.md` | 1 | Stage 2b (country γ + shrinkage) parity vs legacy; γ-SE coverage and methodology validation |
 | `liml_validation.md` | 2 | Tier 1 (synthetic σ/ω recovery on the parameter grid) and Tier 2 (closed-form sanity checks) results |
 
 ## Companion data files
@@ -62,17 +60,16 @@ The non-PDF artifacts mirror to S3 at
 
 1. `stage1_liml.md` and `stage2_country.md` for what the pipeline does
 2. `stage2_derivation.md` for the SE formula's mathematical basis
-3. `stage1_README.md`, `stage2a_parity.md`,
-   `stage2b_parity.md` for the production output and legacy
-   parity (pillar 1)
+3. `stage1_README.md` for the production output schema (pillar 1)
 4. `liml_validation.md` for synthetic validation (pillar 2)
 5. `sigma_gamma_ridge.md` for the identification-ridge diagnostic
 6. "Validation harness inventory" (below) for the scripts that produce
    the evidence docs and the S3 mirror spec
 
-The penalized GN SE calibration (pillar 3) is summarized inline in
-`stage2b_parity.md` and in the "Validation harness inventory" section
-below; the underlying script is `validation/monte_carlo_se.R`.
+The penalized GN SE calibration (pillar 3) is summarized in the
+`se_calibration_mc_summary.csv` companion file and in the "Validation
+harness inventory" section below; the underlying script is
+`validation/monte_carlo_se.R`.
 
 ## Validation harness inventory
 
@@ -107,7 +104,7 @@ for archival and for external readers who reach the bucket without the
 repo. Pillar 1 (BACI HS4 empirical core) is not a standalone file in the
 mirror; its production output lives at
 `refactored_run_20260519/stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds`
-and is summarized inline in `stage1_README.md` and `stage2b_parity.md`.
+and is summarized inline in `stage1_README.md`.
 
 ### Running the suite
 
@@ -124,7 +121,7 @@ parity-verification sprint. This index was created during the 2026-05-20
 N+3 archival session to make the directory navigable as a unit.
 
 The evidence documents in this directory (`stage1_README.md`,
-`stage2a_parity.md`, `stage2b_parity.md`, `liml_validation.md`) are the
+`liml_validation.md`) are the
 canonical record of the validation campaigns that backed the paper's
 methodology. Their content is frozen at paper submission; we treat them
 as primary evidence, not living documentation.

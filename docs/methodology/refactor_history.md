@@ -153,8 +153,7 @@ by a single CLI command rather than three separately-invoked scripts.
 > parity are confirmed against the legacy pipeline. (N+3 also fixed the HS6
 > leading-zero bug, which had inflated the legacy HS4 universe with phantom
 > codes; the refactored universe is the corrected one, so Stage 1 figures are
-> compared with that correction in mind.) See `docs/methodology/stage2a_parity.md`
-> and `docs/methodology/stage2b_parity.md` for the parity evidence.
+> compared with that correction in mind.) The detailed Stage 2a/2b parity reports were retired 2026-05-26; the verified-during-N+3 finding stands.
 
 ```
 BACI raw CSVs  (--data argument)
