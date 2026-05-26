@@ -135,7 +135,7 @@ from scope per slim-down Decision 1 (research goal is comparison against
 Soderbery's published dataset, not estimator self-comparison);
 `tier4_hliml_vs_gmm.md`, `tier4_comp.csv`, `tier4_comp_with_adjust.csv`
 and the four Tier-4 capture/adjust scripts removed; four-pillar evidence
-base reduced to three. Earlier — 2026-05-22 (N+8): evidence docs renamed
+base reduced to three. Stage 2a/2b parity reports (stage2a_parity.md, stage2b_parity.md) also removed: refactor verification was internal-only, structural-parity finding retained inline in refactor_history.md; two inaccurate "SE calibration in stage2b_parity" references corrected to point at se_calibration_mc_summary.csv. Earlier — 2026-05-22 (N+8): evidence docs renamed
 to canonical undated names; Grant & Soderbery (2024) PDF moved to
 `inst/`; `validation_README.md` absorbed here; frozen-at-submission
 stipulation added.*
