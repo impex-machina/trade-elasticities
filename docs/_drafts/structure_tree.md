@@ -46,10 +46,6 @@ trade-elasticities/
 │   ├── validate_liml.R            # 4-tier HLIML validation harness (854 lines)
 │   ├── monte_carlo_se.R           # SE calibration Monte Carlo (Pillar 3)
 │   ├── capture_liml_validation.R  # Tier 1+2 capture → methodology docs
-│   ├── capture_tier4_validation.R # Tier 4 capture → methodology docs
-│   ├── tier4_adjust_join.R        # Tier 4 join to Stage 1 adjust flags
-│   ├── tier4_recompute_with_adjust.R
-│   └── sanity_check_tier4.R
 │
 │   # ── Directories below exist per D3; populated by later sections ──
 ├── data/                          # [CONFIRM] Cache + manifest pattern (Section 3/N+9). manifest.csv in git; rest gitignored
@@ -58,7 +54,7 @@ trade-elasticities/
 ├── analysis/                      # [CONFIRM] Figure/table reproducers (Section 4/N+10): master.R + numbered scripts
 ├── validation/                    # [CONFIRM] Migrated from tests/ at N+10 (Section 4); now populated
 ├── docs/
-│   ├── methodology/               # [CONFIRM] Four-pillar evidence base + README (Section 7/N+8)
+│   ├── methodology/               # Three-pillar evidence base + README (Section 7/N+8)
 │   └── audits/                    # [CONFIRM] Diagnostic/audit docs moved here at N+5
 ├── inst/                          # [CONFIRM] Soderbery/Grant-Soderbery PDFs (moved here Section 7/N+8, D48)
 ├── renv/                          # [CONFIRM] renv library (Section 5/N+11); renv/library gitignored

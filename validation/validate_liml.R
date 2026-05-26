@@ -3,7 +3,7 @@
 #
 # Validation harness for liml_estimator.R — no Stata dependency.
 #
-# Four validation tiers:
+# Three validation tiers:
 #
 #   Tier 1: Synthetic recovery battery (self-contained)
 #           Tests bias, SE coverage, and consistency on data simulated from
@@ -20,17 +20,11 @@
 #           compare marginal distributions. Confounded by data source and
 #           estimator differences; tests ballpark agreement only.
 #
-#   Tier 4: Comparison against existing pipeline Stage 1 (needs BACI + your output)
-#           Most diagnostic test available without Stata. Confirms the LIML
-#           port produces materially lower sigma than current Feenstra GMM,
-#           consistent with Soderbery (2015)'s documented bias correction.
-#
 # Usage:
 #   source("liml_estimator.R")
 #   source("validate_liml.R")
 #   run_standalone_validations()   # Tiers 1 and 2
 #   validate_tier3(baci_path = ..., soderbery_path = ..., n_cells = 100)
-#   validate_tier4(baci_path = ..., current_pipeline_path = ..., n_cells = 100)
 # =========================================================================
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
@@ -610,281 +604,14 @@ validate_tier3 <- function(baci_path = NULL,
 
 
 # =========================================================================
-# TIER 4: COMPARISON AGAINST EXISTING PIPELINE STAGE 1
-# =========================================================================
-#
-# Most diagnostic test available without Stata.
-# Expected: R port median sigma materially lower than current Feenstra GMM.
-
-validate_tier4 <- function(baci_path = NULL,
-                           current_pipeline_path = NULL,
-                           n_cells = 100,
-                           min_year = 1995, max_year = 2024,
-                           min_exporters = NULL,
-                           min_periods = NULL,
-                           seed = 20260511L) {
-  .cat_header("TIER 4: COMPARISON AGAINST CURRENT PIPELINE STAGE 1")
-  cat("Most diagnostic test without Stata. Confirms LIML correction direction.\n")
-  if (!is.null(min_exporters) || !is.null(min_periods)) {
-    cat(sprintf("  Pre-filter: >= %s exporters, >= %s periods per cell\n",
-                min_exporters %||% "any", min_periods %||% "any"))
-  }
-  
-  if (is.null(baci_path) || !file.exists(baci_path)) {
-    cat("\nERROR: baci_path not provided or missing.\n")
-    cat("Accepted formats:\n")
-    cat("  - .rds   (e.g., your pipeline's _raw_cache.rds — fastest)\n")
-    cat("  - .csv   (single file)\n")
-    cat("  - directory of BACI_HS*_Y####_V*.csv files\n")
-    return(invisible(NULL))
-  }
-  if (is.null(current_pipeline_path) || !file.exists(current_pipeline_path)) {
-    cat("\nERROR: current_pipeline_path not provided.\n")
-    cat("Accepted formats:\n")
-    cat("  - .rds (your pipeline's _feenstra_sigma.rds — Stage 1 output)\n")
-    cat("  - .csv with columns: importer, hs4, sigma_stage1\n")
-    return(invisible(NULL))
-  }
-  
-  # ----- Load BACI -----
-  cat("Loading BACI from", baci_path, "...\n")
-  baci <- if (grepl("\\.rds$", baci_path, ignore.case = TRUE)) {
-    as.data.frame(readRDS(baci_path))
-  } else if (dir.exists(baci_path)) {
-    # Concatenate all BACI_*_Y*_V*.csv files using data.table for speed.
-    # Base-R rbind on 30+ large CSVs is O(n^2) and takes hours; this is
-    # O(n) and takes minutes.
-    if (!requireNamespace("data.table", quietly = TRUE))
-      stop("data.table required for directory loading. install.packages('data.table').")
-    csv_files <- list.files(baci_path, pattern = "BACI_HS.*_Y\\d{4}_V.*\\.csv$",
-                            full.names = TRUE)
-    if (length(csv_files) == 0)
-      csv_files <- list.files(baci_path, pattern = "\\.csv$", full.names = TRUE)
-    cat("  Reading", length(csv_files), "CSV files via data.table::fread...\n")
-    baci_list <- lapply(seq_along(csv_files), function(i) {
-      cat(sprintf("    [%d/%d] %s\n", i, length(csv_files), basename(csv_files[i])))
-      data.table::fread(csv_files[i], showProgress = FALSE)
-    })
-    as.data.frame(data.table::rbindlist(baci_list, use.names = TRUE, fill = TRUE))
-  } else {
-    if (requireNamespace("data.table", quietly = TRUE)) {
-      as.data.frame(data.table::fread(baci_path, showProgress = FALSE))
-    } else {
-      read.csv(baci_path, stringsAsFactors = FALSE)
-    }
-  }
-  cat("  Loaded", nrow(baci), "rows.\n")
-  
-  # Column detection (BACI native uses: t, i, j, k, v, q)
-  yr_col  <- intersect(c("t", "year", "yr"),                names(baci))[1]
-  hs_col  <- intersect(c("k", "hs", "hs6", "product", "good"),      names(baci))[1]
-  imp_col <- intersect(c("j", "importer", "iiso", "i_iso"), names(baci))[1]
-  exp_col <- intersect(c("i", "exporter", "eiso", "j_iso"), names(baci))[1]
-  val_col <- intersect(c("v", "value", "value_kUSD", "cusval"),       names(baci))[1]
-  qty_col <- intersect(c("q", "quantity", "qty"),           names(baci))[1]
-  if (any(is.na(c(yr_col, hs_col, imp_col, exp_col, val_col, qty_col))))
-    stop("Could not identify BACI columns. Have: ",
-         paste(names(baci), collapse = ", "))
-  cat(sprintf("  Detected columns: time=%s good=%s importer=%s exporter=%s value=%s quantity=%s\n",
-              yr_col, hs_col, imp_col, exp_col, val_col, qty_col))
-  
-  baci$.yr  <- as.integer(baci[[yr_col]])
-  baci      <- baci[baci$.yr >= min_year & baci$.yr <= max_year, ]
-  baci$hs4  <- substr(as.character(baci[[hs_col]]), 1, 4)
-  baci$.imp <- as.character(baci[[imp_col]])
-  baci$.exp <- as.character(baci[[exp_col]])
-  baci$.val <- as.numeric(baci[[val_col]])
-  baci$.qty <- as.numeric(baci[[qty_col]])
-  baci      <- baci[is.finite(baci$.val) & is.finite(baci$.qty) &
-                      baci$.val > 0 & baci$.qty > 0, ]
-  
-  cat("  After filtering to", min_year, "-", max_year, "and positive values:",
-      nrow(baci), "rows\n")
-  
-  # data.table aggregation: orders of magnitude faster than base aggregate()
-  # on tens of millions of rows.
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    cat("  Aggregating to (importer, exporter, hs4, year) via data.table...\n")
-    dt <- data.table::as.data.table(baci[, c(".imp", ".exp", "hs4", ".yr", ".val", ".qty")])
-    agg <- as.data.frame(
-      dt[, .(value = sum(.val), quantity = sum(.qty)),
-         by = .(.imp, .exp, hs4, .yr)]
-    )
-  } else {
-    agg <- aggregate(cbind(value = baci$.val, quantity = baci$.qty) ~
-                       .imp + .exp + hs4 + .yr, data = baci, FUN = sum)
-  }
-  names(agg)[1:4] <- c("importer", "exporter", "hs4", "year")
-  cat("  Aggregated:", nrow(agg), "(importer, exporter, hs4, year) rows\n")
-  
-  # ----- Load Stage 1 -----
-  cat("Loading Stage 1 output from", current_pipeline_path, "...\n")
-  current <- if (grepl("\\.rds$", current_pipeline_path, ignore.case = TRUE)) {
-    as.data.frame(readRDS(current_pipeline_path))
-  } else {
-    read.csv(current_pipeline_path, stringsAsFactors = FALSE)
-  }
-  cat("  Loaded:", nrow(current), "rows, columns:", paste(names(current), collapse=", "), "\n")
-  
-  # Detect file type: Stage 1 has one row per (importer, good); Stage 2b
-  # has one row per (importer, exporter, good). If we got Stage 2b, dedup
-  # to recover Stage 1 sigma.
-  is_stage2b <- "exporter" %in% names(current)
-  if (is_stage2b) {
-    cat("  Detected Stage 2b file (has exporter column).\n")
-    cat("  Extracting Stage 1 sigma via deduplication on (importer, good)...\n")
-    # Stage 1 sigma is constant within (importer, good) by construction:
-    # Stage 2b inherits sigma from sigma_lookup keyed on those two columns.
-    # Use median within group (would equal the single value, but median is
-    # robust if any Tier 3 rows carry a fallback differently).
-    current <- aggregate(sigma ~ importer + good, data = current, FUN = median)
-    cat("  After dedup:", nrow(current), "(importer, good) cells\n")
-  }
-  
-  # Map pipeline columns to (importer, hs4, sigma_stage1)
-  if ("good" %in% names(current) && !"hs4" %in% names(current))
-    current$hs4 <- as.character(current$good)
-  if ("sigma" %in% names(current) && !"sigma_stage1" %in% names(current))
-    current$sigma_stage1 <- current$sigma
-  if (!"importer" %in% names(current))
-    stop("File missing 'importer' column")
-  if (!"hs4" %in% names(current) || !"sigma_stage1" %in% names(current))
-    stop("File needs columns mapping to (importer, hs4, sigma_stage1)")
-  current$importer <- as.character(current$importer)
-  current$hs4 <- substr(as.character(current$hs4), 1, 4)
-  current <- current[!is.na(current$sigma_stage1) & current$sigma_stage1 > 1, ]
-  cat("  After cleaning:", nrow(current), "valid Stage 1 estimates\n")
-  
-  agg$cell_id <- paste(agg$importer, agg$hs4, sep = "_")
-  current$cell_id <- paste(current$importer, current$hs4, sep = "_")
-  common_cells <- intersect(unique(agg$cell_id), unique(current$cell_id))
-  cat("  Overlapping cells:", length(common_cells), "\n")
-  
-  # Pre-filter to well-identified cells
-  if (!is.null(min_exporters) || !is.null(min_periods)) {
-    cell_stats <- aggregate(
-      list(n_exp = agg$exporter, n_yr = agg$year),
-      by = list(cell_id = agg$cell_id),
-      FUN = function(x) length(unique(x))
-    )
-    keep_id <- cell_stats$cell_id
-    if (!is.null(min_exporters))
-      keep_id <- keep_id[cell_stats$n_exp[match(keep_id, cell_stats$cell_id)] >= min_exporters]
-    if (!is.null(min_periods))
-      keep_id <- keep_id[cell_stats$n_yr[match(keep_id, cell_stats$cell_id)] >= min_periods]
-    common_cells <- intersect(common_cells, keep_id)
-    cat("  After pre-filter:", length(common_cells), "cells\n")
-  }
-  
-  if (length(common_cells) == 0) {
-    cat("ERROR: no cells to estimate after filtering.\n")
-    return(invisible(NULL))
-  }
-  
-  set.seed(seed)
-  sampled <- sample(common_cells, min(n_cells, length(common_cells)))
-  cat("  Running R port on", length(sampled), "cells...\n")
-  
-  # Pre-split agg by cell_id so we don't scan the full table for each cell.
-  # On agg with ~1-10M rows and 100 cells, this turns an O(n*k) operation
-  # into O(n + k).
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    cat("  Pre-indexing cells via data.table...\n")
-    agg_dt <- data.table::as.data.table(agg)
-    data.table::setkey(agg_dt, cell_id)
-    agg_lookup <- function(cid) as.data.frame(agg_dt[cell_id == cid])
-  } else {
-    cat("  Pre-splitting cells via base R (slower)...\n")
-    agg_split <- split(agg, agg$cell_id)
-    agg_lookup <- function(cid) agg_split[[cid]]
-  }
-  
-  results <- vector("list", length(sampled))
-  pb <- txtProgressBar(min = 0, max = length(sampled), style = 3)
-  for (i in seq_along(sampled)) {
-    sub <- agg_lookup(sampled[i])
-    fit <- tryCatch(
-      estimate_elasticities(
-        trade_df = data.frame(exporter = sub$exporter, t = sub$year,
-                              value = sub$value, quantity = sub$quantity),
-        min_year = min_year
-      ),
-      error = function(e) list(status = paste0("error: ", conditionMessage(e)))
-    )
-    fit$cell_id <- sampled[i]
-    results[[i]] <- fit
-    setTxtProgressBar(pb, i)
-  }
-  close(pb)
-  
-  ok <- vapply(results, function(r) isTRUE(r$status == "ok"), logical(1))
-  cat("\n  Success rate:", sum(ok), "/", length(results),
-      sprintf(" (%.0f%%)\n", 100 * mean(ok)))
-  if (sum(ok) == 0) {
-    cat("  No successful estimates. Status breakdown:\n")
-    print(table(vapply(results, function(r) r$status, character(1))))
-    return(invisible(results))
-  }
-  
-  ok_res <- results[ok]
-  rdf <- data.frame(
-    cell_id   = vapply(ok_res, function(r) r$cell_id, character(1)),
-    sigma_new = vapply(ok_res, function(r) r$sigma, numeric(1)),
-    omega_new = vapply(ok_res, function(r) r$omega, numeric(1))
-  )
-  comp <- merge(rdf, current[, c("cell_id", "sigma_stage1")], by = "cell_id")
-  cat("  Cells matched to Stage 1:", nrow(comp), "\n")
-  
-  if (nrow(comp) > 0) {
-    .cat_section("Sigma comparison")
-    cat(sprintf("  Current pipeline median sigma: %.3f\n",
-                median(comp$sigma_stage1, na.rm = TRUE)))
-    cat(sprintf("  New R LIML median sigma:       %.3f\n",
-                median(comp$sigma_new, na.rm = TRUE)))
-    ratio <- median(comp$sigma_new, na.rm = TRUE) /
-      median(comp$sigma_stage1, na.rm = TRUE)
-    cat(sprintf("  Ratio (new / current): %.3f\n", ratio))
-    
-    .cat_section("Marginal distributions")
-    qs <- c(.05, .10, .25, .50, .75, .90, .95)
-    out <- data.frame(
-      quantile = c("p05","p10","p25","p50","p75","p90","p95"),
-      sigma_new = quantile(comp$sigma_new, qs, na.rm = TRUE),
-      sigma_old = quantile(comp$sigma_stage1, qs, na.rm = TRUE)
-    )
-    print(out, row.names = FALSE, digits = 3)
-    
-    .cat_section("Tier 4 verdict")
-    if (ratio < 0.85) {
-      cat("  PASS: LIML produces materially lower sigma than current Feenstra GMM,\n")
-      cat("  consistent with Soderbery (2015) bias correction (~35% reduction).\n")
-    } else if (ratio < 1.0) {
-      cat("  MARGINAL: bias correction in expected direction but smaller than\n")
-      cat("  Soderbery's documented 35%.\n")
-    } else {
-      cat("  INVESTIGATE: LIML does NOT produce lower sigma. Either:\n")
-      cat("    (a) port has a bug that replicates Feenstra GMM bias, or\n")
-      cat("    (b) current pipeline is already LIML-like.\n")
-    }
-    cat(sprintf("\n  Spearman corr (sigma): %.3f\n",
-                cor(comp$sigma_new, comp$sigma_stage1,
-                    method = "spearman", use = "complete.obs")))
-  }
-  invisible(list(comp = if (nrow(comp) > 0) comp else NULL,
-                 all_results = results))
-}
-
-
-# =========================================================================
 # CONVENIENCE
 # =========================================================================
 
 run_standalone_validations <- function(n_reps = 200) {
   t1 <- validate_tier1(n_reps = n_reps)
   t2 <- validate_tier2()
-  cat("\n\nTiers 3 and 4 require data. See:\n")
+  cat("\n\nTier 3 requires data. See:\n")
   cat("  validate_tier3(baci_path = ..., soderbery_path = ...)\n")
-  cat("  validate_tier4(baci_path = ..., current_pipeline_path = ...)\n")
   invisible(list(tier1 = t1, tier2 = t2))
 }
 

@@ -117,8 +117,8 @@ Columns:
 | `opt_tariff`, `opt_tariff_all` | Optimal-tariff implications derived from (σ, γ): the per-cell optimal tariff and the all-exporter variant. These are downstream of the elasticities; treat them as derived quantities, not primary estimates. |
 
 A reader reproducing the headline numbers should find σ median ≈ 2.875 on
-the canonical 1,240-product universe and a Tier-4 HLIML-vs-GMM Spearman
-rank correlation ≈ 0.19. `analysis/master.R` prints these as it runs.
+the canonical 1,240-product universe. `analysis/master.R` prints this as
+it runs.
 
 ## Repository structure
 
@@ -133,7 +133,7 @@ trade-elasticities/
 │   ├── raw/           # BACI input (gitignored; not redistributed)
 │   ├── derived/       # published outputs (downloaded from HF; gitignored)
 │   └── manifest.csv   # the 12 published files, with SHA-256 checksums
-├── docs/methodology/  # methodology write-up + four-pillar evidence base
+├── docs/methodology/  # methodology write-up + three-pillar evidence base
 ├── inst/              # Grant & Soderbery (2024) reference PDF
 ├── renv.lock          # pinned package versions
 └── README.md
@@ -141,13 +141,12 @@ trade-elasticities/
 
 ## Methodology
 
-For the full methodology and the four-pillar evidence base, see
+For the full methodology and the three-pillar evidence base, see
 [`docs/methodology/README.md`](docs/methodology/README.md), which indexes:
 
 - **Pillar 1** — BACI HS4 empirical core (Stage 1 / 2a / 2b production).
 - **Pillar 2** — Synthetic recovery validation (Tier 1 of `validate_liml.R`).
 - **Pillar 3** — SE calibration Monte Carlo.
-- **Pillar 4** — HLIML vs Feenstra GMM comparison (Tier 4).
 
 The `analysis/` scripts regenerate every paper figure and table from the
 published outputs; pass `--rerun-pillars` to regenerate the validation
@@ -227,11 +226,6 @@ Stated forthrightly:
   the interior rate is higher; both framings appear in the methodology
   write-up. Headline σ medians are reported on the canonical 1,240 HS4
   universe.
-- **Tier 4 sample composition.** The HLIML-vs-GMM comparison (Pillar 4)
-  is on a restricted clean subset (n = 112 after exclusions, of 140
-  compared). The rank correlation (Spearman ρ ≈ 0.19–0.20) is structural
-  across subsettings, but the level ratios depend on which fallback regime
-  a cell used.
 - **Period extension relative to Soderbery (2018).** This pipeline
   estimates over a longer window than Soderbery's original sample, which
   contributes to estimate differences independently of the estimator

@@ -6,7 +6,7 @@ layers: **methodology** documents describing what each stage of the
 pipeline does and why, and **evidence** documents proving the pipeline
 behaves as advertised on synthetic and real BACI data.
 
-The combined contents are the paper's evidence base. Four pillars:
+The combined contents are the paper's evidence base. Three pillars:
 
 1. **BACI HS4 empirical core** — production diagnostics on the 280,649-cell
    HS4 universe (51.9% Stage 1 ok rate, σ median 2.91 matching Soderbery's
@@ -15,9 +15,6 @@ The combined contents are the paper's evidence base. Four pillars:
    HLIML's behavior on known data-generating processes
 3. **SE calibration** — Monte Carlo validation of penalized Gauss-Newton
    standard errors across the four (homoskedasticity × shrinkage) regimes
-4. **HLIML vs Feenstra GMM (Tier 4)** — In-house bias-correction
-   comparison establishing structural bias of GMM relative to HLIML on
-   real BACI cells
 
 ## Methodology layer
 
@@ -45,7 +42,6 @@ legacy run and against ground truth.
 | `stage2a_parity.md` | 1 | Stage 2a (regional γ, fixed σ) parity vs legacy: bit-identical code, leading-zero-fix effects on chapters 01–09, bit-identical priors on 94% of joint goods |
 | `stage2b_parity.md` | 1 | Stage 2b (country γ + shrinkage) parity vs legacy; γ-SE coverage and methodology validation |
 | `liml_validation.md` | 2 | Tier 1 (synthetic σ/ω recovery on the parameter grid) and Tier 2 (closed-form sanity checks) results |
-| `tier4_hliml_vs_gmm.md` | 4 | Tier 4 comparison: stratified bias correction of 43.6% on HLIML-interior cells, 27% on Step 2 fallback cells, Spearman ρ ≈ 0.20 across all subsettings |
 
 ## Companion data files
 
@@ -57,8 +53,6 @@ markdown:
 - `se_calibration_mc_summary.csv`, `se_calibration_mc_per_param.csv`,
   `se_calibration_mc_run.log` — SE Monte Carlo detail (the run log is
   large and lives locally only; CSVs cover all reported numbers)
-- `tier4_comp.csv`, `tier4_comp_with_adjust.csv` —
-  Tier 4 detail
 
 The non-PDF artifacts mirror to S3 at
 `s3://trade-elast-baci-hs92-v202601-hs4/refactored_run_20260519/validation/`
@@ -72,10 +66,8 @@ The non-PDF artifacts mirror to S3 at
    `stage2b_parity.md` for the production output and legacy
    parity (pillar 1)
 4. `liml_validation.md` for synthetic validation (pillar 2)
-5. `tier4_hliml_vs_gmm.md` for the publishable bias-correction
-   finding (pillar 4)
-6. `sigma_gamma_ridge.md` for the identification-ridge diagnostic
-7. "Validation harness inventory" (below) for the scripts that produce
+5. `sigma_gamma_ridge.md` for the identification-ridge diagnostic
+6. "Validation harness inventory" (below) for the scripts that produce
    the evidence docs and the S3 mirror spec
 
 The penalized GN SE calibration (pillar 3) is summarized inline in
@@ -84,7 +76,7 @@ below; the underlying script is `validation/monte_carlo_se.R`.
 
 ## Validation harness inventory
 
-The pillar-2, -3, and -4 evidence documents are produced by capture
+The pillar-2 and -3 evidence documents are produced by capture
 scripts in `validation/`. Re-running these populates
 `data/derived/validation/`, which the analysis layer (see the repo-root
 README's analysis section) consumes.
@@ -93,19 +85,11 @@ README's analysis section) consumes.
 |---|---|---|---|
 | `liml_validation.md` (+ `liml_validation_*.csv`, `liml_validation_console.txt`) | `validation/capture_liml_validation.R` | ~3 min | local |
 | `se_calibration_mc_summary.csv` (+ `se_calibration_mc_per_param.csv`) | `validation/monte_carlo_se.R` | ~10 min | local |
-| `tier4_hliml_vs_gmm.md` (+ `tier4_comp*.csv`) | `validation/capture_tier4_validation.R` | ~7 min | EC2 (BACI cache) |
 
 Supporting scripts in `validation/`:
 
-- `validate_liml.R` — main validation harness (Tiers 1a/1b/1c/2/3/4),
+- `validate_liml.R` — main validation harness (Tiers 1a/1b/1c/2/3),
   including the 2026-05-20 verdict-logic and BACI column-detection patches.
-- `sanity_check_tier4.R` — spot-check on `tier4_comp.csv`; reproduces
-  headline numbers and surfaces boundary/outlier diagnostics.
-- `tier4_adjust_join.R` — post-hoc join of `tier4_comp.csv` to production
-  Stage 1 output to attach `adjust`, `hliml_status`, `final_source`, and
-  per-step σ/ω.
-- `tier4_recompute_with_adjust.R` — recomputes headline statistics on the
-  corrected (adjust-based) clean and stratified subsets.
 
 The historical patch script `patch_tier1_tier2_verdicts.R` (applied the
 2026-05-20 verdict edits to `validate_liml.R`) is retained locally for
@@ -123,17 +107,13 @@ for archival and for external readers who reach the bucket without the
 repo. Pillar 1 (BACI HS4 empirical core) is not a standalone file in the
 mirror; its production output lives at
 `refactored_run_20260519/stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds`
-and is summarized inline in `tier4_hliml_vs_gmm.md`.
+and is summarized inline in `stage1_README.md` and `stage2b_parity.md`.
 
 ### Running the suite
 
 All scripts assume the working directory is the repo root. The harness
 requires `R/liml_estimator.R` and `R/feen94_het_baci.R` plus `data.table`.
-Tier 4 additionally requires the BACI raw cache (~876 MB, from
-`s3://.../stage1/`) and the Feenstra GMM archive (~99 MB, from
-`s3://.../archive_feenstra_gmm_202604/`); edit the paths in
-`validation/capture_tier4_validation.R` before sourcing. Typical laptop
-wall times: Tier 1+2 ~3 min, SE-MC ~10 min, Tier 4 ~7 min.
+Typical laptop wall times: Tier 1+2 ~3 min, SE-MC ~10 min.
 
 ## Provenance and updates
 
@@ -144,17 +124,21 @@ parity-verification sprint. This index was created during the 2026-05-20
 N+3 archival session to make the directory navigable as a unit.
 
 The evidence documents in this directory (`stage1_README.md`,
-`stage2a_parity.md`, `stage2b_parity.md`, `liml_validation.md`,
-`tier4_hliml_vs_gmm.md`) are the canonical record of the validation
-campaigns that backed the paper's methodology. Their content is frozen
-at paper submission; we treat them as primary evidence, not living
-documentation.
+`stage2a_parity.md`, `stage2b_parity.md`, `liml_validation.md`) are the
+canonical record of the validation campaigns that backed the paper's
+methodology. Their content is frozen at paper submission; we treat them
+as primary evidence, not living documentation.
 
 Post-submission updates (e.g., responses to reviewer comments, additional
 robustness checks) are added under `docs/methodology/supplementary/`
 rather than by editing the frozen documents.
 
-*Last updated: 2026-05-22 (N+8): evidence docs renamed to canonical
-undated names; Grant & Soderbery (2024) PDF moved to `inst/`;
-`validation_README.md` absorbed here; frozen-at-submission stipulation
-added.*
+*Last updated: 2026-05-26: Pillar 4 (HLIML-vs-Feenstra-GMM, Tier 4) cut
+from scope per slim-down Decision 1 (research goal is comparison against
+Soderbery's published dataset, not estimator self-comparison);
+`tier4_hliml_vs_gmm.md`, `tier4_comp.csv`, `tier4_comp_with_adjust.csv`
+and the four Tier-4 capture/adjust scripts removed; four-pillar evidence
+base reduced to three. Earlier — 2026-05-22 (N+8): evidence docs renamed
+to canonical undated names; Grant & Soderbery (2024) PDF moved to
+`inst/`; `validation_README.md` absorbed here; frozen-at-submission
+stipulation added.*

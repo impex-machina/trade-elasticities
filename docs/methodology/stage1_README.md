@@ -83,8 +83,7 @@ Total estimable cells (`status = "ok"`): 149,577 of 280,649 (53.3%).
 Ïƒ = 10 is the orchestrator's cap, not what the estimator computed. For
 `adjust = 5`, Ïƒ is real (from Step 2) but Ï‰ is value-substituted. Downstream
 analysis that depends on precise Ïƒ magnitudes â€” particularly comparisons to
-external estimators â€” should filter these out. See
-`docs/methodology/tier4_hliml_vs_gmm.md` for the full discussion.
+external estimators â€” should filter these out.
 
 ## Parity verification
 
@@ -130,8 +129,6 @@ Key paper-relevant statistics readable directly from this directory:
   Stock-Yogo 10%-max-bias critical value for the relevant number of
   instruments (per memory; computed in downstream summarization).
 
-Quantitative comparison against the legacy Feenstra GMM estimator on
-overlapping cells is in `docs/methodology/tier4_hliml_vs_gmm.md`.
 Synthetic recovery diagnostics for the HLIML estimator are in
 `docs/methodology/liml_validation.md`.
 

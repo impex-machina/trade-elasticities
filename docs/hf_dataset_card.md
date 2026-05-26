@@ -45,13 +45,10 @@ repo; the table below mirrors its human-readable view.
 | `validation/liml_validation_tier1b.csv` | 2 | Synthetic recovery: Tier 1b sample-size convergence |
 | `validation/se_calibration_mc_summary.csv` | 3 | SE calibration Monte Carlo (4 regimes x 3 formulas) |
 | `validation/se_calibration_mc_per_param.csv` | 3 | Per-parameter calibration detail |
-| `validation/tier4_comp.csv` | 4 | Tier 4 HLIML vs Feenstra GMM comparison |
-| `validation/tier4_comp_with_adjust.csv` | 4 | Tier 4 stratified by adjust flag |
-| `validation/tier4_console.txt` | 4 | Console capture of the validation run |
 
-The four pillars: (1) the BACI HS4 empirical core, (2) synthetic
-recovery of the estimator, (3) standard-error calibration, (4) HLIML
-vs GMM comparison. See the repo's `docs/methodology/` for details.
+The three pillars: (1) the BACI HS4 empirical core, (2) synthetic
+recovery of the estimator, (3) standard-error calibration. See the
+repo's `docs/methodology/` for details.
 
 ## Raw BACI data is NOT here
 
