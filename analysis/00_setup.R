@@ -231,10 +231,104 @@ rm(stage2b_dt)
 stage2b_summary$n_importers_asymmetry_vs_stage1 <-
   stage1_summary$n_importers - stage2b_summary$n_importers
 
+# --- Pillar 2: synthetic recovery (validate_liml.R Tier 1) ----------------
+# Reads two committed CSVs in docs/methodology/. Field names mirror CSV
+# column names exactly so the chain "validate_liml.R -> CSV -> JSON ->
+# template" has no rename steps. Full tables are emitted for CI-locking;
+# templates will normally reference the _summary blocks.
+#
+# Tier 1a: 4x3 grid of (sigma_true, omega_true) -> recovery diagnostics
+#   columns: sigma_true, omega_true, success_rate, sigma_med, sigma_bias,
+#            omega_med, omega_bias, sigma_cov, omega_cov, med_fstat
+# Tier 1b: sample-size sweep -> bias and success rate as n grows
+#   columns: J, T, n_obs, sigma_bias, omega_bias, success_rate
+#
+# Selection-bias caveat (from memory): tier1b success_rate falls as n grows
+# (smaller-n runs that converge are the "easy" cells; harder cells reach
+# convergence only with more data, dragging the converged subsample's
+# success rate downward). The endpoints expose this in the _summary block.
+
+PILLAR2_TIER1A_CSV <- "docs/methodology/liml_validation_tier1a.csv"
+PILLAR2_TIER1B_CSV <- "docs/methodology/liml_validation_tier1b.csv"
+
+tier1a <- data.table::fread(PILLAR2_TIER1A_CSV)
+tier1b <- data.table::fread(PILLAR2_TIER1B_CSV)
+
+# Reconciliation: tier1a is a 4x3 grid (12 rows), tier1b is a sample-size
+# sweep (9 rows per the captured methodology). Hard-fail on row-count drift
+# so a future re-run that changes the experimental design surfaces here.
+stopifnot(nrow(tier1a) == 12L)
+stopifnot(nrow(tier1b) == 9L)
+
+# Order tier1b by n_obs so first/last are smallest/largest sample size
+data.table::setorder(tier1b, n_obs)
+
+pillar2_summary <- list(
+  tier1a = lapply(seq_len(nrow(tier1a)), function(i) as.list(tier1a[i])),
+  tier1a_summary = list(
+    min_success_rate    = min(tier1a$success_rate),
+    median_success_rate = median(tier1a$success_rate),
+    max_success_rate    = max(tier1a$success_rate),
+    min_sigma_cov       = min(tier1a$sigma_cov),
+    median_sigma_cov    = median(tier1a$sigma_cov)
+  ),
+  tier1b = lapply(seq_len(nrow(tier1b)), function(i) as.list(tier1b[i])),
+  tier1b_summary = list(
+    n_obs_smallest               = tier1b$n_obs[1],
+    n_obs_largest                = tier1b$n_obs[nrow(tier1b)],
+    success_rate_at_smallest_n   = tier1b$success_rate[1],
+    success_rate_at_largest_n    = tier1b$success_rate[nrow(tier1b)]
+  )
+)
+rm(tier1a, tier1b)
+
+# --- Pillar 3: SE calibration (monte_carlo_se.R) --------------------------
+# Reads the 4-regime x 3-formula summary CSV. The production formula is
+# pen_gn (penalized Gauss-Newton); the methodology claim is that its
+# med_ratio sits in [0.93, 1.07] across all 4 regimes (within +/-7%).
+# We emit pen_gn's per-regime ratios + min/max across regimes + worst
+# pct_err so templates can express the calibration band claim with a
+# concrete number rather than a hardcoded "+/-7%".
+#
+# CSV columns: regime, formula, n_params, med_ratio, mad_ratio, pct_err
+# The per-param CSV (44 rows) is intentionally NOT emitted — methodology
+# doc and figure code consume it directly from disk; no plausible README
+# prose needs per-parameter granularity.
+
+PILLAR3_SUMMARY_CSV <- "docs/methodology/se_calibration_mc_summary.csv"
+
+se_summary <- data.table::fread(PILLAR3_SUMMARY_CSV)
+
+# Reconciliation: 4 regimes x 3 formulas = 12 rows. Loud-fail if the
+# experimental design changes.
+stopifnot(nrow(se_summary) == 12L)
+stopifnot(all(c("unp_gn", "sandwich", "pen_gn") %in% se_summary$formula))
+
+pen_gn <- se_summary[formula == "pen_gn"]
+stopifnot(nrow(pen_gn) == 4L)  # one row per regime
+
+pillar3_summary <- list(
+  regimes = lapply(seq_len(nrow(se_summary)),
+                   function(i) as.list(se_summary[i])),
+  pen_gn_summary = list(
+    n_regimes               = nrow(pen_gn),
+    pen_gn_med_ratio_min    = min(pen_gn$med_ratio),
+    pen_gn_med_ratio_max    = max(pen_gn$med_ratio),
+    pen_gn_pct_err_min      = min(pen_gn$pct_err),
+    pen_gn_pct_err_max      = max(pen_gn$pct_err),
+    pen_gn_pct_err_worst_abs = max(abs(pen_gn$pct_err))
+  )
+)
+rm(se_summary, pen_gn)
+
 emit_json(stage1_summary,  "stage1_summary")
 emit_json(stage2b_summary, "stage2b_summary")
+emit_json(pillar2_summary, "pillar2_summary")
+emit_json(pillar3_summary, "pillar3_summary")
 
 message("00_setup.R: emitted results/stage1_summary.json (",
-        stage1_summary$n_cells, " cells) and ",
+        stage1_summary$n_cells, " cells), ",
         "results/stage2b_summary.json (",
-        stage2b_summary$n_cells, " cells)")
+        stage2b_summary$n_cells, " cells), ",
+        "results/pillar2_summary.json (Tier 1a 4x3 grid + 1b sweep), ",
+        "results/pillar3_summary.json (4-regime SE calibration)")

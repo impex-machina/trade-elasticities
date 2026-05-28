@@ -1,0 +1,235 @@
+{
+  "tier1a": [
+    {
+      "sigma_true": 2,
+      "omega_true": 0.3,
+      "success_rate": 0.375,
+      "sigma_med": 2.4251917109963,
+      "sigma_bias": 0.212595855498148,
+      "omega_med": 0.322124035058554,
+      "omega_bias": 0.0737467835285146,
+      "sigma_cov": 0.826666666666667,
+      "omega_cov": 0.96,
+      "med_fstat": 11.4022276386263
+    },
+    {
+      "sigma_true": 2,
+      "omega_true": 1,
+      "success_rate": 0.355,
+      "sigma_med": 1.85155708124553,
+      "sigma_bias": -0.0742214593772375,
+      "omega_med": 0.137044941871808,
+      "omega_bias": -0.862955058128192,
+      "sigma_cov": 0.830985915492958,
+      "omega_cov": 0.943661971830986,
+      "med_fstat": 11.2231890246217
+    },
+    {
+      "sigma_true": 2,
+      "omega_true": 3,
+      "success_rate": 0.385,
+      "sigma_med": 1.48480429167604,
+      "sigma_bias": -0.257597854161981,
+      "omega_med": 0.0001,
+      "omega_bias": -0.999966666666667,
+      "sigma_cov": 0.805194805194805,
+      "omega_cov": 0.883116883116883,
+      "med_fstat": 11.5763775497631
+    },
+    {
+      "sigma_true": 3,
+      "omega_true": 0.3,
+      "success_rate": 0.305,
+      "sigma_med": 3.21167299295795,
+      "sigma_bias": 0.0705576643193155,
+      "omega_med": 0.365313302555325,
+      "omega_bias": 0.21771100851775,
+      "sigma_cov": 0.80327868852459,
+      "omega_cov": 0.983606557377049,
+      "med_fstat": 11.1010908260767
+    },
+    {
+      "sigma_true": 3,
+      "omega_true": 1,
+      "success_rate": 0.36,
+      "sigma_med": 2.54622987023235,
+      "sigma_bias": -0.151256709922551,
+      "omega_med": 0.309945794055476,
+      "omega_bias": -0.690054205944524,
+      "sigma_cov": 0.777777777777778,
+      "omega_cov": 0.861111111111111,
+      "med_fstat": 11.6623118972373
+    },
+    {
+      "sigma_true": 3,
+      "omega_true": 3,
+      "success_rate": 0.375,
+      "sigma_med": 1.59788977878484,
+      "sigma_bias": -0.467370073738388,
+      "omega_med": 0.0001,
+      "omega_bias": -0.999966666666667,
+      "sigma_cov": 0.68,
+      "omega_cov": 0.84,
+      "med_fstat": 11.4105076002062
+    },
+    {
+      "sigma_true": 5,
+      "omega_true": 0.3,
+      "success_rate": 0.325,
+      "sigma_med": 4.15167681947407,
+      "sigma_bias": -0.169664636105187,
+      "omega_med": 0.174471477477895,
+      "omega_bias": -0.418428408407015,
+      "sigma_cov": 0.707692307692308,
+      "omega_cov": 0.876923076923077,
+      "med_fstat": 9.36971528005536
+    },
+    {
+      "sigma_true": 5,
+      "omega_true": 1,
+      "success_rate": 0.4,
+      "sigma_med": 3.04669426933596,
+      "sigma_bias": -0.390661146132807,
+      "omega_med": 0.243258443833364,
+      "omega_bias": -0.756741556166636,
+      "sigma_cov": 0.625,
+      "omega_cov": 0.8125,
+      "med_fstat": 10.654599645009
+    },
+    {
+      "sigma_true": 5,
+      "omega_true": 3,
+      "success_rate": 0.43,
+      "sigma_med": 1.83147606863292,
+      "sigma_bias": -0.633704786273416,
+      "omega_med": 0.0001,
+      "omega_bias": -0.999966666666667,
+      "sigma_cov": 0.604651162790698,
+      "omega_cov": 0.813953488372093,
+      "med_fstat": 10.6506665182386
+    },
+    {
+      "sigma_true": 8,
+      "omega_true": 0.3,
+      "success_rate": 0.32,
+      "sigma_med": 5.70376742338239,
+      "sigma_bias": -0.287029072077202,
+      "omega_med": 0.157139176652748,
+      "omega_bias": -0.476202744490841,
+      "sigma_cov": 0.609375,
+      "omega_cov": 0.841269841269841,
+      "med_fstat": 9.93418853671087
+    },
+    {
+      "sigma_true": 8,
+      "omega_true": 1,
+      "success_rate": 0.39,
+      "sigma_med": 3.22700931197833,
+      "sigma_bias": -0.596623836002709,
+      "omega_med": 0.335654204256027,
+      "omega_bias": -0.664345795743973,
+      "sigma_cov": 0.512820512820513,
+      "omega_cov": 0.692307692307692,
+      "med_fstat": 10.5148986420529
+    },
+    {
+      "sigma_true": 8,
+      "omega_true": 3,
+      "success_rate": 0.58,
+      "sigma_med": 2.0115673641828,
+      "sigma_bias": -0.748554079477151,
+      "omega_med": 0.0913792611424881,
+      "omega_bias": -0.969540246285837,
+      "sigma_cov": 0.508620689655172,
+      "omega_cov": 0.78448275862069,
+      "med_fstat": 10.8235405858619
+    }
+  ],
+  "tier1a_summary": {
+    "min_success_rate": 0.305,
+    "median_success_rate": 0.375,
+    "max_success_rate": 0.58,
+    "min_sigma_cov": 0.508620689655172,
+    "median_sigma_cov": 0.693846153846154
+  },
+  "tier1b": [
+    {
+      "J": 10,
+      "T": 15,
+      "n_obs": 150,
+      "sigma_bias": -0.221416778614748,
+      "omega_bias": -0.384578997430679,
+      "success_rate": 0.39
+    },
+    {
+      "J": 10,
+      "T": 30,
+      "n_obs": 300,
+      "sigma_bias": -0.0469076171662296,
+      "omega_bias": -0.542278205042323,
+      "success_rate": 0.44
+    },
+    {
+      "J": 25,
+      "T": 15,
+      "n_obs": 375,
+      "sigma_bias": -0.174940080033465,
+      "omega_bias": -0.581222661746023,
+      "success_rate": 0.47
+    },
+    {
+      "J": 10,
+      "T": 60,
+      "n_obs": 600,
+      "sigma_bias": -0.0205149586321303,
+      "omega_bias": -0.789926210451664,
+      "success_rate": 0.5
+    },
+    {
+      "J": 25,
+      "T": 30,
+      "n_obs": 750,
+      "sigma_bias": -0.0342846080668693,
+      "omega_bias": -0.543190985652392,
+      "success_rate": 0.32
+    },
+    {
+      "J": 50,
+      "T": 15,
+      "n_obs": 750,
+      "sigma_bias": -0.182807329239413,
+      "omega_bias": -0.487096284024711,
+      "success_rate": 0.32
+    },
+    {
+      "J": 25,
+      "T": 60,
+      "n_obs": 1500,
+      "sigma_bias": -0.322374854802463,
+      "omega_bias": -0.670591479091306,
+      "success_rate": 0.31
+    },
+    {
+      "J": 50,
+      "T": 30,
+      "n_obs": 1500,
+      "sigma_bias": -0.3598735554993,
+      "omega_bias": -0.809847697786269,
+      "success_rate": 0.3
+    },
+    {
+      "J": 50,
+      "T": 60,
+      "n_obs": 3000,
+      "sigma_bias": -0.374603300716926,
+      "omega_bias": -0.913877056349818,
+      "success_rate": 0.26
+    }
+  ],
+  "tier1b_summary": {
+    "n_obs_smallest": 150,
+    "n_obs_largest": 3000,
+    "success_rate_at_smallest_n": 0.39,
+    "success_rate_at_largest_n": 0.26
+  }
+}
