@@ -112,6 +112,12 @@ format_int <- function(x) formatC(as.integer(x), big.mark = ",", format = "d")
 # Percentage to 1 decimal: 0.4067 -> "40.7%"
 format_pct <- function(num, den) sprintf("%.1f%%", 100 * num / den)
 
+# Proportion-to-percentage: 0.375 -> "37.5%". Distinct from format_pct,
+# which takes numerator+denominator (and is right when CI should detect
+# drift in either part). Use format_prop_pct when the JSON already stores
+# a proportion as a single scalar (e.g. pillar2_summary success rates).
+format_prop_pct <- function(p) sprintf("%.1f%%", 100 * p)
+
 # Generic numeric to N significant figures (default 3): 2.875208 -> "2.875"
 format_num <- function(x, digits = 3L) formatC(x, digits = digits, format = "f")
 
@@ -148,6 +154,7 @@ render_env$r <- r
 render_env$req <- req
 render_env$format_int <- format_int
 render_env$format_pct <- format_pct
+render_env$format_prop_pct <- format_prop_pct
 render_env$format_num <- format_num
 render_env$asymmetry_phrase <- asymmetry_phrase
 

@@ -217,8 +217,10 @@ Stated forthrightly:
 
 - **σ upward bias from the Feenstra homogeneity assumption.** The Stage 1
   σ estimates inherit the known small-sample upward bias of the LIML-class
-  estimator; synthetic recovery (Pillar 2) characterizes its sign and
-  magnitude across the σ × ω grid.
+  estimator; synthetic recovery (Pillar 2) shows the estimator recovers
+  true σ in {{format_prop_pct(req(r$pillar2$tier1a_summary, "min_success_rate"))}}–{{format_prop_pct(req(r$pillar2$tier1a_summary, "max_success_rate"))}} of cells across the σ × ω grid
+  (median {{format_prop_pct(req(r$pillar2$tier1a_summary, "median_success_rate"))}}), with recovery declining as sample size grows — a
+  selection-bias signature where harder cells converge only with more data.
 - **Estimator-provenance composition.** On the full universe, {{format_pct(req(r$stage1$provenance_rates$interior_full_universe, "numerator"), req(r$stage1$provenance_rates$interior_full_universe, "denominator"))}} of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
   to the Step 2 fallback, of which {{format_pct(req(r$stage1$routing_summary, "clamped_total"), req(r$stage1, "n_cells"))}} of the full universe ({{format_int(req(r$stage1$routing_summary, "clamped_total"))}} cells)
