@@ -96,6 +96,76 @@ stage1_summary <- list(
   sy_evaluated = sum(!is.na(stage1$stockyogo_pass))
 )
 
+# adjust x final_source cross-tab is the routing-structure source of truth.
+# Empirical finding: adjust == 0 <-> final_source == "hliml" (zero leakage);
+# adjust in {1, 4, 5} <-> final_source == "step2_weighted"; NA on both sides
+# is the pre-HLIML-discard universe (cells dropped before estimation by
+# thin-panel / prep-thin / fail_too_few_exporters / all_inversions_failed
+# gates). Codes 4 and 5 are presumed clamping reasons; specific code -> label
+# mapping is deferred (see TODO in docs/methodology/build_readme.md).
+xt <- function(adjust_val, fs_val) {
+  adjust_match <- if (is.na(adjust_val)) is.na(stage1$adjust)
+                  else !is.na(stage1$adjust) & stage1$adjust == adjust_val
+  fs_match     <- if (is.na(fs_val))     is.na(stage1$final_source)
+                  else !is.na(stage1$final_source) & stage1$final_source == fs_val
+  sum(adjust_match & fs_match)
+}
+stage1_summary$adjust_x_final_source <- list(
+  code_0           = list(hliml = xt(0,  "hliml"),
+                          step2_weighted = xt(0,  "step2_weighted"),
+                          pre_discard    = xt(0,  NA)),
+  code_1           = list(hliml = xt(1,  "hliml"),
+                          step2_weighted = xt(1,  "step2_weighted"),
+                          pre_discard    = xt(1,  NA)),
+  code_4           = list(hliml = xt(4,  "hliml"),
+                          step2_weighted = xt(4,  "step2_weighted"),
+                          pre_discard    = xt(4,  NA)),
+  code_5           = list(hliml = xt(5,  "hliml"),
+                          step2_weighted = xt(5,  "step2_weighted"),
+                          pre_discard    = xt(5,  NA)),
+  code_pre_discard = list(hliml = xt(NA, "hliml"),
+                          step2_weighted = xt(NA, "step2_weighted"),
+                          pre_discard    = xt(NA, NA))
+)
+rm(xt)
+
+# status breakdown: five headline categories with prose stakes, plus two
+# grouped tails (prep_thin_total, thin_panel_total) covering the long tail
+# of pre-HLIML discards. The methodology doc can recover finer granularity
+# from the rds; the README never references individual thin_panel codes.
+stage1_summary$status_breakdown <- list(
+  ok                                        = sum(stage1$status == "ok"),
+  all_inversions_failed                     = sum(stage1$status == "all_inversions_failed"),
+  fail_too_few_exporters                    = sum(stage1$status == "fail_too_few_exporters"),
+  step1_fail_singular_QWW                   = sum(stage1$status == "step1_fail_singular_QWW"),
+  step2_fail_singular_QWW_fellback_to_step1 = sum(stage1$status == "step2_fail_singular_QWW_fellback_to_step1"),
+  prep_thin_total                           = sum(startsWith(stage1$status, "prep_thin_n")),
+  thin_panel_total                          = sum(startsWith(stage1$status, "thin_panel_"))
+)
+# Reconciliation check (script-side, not asserted): the seven counts above
+# must sum to nrow(stage1). Failing this would mean the status column gained
+# a category not covered here.
+stopifnot(sum(unlist(stage1_summary$status_breakdown)) == nrow(stage1))
+
+# provenance_rates: the specific rates the README quotes (or alludes to),
+# each as numerator/denominator so the template can render either as
+# percentage or as raw fraction, and CI can detect drift in either.
+# Derivations:
+#   interior_full_universe        = adjust==0 cells / nrow(stage1)
+#                                 = final_source=="hliml" / nrow(stage1)  [equivalent per B3]
+#   interior_conditional_on_ok    = same numerator / status=="ok" cells
+#   step2_full_universe           = adjust in {1,4,5} / nrow(stage1)
+#                                 = final_source=="step2_weighted" / nrow(stage1)
+n_interior <- sum(stage1$adjust == 0, na.rm = TRUE)
+n_step2    <- sum(stage1$adjust %in% c(1L, 4L, 5L), na.rm = TRUE)
+n_status_ok <- stage1_summary$status_breakdown$ok
+stage1_summary$provenance_rates <- list(
+  interior_full_universe     = list(numerator = n_interior, denominator = nrow(stage1)),
+  interior_conditional_on_ok = list(numerator = n_interior, denominator = n_status_ok),
+  step2_full_universe        = list(numerator = n_step2,    denominator = nrow(stage1))
+)
+rm(n_interior, n_step2, n_status_ok)
+
 stage2b_dt <- stage2b[!is.na(sigma) & !is.na(gamma)]
 stage2b_summary <- list(
   n_cells      = nrow(stage2b_dt),
@@ -110,6 +180,14 @@ stage2b_summary <- list(
   gamma_q75    = as.numeric(quantile(stage2b_dt$gamma, 0.75))
 )
 rm(stage2b_dt)
+
+# Derived: stage1 has one more importer than stage2b. Backs the README claim
+# "one importer present at Stage 1 has no country-pair gamma at Stage 2b
+# after the minimum-destinations filter." If this drifts to 0 or >1, the
+# README prose has to change shape, not just substitute a number — the
+# template will branch on this value.
+stage2b_summary$n_importers_asymmetry_vs_stage1 <-
+  stage1_summary$n_importers - stage2b_summary$n_importers
 
 emit_json(stage1_summary,  "stage1_summary")
 emit_json(stage2b_summary, "stage2b_summary")

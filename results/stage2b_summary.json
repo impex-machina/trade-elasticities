@@ -8,5 +8,6 @@
   "sigma_q75": 4.54138318252022,
   "gamma_median": 0.235309165324349,
   "gamma_q25": 0.15972368044192,
-  "gamma_q75": 0.342402786412102
+  "gamma_q75": 0.342402786412102,
+  "n_importers_asymmetry_vs_stage1": 1
 }

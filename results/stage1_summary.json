@@ -3,5 +3,55 @@
   "n_products": 1240,
   "n_importers": 234,
   "sy_fails": 60831,
-  "sy_evaluated": 149564
+  "sy_evaluated": 149564,
+  "adjust_x_final_source": {
+    "code_0": {
+      "hliml": 52722,
+      "step2_weighted": 0,
+      "pre_discard": 0
+    },
+    "code_1": {
+      "hliml": 0,
+      "step2_weighted": 72703,
+      "pre_discard": 0
+    },
+    "code_4": {
+      "hliml": 0,
+      "step2_weighted": 18054,
+      "pre_discard": 0
+    },
+    "code_5": {
+      "hliml": 0,
+      "step2_weighted": 6098,
+      "pre_discard": 0
+    },
+    "code_pre_discard": {
+      "hliml": 0,
+      "step2_weighted": 0,
+      "pre_discard": 131072
+    }
+  },
+  "status_breakdown": {
+    "ok": 149577,
+    "all_inversions_failed": 72741,
+    "fail_too_few_exporters": 4025,
+    "step1_fail_singular_QWW": 1876,
+    "step2_fail_singular_QWW_fellback_to_step1": 721,
+    "prep_thin_total": 40206,
+    "thin_panel_total": 11503
+  },
+  "provenance_rates": {
+    "interior_full_universe": {
+      "numerator": 52722,
+      "denominator": 280649
+    },
+    "interior_conditional_on_ok": {
+      "numerator": 52722,
+      "denominator": 149577
+    },
+    "step2_full_universe": {
+      "numerator": 96855,
+      "denominator": 280649
+    }
+  }
 }
