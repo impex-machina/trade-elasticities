@@ -61,3 +61,60 @@ stage2b <- readRDS(file.path(
 
 message("00_setup.R: loaded stage1 (", nrow(stage1), " rows) and ",
         "stage2b (", nrow(stage2b), " rows)")
+
+# --- emit summaries for README build artifact ------------------------------
+# Architecture: README.md is a generated build artifact. Numbers flow through
+# results/*.json (this script) -> build_readme.R (TODO) -> README.md, with a
+# CI diff-check between the regeneration and the committed README as the
+# lock that prevents prose drifting from data. Full design doc will live at
+# docs/methodology/build_readme.md once build_readme.R lands.
+#
+# Conventions enforced here:
+#   - numbers stored at FULL PRECISION (digits = NA); formatting at render
+#   - counts emitted as raw numerator/denominator pairs (not pre-divided
+#     rates) so denominators are explicit in the JSON and CI can detect
+#     drift in either independently
+#
+# Stock-Yogo: stockyogo_pass is a per-cell logical in stage1 (TRUE = passes
+# weak-IV screen, FALSE = fails, NA = not evaluated). The headline fail rate
+# (sy_fails / sy_evaluated) excludes NA-status cells from the denominator.
+
+if (!dir.exists("results")) dir.create("results", recursive = TRUE)
+
+emit_json <- function(obj, name) {
+  path <- file.path("results", paste0(name, ".json"))
+  jsonlite::write_json(obj, path,
+                       auto_unbox = TRUE, pretty = TRUE, digits = NA)
+  invisible(path)
+}
+
+stage1_summary <- list(
+  n_cells      = nrow(stage1),
+  n_products   = data.table::uniqueN(stage1$good),
+  n_importers  = data.table::uniqueN(stage1$importer),
+  sy_fails     = sum(!stage1$stockyogo_pass, na.rm = TRUE),
+  sy_evaluated = sum(!is.na(stage1$stockyogo_pass))
+)
+
+stage2b_dt <- stage2b[!is.na(sigma) & !is.na(gamma)]
+stage2b_summary <- list(
+  n_cells      = nrow(stage2b_dt),
+  n_importers  = data.table::uniqueN(stage2b_dt$importer),
+  n_exporters  = data.table::uniqueN(stage2b_dt$exporter),
+  n_sigma      = nrow(unique(stage2b_dt[, .(importer, good)])),
+  sigma_median = median(stage2b_dt$sigma),
+  sigma_q25    = as.numeric(quantile(stage2b_dt$sigma, 0.25)),
+  sigma_q75    = as.numeric(quantile(stage2b_dt$sigma, 0.75)),
+  gamma_median = median(stage2b_dt$gamma),
+  gamma_q25    = as.numeric(quantile(stage2b_dt$gamma, 0.25)),
+  gamma_q75    = as.numeric(quantile(stage2b_dt$gamma, 0.75))
+)
+rm(stage2b_dt)
+
+emit_json(stage1_summary,  "stage1_summary")
+emit_json(stage2b_summary, "stage2b_summary")
+
+message("00_setup.R: emitted results/stage1_summary.json (",
+        stage1_summary$n_cells, " cells) and ",
+        "results/stage2b_summary.json (",
+        stage2b_summary$n_cells, " cells)")
