@@ -220,11 +220,11 @@ Stated forthrightly:
   estimator; synthetic recovery (Pillar 2) characterizes its sign and
   magnitude across the σ × ω grid.
 - **Estimator-provenance composition.** On the full universe, 18.8% of
-  (importer, HS4) cells are identified at the HLIML interior; the majority
-  fall to the Step 2 fallback, and a small share are clamped at the σ/ω
-  caps (these report the cap, not an estimate). 40.7% of cells fail the
+  (importer, HS4) cells are identified at the HLIML interior; the rest fall
+  to the Step 2 fallback, of which 8.6% of the full universe (24,152 cells)
+  are clamped at the σ/ω caps and report the cap, not an estimate. 40.7% of cells fail the
   Stock-Yogo weak-instrument threshold. Conditional on `status == "ok"`
-  the interior rate is higher; both framings appear in the methodology
+  the interior rate rises to 35.2%; both framings appear in the methodology
   write-up. Headline σ medians are reported on the canonical 1,240 HS4
   universe.
 - **Period extension relative to Soderbery (2018).** This pipeline

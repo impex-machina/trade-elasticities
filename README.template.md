@@ -220,11 +220,11 @@ Stated forthrightly:
   estimator; synthetic recovery (Pillar 2) characterizes its sign and
   magnitude across the σ × ω grid.
 - **Estimator-provenance composition.** On the full universe, {{format_pct(req(r$stage1$provenance_rates$interior_full_universe, "numerator"), req(r$stage1$provenance_rates$interior_full_universe, "denominator"))}} of
-  (importer, HS4) cells are identified at the HLIML interior; the majority
-  fall to the Step 2 fallback, and a small share are clamped at the σ/ω
-  caps (these report the cap, not an estimate). {{format_pct(req(r$stage1, "sy_fails"), req(r$stage1, "sy_evaluated"))}} of cells fail the
+  (importer, HS4) cells are identified at the HLIML interior; the rest fall
+  to the Step 2 fallback, of which {{format_pct(req(r$stage1$routing_summary, "clamped_total"), req(r$stage1, "n_cells"))}} of the full universe ({{format_int(req(r$stage1$routing_summary, "clamped_total"))}} cells)
+  are clamped at the σ/ω caps and report the cap, not an estimate. {{format_pct(req(r$stage1, "sy_fails"), req(r$stage1, "sy_evaluated"))}} of cells fail the
   Stock-Yogo weak-instrument threshold. Conditional on `status == "ok"`
-  the interior rate is higher; both framings appear in the methodology
+  the interior rate rises to {{format_pct(req(r$stage1$provenance_rates$interior_conditional_on_ok, "numerator"), req(r$stage1$provenance_rates$interior_conditional_on_ok, "denominator"))}}; both framings appear in the methodology
   write-up. Headline σ medians are reported on the canonical {{format_int(req(r$stage1, "n_products"))}} HS4
   universe.
 - **Period extension relative to Soderbery (2018).** This pipeline
