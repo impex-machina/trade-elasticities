@@ -25,10 +25,10 @@ pipeline:
 - **Stage 2b** — Country-level γ with fixed σ, shrinkage anchored to the
   Stage 2a regional priors, and penalized Gauss-Newton standard errors.
 
-Outputs cover 1,240 HS4 products across 233 importers and 233 exporters,
-producing 8,128,124 (importer, exporter, HS4) cell-level γ estimates with
-standard errors. Stage 1 estimates σ for 280,649 (importer, HS4) cells
-across 234 importers (one importer present at Stage 1 has no country-pair γ at Stage 2b after the minimum-destinations filter).
+Outputs cover {{format_int(req(r$stage1, "n_products"))}} HS4 products across {{req(r$stage2b, "n_importers")}} importers and {{req(r$stage2b, "n_exporters")}} exporters,
+producing {{format_int(req(r$stage2b, "n_cells"))}} (importer, exporter, HS4) cell-level γ estimates with
+standard errors. Stage 1 estimates σ for {{format_int(req(r$stage1, "n_cells"))}} (importer, HS4) cells
+across {{req(r$stage1, "n_importers")}} importers{{asymmetry_phrase(req(r$stage2b, "n_importers_asymmetry_vs_stage1"))}}.
 
 The accompanying paper is in preparation; this repo will be the reference
 replication artifact when it is submitted.
@@ -94,7 +94,7 @@ read the first rows:
 
 ```r
 s2b <- readRDS("data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds")
-nrow(s2b)            # 8128124
+nrow(s2b)            # {{req(r$stage2b, "n_cells")}}
 head(s2b[, c("exporter", "importer", "good", "sigma",
              "gamma", "gamma_se", "gamma_se_status", "tier")], 5)
 ```
@@ -115,8 +115,8 @@ Columns:
 | `convergence`, `obj_value` | Optimizer convergence code and objective value. |
 | `opt_tariff`, `opt_tariff_all` | Optimal-tariff implications derived from (σ, γ): the per-cell optimal tariff and the all-exporter variant. These are downstream of the elasticities; treat them as derived quantities, not primary estimates. |
 
-A reader reproducing the headline numbers should find σ median ≈ 2.875 on
-the canonical 1,240-product universe. `analysis/master.R` prints this as
+A reader reproducing the headline numbers should find σ median ≈ {{format_num(req(r$stage2b, "sigma_median"))}} on
+the canonical {{format_int(req(r$stage1, "n_products"))}}-product universe. `analysis/master.R` prints this as
 it runs.
 
 ## Repository structure
@@ -219,13 +219,13 @@ Stated forthrightly:
   σ estimates inherit the known small-sample upward bias of the LIML-class
   estimator; synthetic recovery (Pillar 2) characterizes its sign and
   magnitude across the σ × ω grid.
-- **Estimator-provenance composition.** On the full universe, 18.8% of
+- **Estimator-provenance composition.** On the full universe, {{format_pct(req(r$stage1$provenance_rates$interior_full_universe, "numerator"), req(r$stage1$provenance_rates$interior_full_universe, "denominator"))}} of
   (importer, HS4) cells are identified at the HLIML interior; the majority
   fall to the Step 2 fallback, and a small share are clamped at the σ/ω
-  caps (these report the cap, not an estimate). 40.7% of cells fail the
+  caps (these report the cap, not an estimate). {{format_pct(req(r$stage1, "sy_fails"), req(r$stage1, "sy_evaluated"))}} of cells fail the
   Stock-Yogo weak-instrument threshold. Conditional on `status == "ok"`
   the interior rate is higher; both framings appear in the methodology
-  write-up. Headline σ medians are reported on the canonical 1,240 HS4
+  write-up. Headline σ medians are reported on the canonical {{format_int(req(r$stage1, "n_products"))}} HS4
   universe.
 - **Period extension relative to Soderbery (2018).** This pipeline
   estimates over a longer window than Soderbery's original sample, which
