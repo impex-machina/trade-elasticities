@@ -101,8 +101,24 @@ stage1_summary <- list(
 # adjust in {1, 4, 5} <-> final_source == "step2_weighted"; NA on both sides
 # is the pre-HLIML-discard universe (cells dropped before estimation by
 # thin-panel / prep-thin / fail_too_few_exporters / all_inversions_failed
-# gates). Codes 4 and 5 are presumed clamping reasons; specific code -> label
-# mapping is deferred (see TODO in docs/methodology/build_readme.md).
+# gates).
+#
+# Code-to-label mapping (from R/liml_estimator.R lines 1041-1094, the
+# feasibility-adjustment block):
+#   adjust == 0: HLIML admissible (sigma > 1, omega > 0, both under caps)
+#   adjust == 1: HLIML failed, Step 2 sigma admissible
+#   adjust == 2: HLIML failed, Step 2 omega admissible but sigma not
+#                (zero cells in current data)
+#   adjust == 3: omega defensively floored to 0.0001 when < 0
+#                (zero cells in current data; comment says "shouldn't reach")
+#   adjust == 4: Step 2 sigma exceeded sigma_start_cap, clamped to cap
+#   adjust == 5: Step 2 omega exceeded omega_start_cap, clamped to cap
+#
+# Codes 4 and 5 are SUB-CASES of Step 2 fallback (cells that fell to Step 2
+# and then produced a value clamped at a cap, not an estimate). The README
+# currently presents Step 2 and clamping as parallel categories ("majority
+# Step 2, small share clamped"); the data is hierarchical. routing_summary
+# below emits the labeled aggregates so prose can be made precise.
 xt <- function(adjust_val, fs_val) {
   adjust_match <- if (is.na(adjust_val)) is.na(stage1$adjust)
                   else !is.na(stage1$adjust) & stage1$adjust == adjust_val
@@ -128,6 +144,32 @@ stage1_summary$adjust_x_final_source <- list(
                           pre_discard    = xt(NA, NA))
 )
 rm(xt)
+
+# routing_summary: labeled aggregates over the adjust codes. The seven
+# primary fields are mutually exclusive and sum to nrow(stage1); step2_total
+# and clamped_total are derived aggregates over subsets of those primaries.
+# Field semantics are pinned in the comment block above; here we just count.
+stage1_summary$routing_summary <- list(
+  hliml_interior        = sum(stage1$adjust == 0L, na.rm = TRUE),
+  step2_clean           = sum(stage1$adjust == 1L, na.rm = TRUE),
+  step2_omega_only      = sum(stage1$adjust == 2L, na.rm = TRUE),
+  omega_negative_floor  = sum(stage1$adjust == 3L, na.rm = TRUE),
+  clamped_at_sigma_cap  = sum(stage1$adjust == 4L, na.rm = TRUE),
+  clamped_at_omega_cap  = sum(stage1$adjust == 5L, na.rm = TRUE),
+  pre_discard           = sum(is.na(stage1$adjust)),
+  # Derived aggregates (sums over subsets of the seven primaries above):
+  step2_total           = sum(stage1$adjust %in% c(1L, 2L, 3L, 4L, 5L), na.rm = TRUE),
+  clamped_total         = sum(stage1$adjust %in% c(4L, 5L), na.rm = TRUE)
+)
+# Reconciliation: the seven primary (mutually-exclusive) categories must
+# sum to nrow(stage1). Loud-fails if a future estimator run adds a new
+# adjust code not covered here.
+stopifnot(
+  with(stage1_summary$routing_summary,
+       hliml_interior + step2_clean + step2_omega_only +
+       omega_negative_floor + clamped_at_sigma_cap + clamped_at_omega_cap +
+       pre_discard) == nrow(stage1)
+)
 
 # status breakdown: five headline categories with prose stakes, plus two
 # grouped tails (prep_thin_total, thin_panel_total) covering the long tail

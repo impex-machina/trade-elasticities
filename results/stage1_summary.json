@@ -31,6 +31,17 @@
       "pre_discard": 131072
     }
   },
+  "routing_summary": {
+    "hliml_interior": 52722,
+    "step2_clean": 72703,
+    "step2_omega_only": 0,
+    "omega_negative_floor": 0,
+    "clamped_at_sigma_cap": 18054,
+    "clamped_at_omega_cap": 6098,
+    "pre_discard": 131072,
+    "step2_total": 96855,
+    "clamped_total": 24152
+  },
   "status_breakdown": {
     "ok": 149577,
     "all_inversions_failed": 72741,
