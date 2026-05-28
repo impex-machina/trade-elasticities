@@ -13,7 +13,10 @@
 #   README.template.md              (this directory's sibling at repo root)
 #
 # Output
-#   README.md                       (overwritten)
+#   README.md                       (overwritten; override with the
+#                                    README_BUILD_OUTPUT env var, e.g. to
+#                                    build to a temp file for diff-checking
+#                                    without touching the committed README)
 #
 # Exit codes
 #   0  success
@@ -35,7 +38,11 @@ suppressPackageStartupMessages({
 # --- I/O setup -------------------------------------------------------------
 
 TEMPLATE_PATH <- "README.template.md"
-OUTPUT_PATH   <- "README.md"
+# Output path defaults to README.md but can be redirected via the
+# README_BUILD_OUTPUT env var. The pre-commit hook (scripts/hooks/pre-commit)
+# sets this to a temp file so it can diff the regenerated README against the
+# committed one without modifying the working tree.
+OUTPUT_PATH   <- Sys.getenv("README_BUILD_OUTPUT", unset = "README.md")
 RESULTS_DIR   <- "results"
 
 if (!file.exists(TEMPLATE_PATH)) {
@@ -164,10 +171,11 @@ rendered <- tryCatch(
 if (grepl("\\{\\{|\\}\\}", rendered)) {
   message("FATAL: rendered output contains leftover placeholders ({{ or }}).")
   message("       Likely template typo. Search the output for '{{' to find it.")
-  # Write the broken output anyway so the user can inspect it
-  writeLines(as.character(rendered), con = file("README.md.broken",
+  # Write the broken output (next to the intended output path) for inspection
+  broken_path <- paste0(OUTPUT_PATH, ".broken")
+  writeLines(as.character(rendered), con = file(broken_path,
                                                   encoding = "UTF-8"))
-  message("       Wrote broken output to README.md.broken for inspection.")
+  message(sprintf("       Wrote broken output to %s for inspection.", broken_path))
   quit(status = 2L)
 }
 

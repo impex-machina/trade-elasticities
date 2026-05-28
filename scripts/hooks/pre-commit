@@ -1,0 +1,136 @@
+#!/usr/bin/env bash
+#
+# scripts/hooks/pre-commit
+#
+# Enforces the README-as-build-artifact invariant: README.md must match what
+# scripts/build_readme.R generates from the committed results/*.json and
+# README.template.md. If a commit would leave README.md out of sync with its
+# inputs (e.g. someone hand-edited README.md, or edited the template/JSON
+# without regenerating), this hook aborts the commit.
+#
+# Install (once per clone), from the repo root:
+#   git config core.hooksPath scripts/hooks
+#
+# This hook is intentionally a hard gate (exit 1 aborts the commit). To bypass
+# it in a genuine emergency, commit with --no-verify -- but the next build will
+# re-surface any drift, so prefer regenerating.
+#
+# Design notes:
+#   - Builds to a TEMP file (via README_BUILD_OUTPUT), never touches the
+#     working-tree README.md. The hook validates; it does not auto-fix.
+#   - Validates the working tree, not the staged blob. For the normal
+#     "edit -> build -> stage all -> commit" flow these are identical. If the
+#     relevant files have unstaged changes, the hook warns (the rare case
+#     where working-tree validation could differ from what's being committed).
+#   - Locates Rscript across platforms; fails with a clear message if absent.
+
+set -u
+
+# --- Resolve repo root (hook may be invoked from a subdirectory) -----------
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$REPO_ROOT" ]; then
+  echo "pre-commit: not in a git repository; skipping README check." >&2
+  exit 0
+fi
+cd "$REPO_ROOT" || exit 0
+
+BUILD_SCRIPT="scripts/build_readme.R"
+TEMPLATE="README.template.md"
+README="README.md"
+RESULTS_DIR="results"
+
+# --- Skip gracefully if the build machinery isn't present ------------------
+# (e.g. a clone/branch predating the build-artifact architecture). A missing
+# build script is not a reason to block commits.
+if [ ! -f "$BUILD_SCRIPT" ] || [ ! -f "$TEMPLATE" ] || [ ! -d "$RESULTS_DIR" ]; then
+  exit 0
+fi
+
+# --- Locate Rscript --------------------------------------------------------
+# PATH first; then common Windows install locations (Git Bash often lacks R
+# on PATH). Pick the highest version found under Program Files.
+RSCRIPT=""
+if command -v Rscript >/dev/null 2>&1; then
+  RSCRIPT="$(command -v Rscript)"
+else
+  for base in "/c/Program Files/R" "/c/Program Files (x86)/R"; do
+    if [ -d "$base" ]; then
+      # Highest-versioned R-x.y.z directory with bin/Rscript.exe
+      candidate="$(ls -d "$base"/R-* 2>/dev/null | sort -V | tail -n 1)"
+      if [ -n "$candidate" ] && [ -x "$candidate/bin/Rscript.exe" ]; then
+        RSCRIPT="$candidate/bin/Rscript.exe"
+        break
+      fi
+    fi
+  done
+fi
+
+if [ -z "$RSCRIPT" ]; then
+  echo "pre-commit: could not find Rscript. README build check skipped." >&2
+  echo "            Install R or add Rscript to PATH to enable the check." >&2
+  echo "            (To enforce strictly, do not bypass; fix the R install.)" >&2
+  # Soft-skip rather than block: a missing toolchain shouldn't strand commits.
+  # If you want this to be a hard failure instead, change the next line to
+  # 'exit 1'.
+  exit 0
+fi
+
+# --- Warn if relevant files have unstaged changes --------------------------
+# The hook validates the working tree. If README.md, the template, or the
+# results JSONs differ between index and working tree, the working-tree build
+# may not reflect exactly what's being committed.
+if ! git diff --quiet -- "$README" "$TEMPLATE" "$RESULTS_DIR" 2>/dev/null; then
+  echo "pre-commit: WARNING - $README, $TEMPLATE, or $RESULTS_DIR have" >&2
+  echo "            unstaged changes. The build check validates the working" >&2
+  echo "            tree, which may differ from the staged content." >&2
+fi
+
+# --- Build README to a temp file -------------------------------------------
+TMP_OUT="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/readme_build.$$")"
+# Ensure cleanup on any exit
+trap 'rm -f "$TMP_OUT" "$TMP_OUT.broken"' EXIT
+
+README_BUILD_OUTPUT="$TMP_OUT" "$RSCRIPT" "$BUILD_SCRIPT" >/dev/null 2>"$TMP_OUT.err"
+BUILD_STATUS=$?
+
+if [ "$BUILD_STATUS" -ne 0 ]; then
+  echo "pre-commit: build_readme.R FAILED (exit $BUILD_STATUS). Commit aborted." >&2
+  echo "----- build_readme.R stderr -----" >&2
+  cat "$TMP_OUT.err" >&2
+  rm -f "$TMP_OUT.err"
+  exit 1
+fi
+rm -f "$TMP_OUT.err"
+
+# --- Compare generated output against committed README ---------------------
+# Normalize line endings before comparison: build_readme.R writes LF; the
+# working-tree README.md may have CRLF on Windows (autocrlf). We compare
+# content, not line-ending conventions.
+if [ ! -f "$README" ]; then
+  echo "pre-commit: $README does not exist but the build produced output." >&2
+  echo "            Run: $RSCRIPT $BUILD_SCRIPT  (then stage $README)" >&2
+  exit 1
+fi
+
+# Strip CR for comparison only (does not modify either file).
+if diff -q <(tr -d '\r' < "$TMP_OUT") <(tr -d '\r' < "$README") >/dev/null 2>&1; then
+  # In sync. Allow the commit.
+  exit 0
+else
+  echo "pre-commit: README.md is OUT OF SYNC with its build inputs." >&2
+  echo "" >&2
+  echo "  README.md does not match what build_readme.R generates from the" >&2
+  echo "  current README.template.md and results/*.json." >&2
+  echo "" >&2
+  echo "  This usually means one of:" >&2
+  echo "    - README.md was hand-edited (edit README.template.md instead)" >&2
+  echo "    - README.template.md or results/*.json changed without rebuilding" >&2
+  echo "" >&2
+  echo "  To fix:" >&2
+  echo "    $RSCRIPT $BUILD_SCRIPT" >&2
+  echo "    git add README.md" >&2
+  echo "    git commit ..." >&2
+  echo "" >&2
+  echo "  (Emergency bypass: git commit --no-verify -- but the drift remains.)" >&2
+  exit 1
+fi

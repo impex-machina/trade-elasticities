@@ -1,0 +1,5 @@
+# Keep shell scripts and git hooks as LF regardless of core.autocrlf.
+# A CRLF shebang line (e.g. "#!/usr/bin/env bash\r") breaks the interpreter
+# lookup, so hooks and .sh files must round-trip through git as LF.
+scripts/hooks/* text eol=lf
+*.sh text eol=lf
