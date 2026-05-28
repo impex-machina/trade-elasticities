@@ -1,0 +1,14 @@
+# renv dependency-discovery exclusions.
+#
+# inst/legacy_verification/ holds one-off verification scripts retained for
+# provenance, not part of any routine pipeline:
+#   - verify_jacobian.R  cross-checks the analytic Stage 2 Jacobian against
+#                        numDeriv::jacobian on synthetic data (run once, passed)
+#   - sandwich_se.R      legacy heteroskedastic SE reference
+# These scripts self-document their own install requirements (e.g.
+# verify_jacobian.R: install.packages(c("Rcpp", "numDeriv"))) and are run
+# ad-hoc by a reader, not via renv::restore(). Excluding the directory keeps
+# their ad-hoc dependencies (notably numDeriv, which is intentionally NOT in
+# renv.lock) out of renv::status()/restore() so the production environment
+# stays clean and the out-of-sync warning does not mask real issues.
+inst/legacy_verification/
