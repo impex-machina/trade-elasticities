@@ -242,8 +242,8 @@ Stated forthrightly:
   ridge shrinkage toward good-level priors then lifts most of that floored
   mass, so the published γ floors in only {{format_pct(req(r$stage2b$gamma_floor, "n_floor"), req(r$stage2b$gamma_floor, "denominator"))}} of cells and looks
   better-behaved than the Stage 1 supply identification underneath it (the
-  Stage 1 ω-floor share is substantially larger; see
-  `docs/methodology/stage1_README.md`). Where ω is floored, both γ and the
+  Stage 1 ω-floor share is far larger, at {{format_pct(req(r$stage1$omega_floor, "n_floor"), req(r$stage1$omega_floor, "denominator"))}}
+  of cells; see `docs/methodology/stage1_README.md`). Where ω is floored, both γ and the
   derived `opt_tariff` collapse toward zero — toward elastic supply and a
   near-zero optimal tariff — so a γ or tariff sitting at that boundary is an
   identification artifact, not an interior estimate.
@@ -261,9 +261,11 @@ Stated forthrightly:
   of these σ to GMM- or Broda-Weinstein-style estimates elsewhere should
   account for the estimator difference, not just the sample and period.
 - **BACI vs. the COMTRADE data Soderbery (2018) used.** This pipeline uses
-  CEPII BACI — mirror-reconciled, FOB-valued, and carrying a substantial
-  share of CEPII-imputed quantities — rather than the importer-reported
-  COMTRADE of the original. HS4 unit values are weight-based composites
+  CEPII BACI — mirror-reconciled, FOB-valued, and carrying a share of
+  quantities that CEPII imputes from mirror-flow unit-value conversion and
+  does not flag in the released data (so the corresponding unit values are
+  partly synthetic and cannot be filtered out) — rather than the
+  importer-reported COMTRADE of the original. HS4 unit values are weight-based composites
   (value divided by tonnes, summed over the constituent HS6 lines) and so
   move with product mix, not only price. These data-construction choices
   reshape the cross-exporter second moments that identify σ and ω, and

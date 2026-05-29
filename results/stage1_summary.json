@@ -42,6 +42,10 @@
     "step2_total": 96855,
     "clamped_total": 24152
   },
+  "omega_floor": {
+    "n_floor": 47724,
+    "denominator": 280649
+  },
   "status_breakdown": {
     "ok": 149577,
     "all_inversions_failed": 72741,

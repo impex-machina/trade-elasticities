@@ -47,6 +47,7 @@ The full Stage 1 output. Key columns:
 | `omega` | numeric | Reported ω = ρ/(σ−1−σρ) — the **inverse** export-supply elasticity (the implied export-supply elasticity is 1/ω); same HLIML → Step 2 → cap rule as σ. |
 | `rho` | numeric | Reported ρ — the structural correlation root; σ and ω are computed from it (not the reverse). |
 | `gamma_common` | numeric | Implied export-supply **parameter** γ = ω/(1+ω) ∈ (0, 1) under the homogeneity (γ_j = γ_k) restriction — a bounded reduced-form parameter, **not an elasticity** (the implied export-supply elasticity is (1−γ)/γ = 1/ω). |
+| `omega_floored` | logical | `TRUE` when reported ω sits at its lower admissibility floor (1e-4) — i.e. ω was clamped, not estimated at an interior point (see the ω-floor note below). Lets the floored cells be filtered directly, e.g. `dt[!(omega_floored)]`; a genuine interior estimate never lands exactly on the floor. *Added by the B3 fix and populated from the estimator re-run that introduced the column; absent in pre-fix outputs.* |
 | `sigma_se`, `omega_se`, `rho_se` | numeric | Standard errors (HNCS sandwich if HLIML, delta-method if Step 2) |
 | `fstat_kp` | numeric | Kleibergen-Paap rk Wald F-statistic |
 | `fstat_het` | numeric | HLIML heteroskedasticity-adjusted F (Step 3 of GS_Estimation.do) |
@@ -85,7 +86,7 @@ Total estimable cells (`status = "ok"`): 149,577 of 280,649 (53.3%).
 analysis that depends on precise σ magnitudes — particularly comparisons to
 external estimators — should filter these out.
 
-**Lower-bound flooring is not flagged.** Beyond the upper caps, `invert_structural`
+**Lower-bound flooring — sized, and now flagged via `omega_floored`.** Beyond the upper caps, `invert_structural`
 also imposes lower bounds: ρ and ω are each clamped to a floor of 1e-4, applied
 before the Feenstra feasibility check (ρ < (σ−1)/σ, equivalently ω > 0). A
 dedicated routing code for an ω-floor event (`adjust = 3`) exists but is unused
@@ -94,7 +95,12 @@ strictly infeasible inversions are rerouted to the Step 2 fallback or dropped
 rather than reported as floored. The practical consequence is that a cell whose
 ω is pinned at the 1e-4 floor keeps its HLIML or Step 2 `adjust` code rather
 than a distinct floor flag, so floored cells cannot be isolated from `adjust`
-alone. A floored ω is reported as near-perfectly-elastic supply, which collapses
+alone. The floor nonetheless binds for about one cell in six (≈17% of all cells, and ≈32% of the cells that actually
+yield an estimate; the root README carries the exact all-cells share from
+`stage1_summary.json`) — far more than
+the near-0% γ floor that survives Stage 2 shrinkage. The `omega_floored`
+boolean (B3) now isolates exactly these cells (`dt[!(omega_floored)]`),
+populated from the estimator re-run that introduced the column. A floored ω is reported as near-perfectly-elastic supply, which collapses
 both γ_common = ω/(1+ω) and the derived optimal tariff toward zero for those
 cells; a γ_common or optimal tariff sitting at the boundary should be read as an
 identification artifact, not an interior estimate.

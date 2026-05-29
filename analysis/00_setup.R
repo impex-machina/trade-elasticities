@@ -171,6 +171,19 @@ stopifnot(
        pre_discard) == nrow(stage1)
 )
 
+# B3 / flooring transparency: share of cells whose export-supply parameter
+# omega was clamped to its lower admissibility floor (1e-4) rather than
+# estimated at an interior point. invert_structural() floors omega *before* the
+# feasibility-adjustment block assigns `adjust`, so floored cells read as
+# adjust 0/1 and are invisible in routing_summary above; counting omega at the
+# floor is the only way to size it from the current output. (The forthcoming
+# omega_floored column makes this directly filterable once the estimator is
+# re-run.) Backs the root-README flooring bullet's quantified omega-floor share.
+stage1_summary$omega_floor <- list(
+  n_floor     = sum(stage1$omega <= 1e-4, na.rm = TRUE),
+  denominator = nrow(stage1)
+)
+
 # status breakdown: five headline categories with prose stakes, plus two
 # grouped tails (prep_thin_total, thin_panel_total) covering the long tail
 # of pre-HLIML discards. The methodology doc can recover finer granularity

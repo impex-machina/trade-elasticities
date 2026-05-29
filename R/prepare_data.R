@@ -169,13 +169,28 @@ prepare_data <- function(cfg, raw_cache = NULL) {
   dt[, `:=`(lp_dif = lp - shift(lp, 1L),
             ls_imp_dif = ls_imp - shift(ls_imp, 1L),
             ls_exp_dif = ls_exp - shift(ls_exp, 1L),
+            t_gap = t - shift(t, 1L),
             period_count = .N), by = .(importer, exporter, good)]
+
+  # Consecutive-year guard. shift() pairs adjacent rows in the time order but
+  # does not check the year step; a panel that trades in 2002 then 2007 would
+  # otherwise be first-differenced across the gap as if it were a one-period
+  # change, contaminating the d-log price/share moments. A first difference is
+  # only meaningful across consecutive years, so null the diffs where the step
+  # is not exactly 1; the !is.na(lp_dif) filter below then drops them alongside
+  # each panel's leading NA.
+  n_gap_spanning <- dt[!is.na(t_gap) & t_gap != 1L, .N]
+  dt[is.na(t_gap) | t_gap != 1L,
+     `:=`(lp_dif = NA_real_, ls_imp_dif = NA_real_, ls_exp_dif = NA_real_)]
+  dt[, t_gap := NULL]
 
   n_before <- nrow(dt)
   dt <- dt[!is.na(lp_dif)]
-  qlog$add("First-differencing (drop first obs per panel)",
+  qlog$add("First-differencing (drop leading obs + non-consecutive-year steps)",
            n_obs = nrow(dt), n_dropped = n_before - nrow(dt),
-           trade_value = sum(dt$cusval, na.rm = TRUE))
+           trade_value = sum(dt$cusval, na.rm = TRUE),
+           detail = sprintf("%s rows spanned a >1-year gap and were excluded",
+                            format(n_gap_spanning, big.mark = ",")))
 
   if (!is.na(cfg$uv_outlier_threshold) && cfg$uv_outlier_threshold > 0) {
     thresh <- cfg$uv_outlier_threshold

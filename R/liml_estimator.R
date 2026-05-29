@@ -1130,6 +1130,13 @@ estimate_cell_liml <- function(cell_df,
     omega_se = final_omega_se,
     rho_se   = final_rho_se,
     adjust   = adjust,
+    # B3: ω was clamped to its lower admissibility floor (1e-4, matching
+    # invert_structural's omega_floor) rather than estimated at an interior
+    # point. invert_structural floors ω before the adjust block sees it, so a
+    # floored cell otherwise reads as adjust 0/1; this boolean makes the floored
+    # cells filterable (~17% of all cells, ~32% of estimated cells). A genuine
+    # interior estimate never lands exactly on the floor.
+    omega_floored = isTRUE(!is.na(final_omega) && final_omega <= 1e-4),
     final_source = final_source,
     # Test statistics
     fstat_kp = F_kp,
