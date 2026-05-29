@@ -1,7 +1,8 @@
 # trade-elasticities
 
-Heterogeneous import demand (σ) and export supply (γ) elasticities
-estimated from CEPII BACI HS92 V202601 trade data (1995–present),
+Heterogeneous import-demand elasticities (σ) and export-supply
+parameters (γ) estimated from CEPII BACI HS92 V202601 trade data
+(1995–present),
 following Soderbery (2018) with the Grant & Soderbery (2024) HLIML
 estimator for Stage 1.
 
@@ -89,7 +90,8 @@ library, or anywhere for want of a C++ toolchain), see
 
 The core output is the Stage 2b country-level table. Each row is one
 (importer, exporter, HS4-product) cell with its estimated export-supply
-elasticity γ and the σ that was fixed in for that product. To load it and
+parameter γ (defined below — γ is not itself an elasticity) and the σ that
+was fixed in for that product. To load it and
 read the first rows:
 
 ```r
@@ -105,15 +107,15 @@ Columns:
 |---|---|
 | `importer`, `exporter` | Numeric country codes (BACI/COMTRADE convention). |
 | `good` | **HS4 product code, stored as a character string with leading zeros** (e.g. `"0302"`, not `302`). Read it as character; coercing to integer drops the leading zero and silently mismatches chapters 01–09. |
-| `sigma` | Import-demand elasticity for the product, fixed from Stage 1 (constant within a product). |
-| `gamma` | Export-supply elasticity for this (importer, exporter, product) cell — the headline estimate. |
+| `sigma` | Import-demand (substitution) elasticity for the product, fixed from Stage 1 and constant within a product. For roughly a quarter of country-pairs this is a global-median fallback rather than a cell-specific estimate, and its upper tail is the cap value (see Known limitations). |
+| `gamma` | Export-supply **parameter** for the (importer, exporter, product) cell — the headline estimate. This is γ = ω / (1 + ω), bounded in (0, 1), where ω is the inverse export-supply elasticity; **γ is not itself an elasticity.** The implied export-supply elasticity is (1 - γ) / γ (median ≈ 3.3). Most cells are shrunk toward a good-level prior (see Known limitations). |
 | `gamma_se` | Penalized Gauss-Newton standard error for `gamma`. |
 | `gamma_se_status` | `"ok"` when the SE is usable; other values flag degenerate cases. |
 | `gamma_exposure` | Number of exporters in the estimating set for the cell. |
 | `ref_exporter` | Reference exporter used in the supply system. |
 | `tier` | Estimator-provenance tier (1–4) recording how the cell was identified. |
 | `convergence`, `obj_value` | Optimizer convergence code and objective value. |
-| `opt_tariff`, `opt_tariff_all` | Optimal-tariff implications derived from (σ, γ): the per-cell optimal tariff and the all-exporter variant. These are downstream of the elasticities; treat them as derived quantities, not primary estimates. |
+| `opt_tariff`, `opt_tariff_all` | Implied optimal tariff derived from (σ, γ): the per-cell value and the all-exporter variant. This equals the inverse export-supply elasticity ω = γ / (1 - γ) (Soderbery's optimal-tariff result). Downstream of the estimates — treat as derived, not primary — and biased downward for inelastic-supply products (see Known limitations). |
 
 A reader reproducing the headline numbers should find σ median ≈ {{format_num(req(r$stage2b, "sigma_median"))}} on
 the canonical {{format_int(req(r$stage1, "n_products"))}}-product universe. `analysis/master.R` prints this as
@@ -233,6 +235,37 @@ Stated forthrightly:
   estimates over a longer window than Soderbery's original sample, which
   contributes to estimate differences independently of the estimator
   change from Feenstra GMM to HLIML.
+- **Supply-side flooring, and shrinkage that masks it.** A large share of
+  Stage 1 cells produce an inadmissible supply estimate — the implied export
+  supply is non-positive (the Feenstra-infeasible region) or driven to the
+  boundary — and these are clamped to the admissibility floor rather than
+  reported as failures. Stage 2 shrinkage toward good-level priors then
+  compresses the floored mass in the published γ, so the headline γ looks
+  better-behaved than the underlying supply identification. Both γ and the
+  derived `opt_tariff` are biased toward elastic supply and low tariffs
+  precisely for inelastic-supply (high-tariff) products. See the methodology
+  write-ups in `docs/methodology/`.
+- **Standard errors are conditional on σ.** `gamma_se` is computed with σ
+  held fixed at its Stage 1 value (a global-median fallback wherever Stage 1
+  did not identify σ); it does not propagate Stage 1 σ uncertainty. A large
+  share of rows carry no usable cell-specific SE — flagged degenerate, or
+  assigned outright from the regional prior (Tier 3) — and where an SE exists
+  it is frequently as large as the estimate itself. Treat `gamma_se` as a
+  conditional, lower-bound measure of uncertainty.
+- **σ is sensitive to the estimator, not only the sample.** On the Tier 4
+  comparison against the legacy Feenstra-GMM baseline, the HLIML σ and the
+  GMM σ agree poorly in both level and cross-cell rank ordering. Comparisons
+  of these σ to GMM- or Broda-Weinstein-style estimates elsewhere should
+  account for the estimator difference, not just the sample and period.
+- **BACI vs. the COMTRADE data Soderbery (2018) used.** This pipeline uses
+  CEPII BACI — mirror-reconciled, FOB-valued, and carrying a substantial
+  share of CEPII-imputed quantities — rather than the importer-reported
+  COMTRADE of the original. HS4 unit values are weight-based composites
+  (value divided by tonnes, summed over the constituent HS6 lines) and so
+  move with product mix, not only price. These data-construction choices
+  reshape the cross-exporter second moments that identify σ and ω, and
+  contribute to differences from Soderbery independently of the estimator
+  and period.
 
 ## License
 
