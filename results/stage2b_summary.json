@@ -9,5 +9,21 @@
   "gamma_median": 0.235309165324349,
   "gamma_q25": 0.15972368044192,
   "gamma_q75": 0.342402786412102,
+  "sigma_provenance": {
+    "fallback_value": 2.8752084362372,
+    "n_fallback": 2039351,
+    "n_cap": 854200,
+    "denominator": 8128124
+  },
+  "gamma_floor": {
+    "n_floor": 0,
+    "denominator": 8128124
+  },
+  "se_status": {
+    "ok": 5004270,
+    "tier3_prior": 2088525,
+    "other": 1035329,
+    "total": 8128124
+  },
   "n_importers_asymmetry_vs_stage1": 1
 }

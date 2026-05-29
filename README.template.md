@@ -107,7 +107,7 @@ Columns:
 |---|---|
 | `importer`, `exporter` | Numeric country codes (BACI/COMTRADE convention). |
 | `good` | **HS4 product code, stored as a character string with leading zeros** (e.g. `"0302"`, not `302`). Read it as character; coercing to integer drops the leading zero and silently mismatches chapters 01–09. |
-| `sigma` | Import-demand (substitution) elasticity for the product, fixed from Stage 1 and constant within a product. For roughly a quarter of country-pairs this is a global-median fallback rather than a cell-specific estimate, and its upper tail is the cap value (see Known limitations). |
+| `sigma` | Import-demand (substitution) elasticity for the product, fixed from Stage 1 and constant within a product. For {{format_pct(req(r$stage2b$sigma_provenance, "n_fallback"), req(r$stage2b$sigma_provenance, "denominator"))}} of rows this is a global-median fallback (σ ≈ {{format_num(req(r$stage2b$sigma_provenance, "fallback_value"))}}) rather than a cell-specific estimate, and a further {{format_pct(req(r$stage2b$sigma_provenance, "n_cap"), req(r$stage2b$sigma_provenance, "denominator"))}} sit at the cap value of 10 (see Known limitations). |
 | `gamma` | Export-supply **parameter** for the (importer, exporter, product) cell — the headline estimate. This is γ = ω / (1 + ω), bounded in (0, 1), where ω is the inverse export-supply elasticity; **γ is not itself an elasticity.** The implied export-supply elasticity is (1 - γ) / γ (median ≈ 3.3). Most cells are shrunk toward a good-level prior (see Known limitations). |
 | `gamma_se` | Penalized Gauss-Newton standard error for `gamma`. |
 | `gamma_se_status` | `"ok"` when the SE is usable; other values flag degenerate cases. |
@@ -235,23 +235,26 @@ Stated forthrightly:
   estimates over a longer window than Soderbery's original sample, which
   contributes to estimate differences independently of the estimator
   change from Feenstra GMM to HLIML.
-- **Supply-side flooring, and shrinkage that masks it.** A large share of
-  Stage 1 cells produce an inadmissible supply estimate — the implied export
-  supply is non-positive (the Feenstra-infeasible region) or driven to the
-  boundary — and these are clamped to the admissibility floor rather than
-  reported as failures. Stage 2 shrinkage toward good-level priors then
-  compresses the floored mass in the published γ, so the headline γ looks
-  better-behaved than the underlying supply identification. Both γ and the
-  derived `opt_tariff` are biased toward elastic supply and low tariffs
-  precisely for inelastic-supply (high-tariff) products. See the methodology
-  write-ups in `docs/methodology/`.
+- **Supply-side flooring, and shrinkage that masks it.** The Stage 1
+  inversion clamps the supply parameter ω to a lower floor (1e-4); a cell
+  pushed there is reported as near-perfectly-elastic supply, not as a
+  failure, and the floor is not flagged in the estimator-path code. Stage 2
+  ridge shrinkage toward good-level priors then lifts most of that floored
+  mass, so the published γ floors in only {{format_pct(req(r$stage2b$gamma_floor, "n_floor"), req(r$stage2b$gamma_floor, "denominator"))}} of cells and looks
+  better-behaved than the Stage 1 supply identification underneath it (the
+  Stage 1 ω-floor share is substantially larger; see
+  `docs/methodology/stage1_README.md`). Where ω is floored, both γ and the
+  derived `opt_tariff` collapse toward zero — toward elastic supply and a
+  near-zero optimal tariff — so a γ or tariff sitting at that boundary is an
+  identification artifact, not an interior estimate.
 - **Standard errors are conditional on σ.** `gamma_se` is computed with σ
   held fixed at its Stage 1 value (a global-median fallback wherever Stage 1
-  did not identify σ); it does not propagate Stage 1 σ uncertainty. A large
-  share of rows carry no usable cell-specific SE — flagged degenerate, or
-  assigned outright from the regional prior (Tier 3) — and where an SE exists
-  it is frequently as large as the estimate itself. Treat `gamma_se` as a
-  conditional, lower-bound measure of uncertainty.
+  did not identify σ); it does not propagate Stage 1 σ uncertainty. Only
+  {{format_pct(req(r$stage2b$se_status, "ok"), req(r$stage2b$se_status, "total"))}} of rows carry a clean cell-specific SE: {{format_pct(req(r$stage2b$se_status, "tier3_prior"), req(r$stage2b$se_status, "total"))}} are Tier 3 cells
+  assigned the regional prior outright (no SE) and the remaining
+  {{format_pct(req(r$stage2b$se_status, "other"), req(r$stage2b$se_status, "total"))}} are boundary, plateau, non-converged, or unflagged fits — and where an SE
+  exists it is frequently as large as the estimate itself. Treat `gamma_se`
+  as a conditional, lower-bound measure of uncertainty.
 - **σ is sensitive to the estimator, not only the sample.** On the Tier 4
   comparison against the legacy Feenstra-GMM baseline, the HLIML σ and the
   GMM σ agree poorly in both level and cross-cell rank ordering. Comparisons

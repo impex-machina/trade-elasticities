@@ -221,6 +221,66 @@ stage2b_summary <- list(
   gamma_q25    = as.numeric(quantile(stage2b_dt$gamma, 0.25)),
   gamma_q75    = as.numeric(quantile(stage2b_dt$gamma, 0.75))
 )
+
+# --- Hardened limitation figures -------------------------------------------
+# Back specific numbers in the README's `sigma` column note and the
+# "Known limitations" bullets. All computed from the published Stage 2b
+# table so the prose stays locked to the data via build_readme.R's req().
+#
+# (a) sigma provenance. Stage 2b assigns each cell either a cell-specific
+# sigma from the Stage 1 lookup, or — where Stage 1 produced no admissible
+# sigma — the GLOBAL-MEDIAN fallback broadcast as a single constant
+# (run_estimation.R: median of sigma over sigma>1 & convergence==0). The
+# sigma cap (10) is the other constant. Neither is flagged in the Stage 2b
+# schema, so we identify them as the two value spikes: the cap is exactly 10;
+# the fallback is the most-common NON-cap sigma (one value shared across a
+# large block of cells, where genuine cell-specific estimates do not repeat).
+sigma_cap_value <- 10
+.sig_spikes <- stage2b_dt[sigma != sigma_cap_value, .N, by = sigma][order(-N)]
+sigma_fallback_value <- .sig_spikes$sigma[1]
+stopifnot(sigma_fallback_value > 1, sigma_fallback_value < sigma_cap_value)
+stage2b_summary$sigma_provenance <- list(
+  fallback_value = sigma_fallback_value,
+  n_fallback     = sum(stage2b_dt$sigma == sigma_fallback_value),
+  n_cap          = sum(stage2b_dt$sigma == sigma_cap_value),
+  denominator    = nrow(stage2b_dt)
+)
+rm(.sig_spikes, sigma_cap_value, sigma_fallback_value)
+
+# (b) published-gamma floor. Stage 2b floors gamma at 0 for both the J
+# exporters and the reference exporter (estimate_cell_fixed_sigma.R:
+# gamma_j_hat <- pmax(d_hat[2:(J+1)], 0); gamma_k_hat <- max(d_hat[1], 0)),
+# so all published gamma >= 0 and the floor is gamma == 0. This is the
+# published-side counterpart to the Stage 1 omega flooring; Stage 2 shrinkage
+# toward good-level priors lifts most floored mass, so this share is much
+# smaller than the Stage 1 omega-floor share documented in
+# docs/methodology/stage1_README.md.
+stage2b_summary$gamma_floor <- list(
+  n_floor     = sum(stage2b_dt$gamma <= 0),
+  denominator = nrow(stage2b_dt)
+)
+
+# (c) gamma_se status composition. gamma_se is conditional on the fixed sigma.
+# Status default is "ok" (a clean, usable SE); it is overridden to
+# "boundary"/"plateau" for extreme estimates, set to "non_converged" when the
+# fit did not converge, and "tier3_prior" for Tier 3 cells assigned the
+# regional prior outright (no cell-specific SE). "other" groups every
+# non-ok, non-tier3 state (boundary/plateau/non_converged, plus any rows whose
+# gamma_se_status was left NA). Backs the "large share of rows carry no
+# usable cell-specific SE" claim.
+.ses <- stage2b_dt$gamma_se_status
+stage2b_summary$se_status <- list(
+  ok          = sum(.ses == "ok", na.rm = TRUE),
+  tier3_prior = sum(.ses == "tier3_prior", na.rm = TRUE),
+  # "other" = everything not ok and not tier3. %in% maps NA to FALSE, so rows
+  # with an unrecorded (NA) gamma_se_status are counted here too; the three
+  # buckets stay a clean partition of all rows.
+  other       = sum(!(.ses %in% c("ok", "tier3_prior"))),
+  total       = length(.ses)
+)
+stopifnot(with(stage2b_summary$se_status, ok + tier3_prior + other == total))
+rm(.ses)
+
 rm(stage2b_dt)
 
 # Derived: stage1 has one more importer than stage2b. Backs the README claim
