@@ -406,6 +406,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
                    "choose_reference", "bw_weight", "optimal_tariff",
                    "assign_regions", "build_region_map",
                    "build_export_moments", "cell_failure",
+                   "compute_dgamma_dsigma", "assess_sigma_robust",
                    "het_obj_fixed_sigma")
 
   is_windows <- .Platform$OS.type == "windows"
@@ -632,6 +633,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   # the full data.
   keep_cols <- intersect(names(output),
     c("importer","exporter","good","sigma","gamma","gamma_se",
+      "gamma_se_total","sigma_robust","sigma_se","dgamma_dsigma",
       "gamma_se_status","gamma_exposure","ref_exporter",
       "opt_tariff","opt_tariff_all","convergence","obj_value","tier",
       "avg_trade"))

@@ -386,6 +386,11 @@ if (should_run("2b", opts, paths)) {
 
     config_2b <- config_country
     config_2b$sigma_lookup     <- sigma_clean[, .(importer, good, sigma)]
+
+    config_2b$sigma_se_lookup     <- sigma_estimates[, .(importer = as.character(importer),
+                                                         good     = as.character(good), sigma_se)]
+    config_2b$sigma_adjust_lookup <- sigma_estimates[, .(importer = as.character(importer),
+                                                         good     = as.character(good), adjust)]
     config_2b$sigma_fallback   <- sigma_fallback
     config_2b$shrinkage_priors <- country_priors
     config_2b$shrinkage_lambda <- config$shrinkage_lambda

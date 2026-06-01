@@ -212,6 +212,61 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
 #  FIXED-SIGMA GAMMA ESTIMATION WITH TIERED EXPORT MOMENTS
 # ===========================================================================
 
+#' Sensitivity of the fixed-sigma gamma estimate to sigma (implicit-function thm).
+#' dgamma/dsigma = -(J'WJ + H)^{-1} J'W (dr/dsigma); dr/dsigma by central FD of the
+#' Rcpp residual routine holding gamma fixed. Returns length-K vector (d_hat order),
+#' or all-NA on failure. See R/estimate_cell_fixed_sigma.R SE methodology notes.
+compute_dgamma_dsigma <- function(d_hat, sigma_val,
+                                  imp_Y_vec, imp_X_mat, exp_Y, exp_X, exp_jmap,
+                                  exp_sig_V, exp_gam_V, wt_imp_vec, wt_exp,
+                                  shrinkage_lambda, delta = 1e-4) {
+  K  <- length(d_hat); na <- rep(NA_real_, K)
+  if (!is.finite(sigma_val) || sigma_val <= 1) return(na)
+  delta <- min(delta, (sigma_val - 1) / 10)
+  JJ <- function(sg) tryCatch(
+    het_residuals_and_jacobian_fixed_sigma_rcpp(
+      d = d_hat, sigma = sg, imp_Y = imp_Y_vec, imp_X = imp_X_mat,
+      exp_Y = exp_Y, exp_X = exp_X, exp_jmap = exp_jmap,
+      exp_sig_V = exp_sig_V, exp_gam_V = exp_gam_V,
+      wt_imp = wt_imp_vec, wt_exp = wt_exp),
+    error = function(e) NULL)
+  j0 <- JJ(sigma_val)
+  if (is.null(j0) || !identical(j0$status, "ok")) return(na)
+  r <- j0$jac_row + 1L; c <- j0$jac_col + 1L; v <- j0$jac_val; w <- j0$weights
+  A <- matrix(0, K, K)
+  for (idx in split(seq_along(r), r)) {
+    cc <- c[idx]; vv <- v[idx]; ww <- w[r[idx][1L]]
+    for (a in seq_along(cc)) for (b in seq_along(cc))
+      A[cc[a], cc[b]] <- A[cc[a], cc[b]] + ww * vv[a] * vv[b]
+  }
+  if (shrinkage_lambda > 0)
+    for (k in seq_len(K)) if (d_hat[k] > 1e-8)
+      A[k, k] <- A[k, k] + 2 * shrinkage_lambda / d_hat[k]^2
+  jp <- JJ(sigma_val + delta); jm <- JJ(sigma_val - delta)
+  if (is.null(jp) || is.null(jm) ||
+      !identical(jp$status, "ok") || !identical(jm$status, "ok")) return(na)
+  drds <- (jp$residuals - jm$residuals) / (2 * delta)
+  g <- numeric(K)
+  for (t in seq_along(r)) g[c[t]] <- g[c[t]] + w[r[t]] * v[t] * drds[r[t]]
+  as.numeric(tryCatch(-solve(A, g), error = function(e) na))
+}
+
+#' Cell-level robustness screen for gamma under sigma uncertainty.
+#' FALSE if sigma clamped (adjust in {4,5}), sigma_se non-finite, the sigma band
+#' reaches the sigma=1 pole, or propagation more than INFL_THRESH-folds any SE.
+assess_sigma_robust <- function(sigma_hat, sigma_se, adjust, se_cond, se_prop,
+                                K_POLE = 2.5, INFL_THRESH = 2.0, eps = 1e-6) {
+  if (isTRUE(adjust %in% c(4L, 5L)))            return(FALSE)
+  if (!is.finite(sigma_se))                     return(FALSE)
+  if (sigma_hat - K_POLE * sigma_se <= 1 + eps) return(FALSE)
+  ok <- is.finite(se_cond) & se_cond > 0 & is.finite(se_prop)
+  if (any(ok)) {
+    infl <- sqrt(se_cond[ok]^2 + se_prop[ok]^2) / se_cond[ok]
+    if (any(infl > INFL_THRESH)) return(FALSE)
+  }
+  TRUE
+}
+
 estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
                                                    all_dt, cfg,
                                                    exporter_dests = NULL,
@@ -402,6 +457,36 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     gamma_j_expo   <- rep(NA_integer_, J)
   }
   
+  # --- sigma-propagated SE + robustness flag ---
+  # Stage-1 sigma SE + admissibility-adjust code, wired via cfg (run_estimation.R).
+  sse_row <- if (!is.null(cfg$sigma_se_lookup))
+    cfg$sigma_se_lookup[importer == focal_importer & good == g_code] else NULL
+  sigma_se_cell <- if (!is.null(sse_row) && nrow(sse_row)) sse_row$sigma_se[1] else NA_real_
+  adj_row <- if (!is.null(cfg$sigma_adjust_lookup))
+    cfg$sigma_adjust_lookup[importer == focal_importer & good == g_code] else NULL
+  adjust_cell <- if (!is.null(adj_row) && nrow(adj_row)) as.integer(adj_row$adjust[1]) else NA_integer_
+
+  se_cond_vec <- c(gamma_k_se, gamma_j_se)            # d_hat order: [k, j_1..j_J]
+  if (result$convergence == 0L && is.finite(sigma_se_cell)) {
+    dgds <- compute_dgamma_dsigma(
+      d_hat = d_hat, sigma_val = sigma_val,
+      imp_Y_vec = imp_Y_vec, imp_X_mat = imp_X_mat,
+      exp_Y = exp_mom$exp_Y, exp_X = exp_mom$exp_X, exp_jmap = exp_mom$jmap,
+      exp_sig_V = exp_mom$sig_V, exp_gam_V = exp_mom$gam_V,
+      wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
+      shrinkage_lambda = shrinkage_lambda)
+    se_prop_vec <- abs(dgds) * sigma_se_cell
+  } else {
+    dgds <- rep(NA_real_, length(d_hat)); se_prop_vec <- rep(NA_real_, length(d_hat))
+  }
+  sigma_robust_flag <- assess_sigma_robust(
+    sigma_hat = sigma_val, sigma_se = sigma_se_cell, adjust = adjust_cell,
+    se_cond = se_cond_vec, se_prop = se_prop_vec)
+  se_total_vec <- if (sigma_robust_flag)
+    sqrt(se_cond_vec^2 + se_prop_vec^2) else rep(NA_real_, length(se_cond_vec))
+  gamma_k_se_total <- se_total_vec[1]
+  gamma_j_se_total <- se_total_vec[2:(J + 1)]
+
   # --- Assign tiers to output ---
   est_tier <- ifelse(exporter_order %in% tier1_exp, 1L, 2L)
   
@@ -412,6 +497,10 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     sigma           = sigma_val,
     gamma           = c(gamma_j_hat, gamma_k_hat),
     gamma_se        = c(gamma_j_se, gamma_k_se),
+    gamma_se_total  = c(gamma_j_se_total, gamma_k_se_total),
+    sigma_robust    = sigma_robust_flag,
+    sigma_se        = sigma_se_cell,
+    dgamma_dsigma   = c(dgds[2:(J + 1)], dgds[1]),
     gamma_se_status = c(gamma_j_status, gamma_k_status),
     gamma_exposure  = c(gamma_j_expo, gamma_k_expo),
     ref_exporter    = ref_exporter,
@@ -429,6 +518,10 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       sigma           = sigma_val,
       gamma           = gamma_t3,
       gamma_se        = NA_real_,
+      gamma_se_total  = NA_real_,
+      sigma_robust    = NA,
+      sigma_se        = NA_real_,
+      dgamma_dsigma   = NA_real_,
       gamma_se_status = "tier3_prior",
       gamma_exposure  = NA_integer_,
       ref_exporter    = ref_exporter,
