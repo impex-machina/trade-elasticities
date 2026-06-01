@@ -1100,6 +1100,12 @@ estimate_cell_liml <- function(cell_df,
     final_omega_se <- ses$omega_se
     final_rho_se   <- ses$rho_se
     final_source <- "step2_weighted"
+    # A1: clamped point (adjust 4/5) otherwise carries the Step-2 SE of the
+    # un-clamped blow-up, meaningless for the clamped value. NA it for consistency.
+    if (adjust %in% c(4L, 5L)) {
+      final_sigma_se <- NA_real_
+      final_omega_se <- NA_real_
+    }
   }
   
   # Final sanity: if both HLIML and Step 2 fallback failed, mark as failed.
@@ -1130,6 +1136,8 @@ estimate_cell_liml <- function(cell_df,
     omega_se = final_omega_se,
     rho_se   = final_rho_se,
     adjust   = adjust,
+    # A1: weakly-identified sigma flag (clamped). Joins Stage-2 sigma_robust==FALSE.
+    sigma_weak = isTRUE(adjust %in% c(4L, 5L)),
     # B3: ω was clamped to its lower admissibility floor (1e-4, matching
     # invert_structural's omega_floor) rather than estimated at an interior
     # point. invert_structural floors ω before the adjust block sees it, so a
