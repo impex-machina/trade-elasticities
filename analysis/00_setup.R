@@ -294,6 +294,30 @@ stage2b_summary$se_status <- list(
 stopifnot(with(stage2b_summary$se_status, ok + tier3_prior + other == total))
 rm(.ses)
 
+# Sigma-robustness screen (gamma_se_total / sigma_robust columns, present once
+# Stage 1 sigma uncertainty is propagated into the gamma SEs). TRUE/FALSE are the
+# estimated cells the screen passed/failed; NA are Tier-3 imputed cells with no
+# per-cell sigma to screen. n_estimated = robust + not_robust backs the
+# "of estimated cells" framing. Requires the patched Stage-2b output.
+.sr <- stage2b_dt$sigma_robust
+stage2b_summary$sigma_robust <- list(
+  robust      = sum(.sr, na.rm = TRUE),
+  not_robust  = sum(!.sr, na.rm = TRUE),
+  tier3_na    = sum(is.na(.sr)),
+  n_estimated = sum(!is.na(.sr)),
+  total       = length(.sr)
+)
+stopifnot(with(stage2b_summary$sigma_robust,
+               robust + not_robust + tier3_na == total))
+rm(.sr)
+
+# Implied export-supply elasticity (1 - gamma)/gamma; its median backs the
+# gamma-row worked-example figure. gamma in (0, 1], so the ratio is finite
+# except where gamma was floored to 0 (excluded by is.finite).
+.elast <- (1 - stage2b_dt$gamma) / stage2b_dt$gamma
+stage2b_summary$elast_median <- median(.elast[is.finite(.elast)], na.rm = TRUE)
+rm(.elast)
+
 rm(stage2b_dt)
 
 # Derived: stage1 has one more importer than stage2b. Backs the README claim

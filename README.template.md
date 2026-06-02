@@ -108,9 +108,13 @@ Columns:
 | `importer`, `exporter` | Numeric country codes (BACI/COMTRADE convention). |
 | `good` | **HS4 product code, stored as a character string with leading zeros** (e.g. `"0302"`, not `302`). Read it as character; coercing to integer drops the leading zero and silently mismatches chapters 01–09. |
 | `sigma` | Import-demand (substitution) elasticity for the product, fixed from Stage 1 and constant within a product. For {{format_pct(req(r$stage2b$sigma_provenance, "n_fallback"), req(r$stage2b$sigma_provenance, "denominator"))}} of rows this is a global-median fallback (σ ≈ {{format_num(req(r$stage2b$sigma_provenance, "fallback_value"))}}) rather than a cell-specific estimate, and a further {{format_pct(req(r$stage2b$sigma_provenance, "n_cap"), req(r$stage2b$sigma_provenance, "denominator"))}} sit at the cap value of 10 (see Known limitations). |
-| `gamma` | Export-supply **parameter** for the (importer, exporter, product) cell — the headline estimate. This is γ = ω / (1 + ω), bounded in (0, 1), where ω is the inverse export-supply elasticity; **γ is not itself an elasticity.** The implied export-supply elasticity is (1 - γ) / γ (median ≈ 3.3). Most cells are shrunk toward a good-level prior (see Known limitations). |
+| `gamma` | Export-supply **parameter** for the (importer, exporter, product) cell — the headline estimate. This is γ = ω / (1 + ω), bounded in (0, 1), where ω is the inverse export-supply elasticity; **γ is not itself an elasticity.** The implied export-supply elasticity is (1 - γ) / γ (median ≈ {{format_num(req(r$stage2b, "elast_median"))}}). Most cells are shrunk toward a good-level prior (see Known limitations). |
 | `gamma_se` | Penalized Gauss-Newton standard error for `gamma`. |
 | `gamma_se_status` | `"ok"` when the SE is usable; other values flag degenerate cases. |
+| `gamma_se_total` | Standard error for `gamma` with Stage-1 σ uncertainty propagated in by the delta method: `sqrt(gamma_se² + (∂γ/∂σ · sigma_se)²)`. Populated only where `sigma_robust` is `TRUE`; `NA` otherwise (all Tier-3 cells, and any cell where σ-uncertainty could not be propagated stably). Where present, this is the wider, σ-aware SE; where `NA`, `gamma_se` (conditional on σ) is the only SE available. |
+| `sigma_robust` | Cell-level (`importer × good`) flag: `TRUE` when γ's SE is robust to Stage-1 σ uncertainty — σ̂ is unclamped, has a finite SE, sits clear of the σ = 1 identification pole, and the propagated term inflates no γ SE in the cell beyond the screen threshold. `FALSE` when any of those fail; `NA` for Tier-3 imputed cells with no per-cell σ. `TRUE` on {{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "total"))}} of rows ({{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "n_estimated"))}} of estimated cells), `FALSE` on {{format_pct(req(r$stage2b$sigma_robust, "not_robust"), req(r$stage2b$sigma_robust, "total"))}}, `NA` on {{format_pct(req(r$stage2b$sigma_robust, "tier3_na"), req(r$stage2b$sigma_robust, "total"))}}. Filter on this to keep only cells whose γ SE is stable once σ is treated as estimated rather than known (see Known limitations). |
+| `sigma_se` | Stage-1 standard error of `sigma` for the product, carried in for the propagation. `NA` where Stage 1 clamped σ or ω (the cap is reported without a usable SE) or returned none. Constant within a product. |
+| `dgamma_dsigma` | Local sensitivity ∂γ/∂σ for the cell, from the implicit-function derivative of the γ first-order condition; the input to `gamma_se_total`. Large magnitudes mark cells where γ moves sharply with σ, typically those near the σ = 1 pole. |
 | `gamma_exposure` | Number of exporters in the estimating set for the cell. |
 | `ref_exporter` | Reference exporter used in the supply system. |
 | `tier` | Estimator-provenance tier (1–4) recording how the cell was identified. |
@@ -247,14 +251,16 @@ Stated forthrightly:
   derived `opt_tariff` collapse toward zero — toward elastic supply and a
   near-zero optimal tariff — so a γ or tariff sitting at that boundary is an
   identification artifact, not an interior estimate.
-- **Standard errors are conditional on σ.** `gamma_se` is computed with σ
-  held fixed at its Stage 1 value (a global-median fallback wherever Stage 1
-  did not identify σ); it does not propagate Stage 1 σ uncertainty. Only
+- **Standard errors: conditional on σ, with a robustness screen.** `gamma_se`
+  is computed with σ held fixed at its Stage 1 value (a global-median fallback
+  wherever Stage 1 did not identify σ), so it is conditional on σ. Only
   {{format_pct(req(r$stage2b$se_status, "ok"), req(r$stage2b$se_status, "total"))}} of rows carry a clean cell-specific SE: {{format_pct(req(r$stage2b$se_status, "tier3_prior"), req(r$stage2b$se_status, "total"))}} are Tier 3 cells
   assigned the regional prior outright (no SE) and the remaining
-  {{format_pct(req(r$stage2b$se_status, "other"), req(r$stage2b$se_status, "total"))}} are boundary, plateau, non-converged, or unflagged fits — and where an SE
-  exists it is frequently as large as the estimate itself. Treat `gamma_se`
-  as a conditional, lower-bound measure of uncertainty.
+  {{format_pct(req(r$stage2b$se_status, "other"), req(r$stage2b$se_status, "total"))}} are boundary, plateau, non-converged, or unflagged fits. The pipeline
+  additionally propagates the Stage 1 σ uncertainty by the delta method into
+  `gamma_se_total` and flags the result with a cell-level `sigma_robust` screen:
+  σ̂ unclamped and with a finite SE, clear of the σ = 1 pole, and no γ SE in the
+  cell inflated beyond threshold. {{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "total"))}} of rows pass ({{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "n_estimated"))}} of estimated cells); {{format_pct(req(r$stage2b$sigma_robust, "not_robust"), req(r$stage2b$sigma_robust, "total"))}} are flagged `FALSE` and {{format_pct(req(r$stage2b$sigma_robust, "tier3_na"), req(r$stage2b$sigma_robust, "total"))}} are Tier-3 imputed cells (`NA`) with no per-cell σ. The screen is governed almost entirely by σ̂'s distance from the σ = 1 pole, not by the inflation cutoff, and the pass rate is stable across a wide grid of both thresholds (`analysis/sensitivity_sweep.R` reproduces it). Where `sigma_robust` is `FALSE` or `NA`, treat `gamma_se` as a conditional, lower-bound measure of uncertainty; where `TRUE`, `gamma_se_total` is the σ-aware SE — and in either case the SE is frequently as large as the estimate itself.
 - **σ is sensitive to the estimator, not only the sample.** On the Tier 4
   comparison against the legacy Feenstra-GMM baseline, the HLIML σ and the
   GMM σ agree poorly in both level and cross-cell rank ordering. Comparisons

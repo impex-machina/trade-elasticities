@@ -40,7 +40,7 @@ repo; the table below mirrors its human-readable view.
 | `stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds` | 1 | Stage 1 sigma estimates (HLIML primary, Step 2 fallback) |
 | `stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds` | 1 | Stage 2a regional gamma with fixed sigma |
 | `stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds` | 1 | Stage 2b country-level gamma with shrinkage + SE |
-| `stage2b/..._fixed_sigma_summary.rds` / `.txt` | 1 | Country-pair summary table (binary + human-readable) |
+| `stage2b/..._summary.rds` / `.txt` | 1 | Country-pair summary table (binary + human-readable) |
 | `validation/liml_validation_tier1a.csv` | 2 | Synthetic recovery: Tier 1a sigma grid |
 | `validation/liml_validation_tier1b.csv` | 2 | Synthetic recovery: Tier 1b sample-size convergence |
 | `validation/se_calibration_mc_summary.csv` | 3 | SE calibration Monte Carlo (4 regimes x 3 formulas) |
