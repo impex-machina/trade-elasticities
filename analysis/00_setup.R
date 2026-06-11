@@ -311,10 +311,15 @@ stopifnot(with(stage2b_summary$sigma_robust,
                robust + not_robust + tier3_na == total))
 rm(.sr)
 
-# Implied export-supply elasticity (1 - gamma)/gamma; its median backs the
-# gamma-row worked-example figure. gamma in (0, 1], so the ratio is finite
-# except where gamma was floored to 0 (excluded by is.finite).
-.elast <- (1 - stage2b_dt$gamma) / stage2b_dt$gamma
+# Implied export-supply elasticity 1/gamma; its median backs the gamma-row
+# worked-example figure. gamma is the INVERSE export-supply elasticity
+# (Soderbery's gamma — the parameter het_obj_fixed_sigma optimizes, lower-
+# bounded near 0 by the optimizer and unbounded above), so the elasticity
+# is its reciprocal. The previous formula (1 - gamma)/gamma assumed the
+# bounded omega/(1+omega) transform, which is Stage 1's gamma_common, not
+# the published Stage 2b column; it understated the median elasticity by
+# exactly 1. Rows with gamma floored to 0 are excluded by is.finite.
+.elast <- 1 / stage2b_dt$gamma
 stage2b_summary$elast_median <- median(.elast[is.finite(.elast)], na.rm = TRUE)
 rm(.elast)
 
