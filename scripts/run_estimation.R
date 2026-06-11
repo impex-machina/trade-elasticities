@@ -37,6 +37,28 @@
       file.exists(file.path(env_dir, "feen94_het_baci.R"))) {
     return(normalizePath(env_dir))
   }
+  # B10 FIX (v0.3.0): fall back to this repo's R/ directory, where the
+  # feen94_het_baci.R wrapper has lived since the step-3 refactor. The
+  # README's replication instructions (`Rscript scripts/run_estimation.R
+  # --data <dir>`) never mention TRADE_ELAST_SRC, so a fresh clone
+  # previously failed here before parsing CLI args. The env var still
+  # takes precedence for non-standard layouts.
+  args <- commandArgs(trailingOnly = FALSE)
+  file_arg <- grep("^--file=", args, value = TRUE)
+  script_dir <- if (length(file_arg) == 1L) {
+    dirname(sub("^--file=", "", file_arg))
+  } else {
+    "."
+  }
+  repo_r <- normalizePath(file.path(script_dir, "..", "R"), mustWork = FALSE)
+  if (dir.exists(repo_r) && file.exists(file.path(repo_r, "feen94_het_baci.R"))) {
+    return(repo_r)
+  }
+  # Sourced interactively from the repo root
+  cwd_r <- normalizePath(file.path(".", "R"), mustWork = FALSE)
+  if (dir.exists(cwd_r) && file.exists(file.path(cwd_r, "feen94_het_baci.R"))) {
+    return(cwd_r)
+  }
   stop("Cannot locate feen94_het_baci.R. Set TRADE_ELAST_SRC to the ",
        "source directory:\n  ",
        "Sys.setenv(TRADE_ELAST_SRC = '/path/to/source')\nor in PowerShell:\n  ",

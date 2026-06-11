@@ -30,6 +30,8 @@ EXPECTED_COLS <- c(
   "importer", "exporter", "good",
   "sigma", "gamma",
   "gamma_se", "gamma_se_status", "gamma_exposure",
+  # sigma-uncertainty propagation columns (added by commit 53d751c)
+  "gamma_se_total", "sigma_robust", "sigma_se", "dgamma_dsigma",
   "ref_exporter",
   "opt_tariff", "opt_tariff_all",
   "convergence", "obj_value", "tier", "avg_trade"
