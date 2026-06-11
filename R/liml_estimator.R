@@ -371,21 +371,26 @@ delta_method_ses <- function(sigma, rho, V_eta, n, l, endog_idx = c(1L, 2L)) {
   #            Default = c(1, 2) for the Stata-convention ordering [x1, x2, _cons].
   V_sub <- V_eta[endog_idx, endog_idx, drop = FALSE]
   
-  # Jacobian J = d(sigma, rho) / d(eta_1, eta_2), computed by inverting the
-  # forward map. Soderbery's Stata code stores the *inverse* Jacobian in
-  # d_sub (i.e., d(eta_1, eta_2)/d(sigma, rho) scaled to give the delta-method
-  # answer directly), then uses delta = d_sub V_sub d_sub' / (n - l).
-  # The 2x2 matrix d_sub rows correspond to parameters (sigma, rho) and
-  # columns correspond to eta-derivatives:
-  #   row 1 (sigma): partial wrt eta_1, partial wrt eta_2 (rescaled)
-  #   row 2 (rho):   partial wrt eta_1, partial wrt eta_2 (rescaled)
-  # The standard delta-method form for Var[g(eta)] is J V J' so we must
-  # transpose the second occurrence.
+  # Jacobian J = d(sigma, rho) / d(eta_1, eta_2), in closed form.
+  # Forward map (with omega = rho / (sigma - 1 - sigma*rho)):
+  #   eta_1 = rho / ((sigma - 1)^2 (1 - rho))
+  #   eta_2 = (2*rho - 1) / ((sigma - 1)(1 - rho))
+  # Differentiating and inverting the 2x2 forward Jacobian
+  # (det = -1 / ((sigma-1)^4 (1-rho)^3)) gives:
+  #   row 1 (sigma): [ -(sigma-1)^3 (1-rho),            (sigma-1)^2 (1-rho)      ]
+  #   row 2 (rho):   [ (1-2*rho)(sigma-1)^2 (1-rho)^2,  2*rho (sigma-1)(1-rho)^2 ]
+  # B4 FIX (v0.3.0): the previous d_sub — ported from GS_Estimation.do
+  # line 78 — was the elementwise-absolute TRANSPOSE of this matrix, so the
+  # sigma row of the quadratic form used d(rho)/d(eta_1) where d(sigma)/d(eta_2)
+  # belongs (and vice versa), with dropped cross-term signs. Verified against
+  # numerical differentiation of invert_structural() and of the forward map.
+  # Typical effect at production points: sigma_se understated ~0-30%,
+  # rho_se overstated 2-6x; omega_se contaminated through both.
   d_sub <- matrix(c(
-    (sigma - 1)^3 * (1 - rho),                          # (sigma, eta_1)
-    -1 * (sigma - 1)^2 * (1 - rho)^2 * (1 - 2 * rho),   # (sigma, eta_2)
-    (sigma - 1)^2 * (1 - rho),                          # (rho,   eta_1)
-    2 * (sigma - 1) * rho * (1 - rho)^2                 # (rho,   eta_2)
+    -(sigma - 1)^3 * (1 - rho),                          # d sigma / d eta_1
+    (sigma - 1)^2 * (1 - rho),                           # d sigma / d eta_2
+    (1 - 2 * rho) * (sigma - 1)^2 * (1 - rho)^2,         # d rho   / d eta_1
+    2 * rho * (sigma - 1) * (1 - rho)^2                  # d rho   / d eta_2
   ), nrow = 2, byrow = TRUE)
   
   # Sandwich: J V J'. Standard delta method form.
@@ -780,14 +785,15 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   # here since X_ohx is [ones, x1, x2].
   V_sub <- v_bar[2:3, 2:3, drop = FALSE]
   
-  # Jacobian d(sigma, rho) / d(theta1, theta2) - same form as in delta_method_ses
-  # Stata writes d_sub as d(theta1,theta2)/d(sigma,rho) in the natural orientation
-  # and uses d_sub' * V_sub * d_sub which corresponds to J V J' here.
+  # Jacobian J = d(sigma, rho) / d(theta1, theta2) — same closed form as in
+  # delta_method_ses (the theta1/theta2 map is identical to eta_1/eta_2).
+  # B4 FIX (v0.3.0): previous matrix was the elementwise-absolute transpose;
+  # see the derivation note in delta_method_ses.
   d_sub <- matrix(c(
-    (sigma - 1)^3 * (1 - rho),                          # (sigma, theta1)
-    -1 * (sigma - 1)^2 * (1 - rho)^2 * (1 - 2 * rho),   # (sigma, theta2)
-    (sigma - 1)^2 * (1 - rho),                          # (rho,   theta1)
-    2 * (sigma - 1) * rho * (1 - rho)^2                 # (rho,   theta2)
+    -(sigma - 1)^3 * (1 - rho),                          # d sigma / d theta1
+    (sigma - 1)^2 * (1 - rho),                           # d sigma / d theta2
+    (1 - 2 * rho) * (sigma - 1)^2 * (1 - rho)^2,         # d rho   / d theta1
+    2 * rho * (sigma - 1) * (1 - rho)^2                  # d rho   / d theta2
   ), nrow = 2, byrow = TRUE)
   
   # Delta method: standard form J V J' (no /(n-l) division; see note above
