@@ -1250,6 +1250,18 @@ prepare_cell_moments <- function(trade_df,
     data.table::setorder(d, exporter, t)
     d[, ls_dif := ls - data.table::shift(ls, 1L), by = exporter]
     d[, lp_dif := lp - data.table::shift(lp, 1L), by = exporter]
+
+    # B1 guard (Stage-1 counterpart of the prepare_data.R fix): shift()
+    # pairs adjacent rows in time order but does not check the year step.
+    # An exporter trading in 2002 then 2007 would otherwise contribute a
+    # 5-year change treated as a one-period diff to the y/x1/x2 second
+    # moments that identify sigma. Null the diffs where the step is not
+    # exactly 1; the is.finite() filter below drops them alongside each
+    # panel's leading NA.
+    d[, t_gap := t - data.table::shift(t, 1L), by = exporter]
+    d[is.na(t_gap) | t_gap != 1L,
+      `:=`(ls_dif = NA_real_, lp_dif = NA_real_)]
+    d[, t_gap := NULL]
     
     # Choose reference exporter: longest panel, ties by largest cusval
     exp_summary <- d[, .(n_periods = data.table::uniqueN(t), cusval = sum(value)),
@@ -1298,6 +1310,13 @@ prepare_cell_moments <- function(trade_df,
     d <- d[order(d$exporter, d$t), ]
     d$ls_dif <- ave(d$ls, d$exporter, FUN = function(x) c(NA, diff(x)))
     d$lp_dif <- ave(d$lp, d$exporter, FUN = function(x) c(NA, diff(x)))
+    # B1 guard: null diffs that span a non-consecutive year step (see the
+    # data.table branch above for rationale).
+    d$t_gap <- ave(d$t, d$exporter, FUN = function(x) c(NA, diff(x)))
+    gap_rows <- is.na(d$t_gap) | d$t_gap != 1
+    d$ls_dif[gap_rows] <- NA_real_
+    d$lp_dif[gap_rows] <- NA_real_
+    d$t_gap <- NULL
     exp_summary <- do.call(rbind, lapply(split(d, d$exporter), function(g) {
       data.frame(exporter = g$exporter[1],
                  n_periods = length(unique(g$t)),
