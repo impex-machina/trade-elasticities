@@ -221,10 +221,22 @@ if (should_run("1", opts, paths)) {
     # `sigma`, `gamma_common`, and `status` ("ok" / various failure strings).
     # Rename + derive convergence here so Stage 2 doesn't need to know about
     # the upstream schema.
+    #
+    # B5 FIX (v0.3.0): Stage 2's `gamma` must be on the omega scale — the
+    # inverse export-supply elasticity that het_obj_fixed_sigma optimizes
+    # (its Eq. 10/11 coefficients are gamma/(1+gamma)/(sigma-1), i.e.
+    # Soderbery's parameterization; cf. build_config's Soderbery-Table-2
+    # defaults gamma_start = gamma_V_default = 0.69). The previous
+    # translation renamed the wrapper's `gamma_common` = omega/(1+omega)
+    # — a BOUNDED transform — into `gamma`, so the Stage 2a shrinkage
+    # anchor (ln_gamma_prior), the plateau fallback, gamma_V_default, and
+    # the Tier-3 imputations were all built on the wrong scale,
+    # systematically pulling gamma down (by ~ln(1+omega) in logs). Use the
+    # omega column directly; gamma_common stays in the rich LIML output.
     cat("\nTranslating LIML schema -> Stage 2 schema...\n")
     sigma_estimates <- readRDS(liml_output_path)
     setDT(sigma_estimates)
-    setnames(sigma_estimates, "gamma_common", "gamma", skip_absent = TRUE)
+    sigma_estimates[, gamma := omega]
     sigma_estimates[, convergence := fifelse(status == "ok", 0L, -99L)]
     sigma_estimates[, good     := as.character(good)]
     sigma_estimates[, importer := as.integer(importer)]
@@ -248,12 +260,20 @@ cat(sprintf("  sigma median=%.3f, IQR=[%.3f, %.3f]\n",
             median(sigma_clean$sigma),
             quantile(sigma_clean$sigma, 0.25),
             quantile(sigma_clean$sigma, 0.75)))
-cat(sprintf("  gamma_common median=%.3f (used as Stage 2a prior)\n\n",
+cat(sprintf("  gamma (omega-scale) median=%.3f (used as Stage 2a prior)\n\n",
             median(sigma_clean$gamma, na.rm = TRUE)))
 
 
-# Build Feenstra priors (used by Stage 2a)
-feenstra_gamma_clean <- sigma_clean[!is.na(gamma) & gamma > 0]
+# Build Stage-1 priors (used by Stage 2a).
+# B5 FIX (v0.3.0): gamma is now omega-scale (see schema translation above).
+# Exclude cells where omega is a boundary artifact rather than an estimate:
+# adjust == 5 reports the omega cap (10), and omega_floored cells sit at the
+# 1e-4 admissibility floor (log = -9.2, which would drag per-good log-medians
+# toward the floor for heavily-floored goods). Both are documented in the
+# README's Known Limitations as caps/floors, not estimates.
+feenstra_gamma_clean <- sigma_clean[!is.na(gamma) & gamma > 0 &
+                                      adjust != 5L &
+                                      !(omega_floored %in% TRUE)]
 feenstra_priors <- feenstra_gamma_clean[, .(
   ln_gamma_prior = median(log(gamma), na.rm = TRUE)
 ), by = good]
@@ -312,7 +332,17 @@ if (should_run("2a", opts, paths)) {
     regional_results <- estimate_all_fixed_sigma(
       config_2a, ncores = ncores, prepared_dt = dt_regional)
 
-    # Plateau fallback
+    # Plateau fallback.
+    # B6 FIX (v0.3.0): three repairs to the replacement step —
+    #   (1) only replace rows whose good actually has a prior (a missing
+    #       prior previously wrote gamma := NA silently);
+    #   (2) invalidate the stale gamma_se / gamma_se_total for replaced rows
+    #       (the SE belonged to the pre-replacement blow-up) and tag the
+    #       status so the rows are filterable downstream;
+    #   (3) recompute opt_tariff / opt_tariff_all per (importer, good) cell
+    #       after replacement (they were previously left at values derived
+    #       from the replaced gamma).
+    # The prior itself is now omega-scale (B5).
     plateau_threshold <- 20
     has_tier <- "tier" %in% names(regional_results)
     plateau_idx <- if (has_tier) {
@@ -325,10 +355,36 @@ if (should_run("2a", opts, paths)) {
 
     n_plateau <- sum(plateau_idx, na.rm = TRUE)
     if (n_plateau > 0L) {
-      cat(sprintf("  Plateau fallback: %d cells with gamma > %d\n",
-                  n_plateau, plateau_threshold))
       fb <- feenstra_priors[regional_results[plateau_idx], on = "good"]
-      regional_results[plateau_idx, gamma := exp(fb$ln_gamma_prior)]
+      has_prior <- !is.na(fb$ln_gamma_prior)
+      n_no_prior <- sum(!has_prior)
+      if (n_no_prior > 0L) {
+        cat(sprintf("  Plateau fallback: %d cells lack a prior for their good; left at the plateau estimate\n",
+                    n_no_prior))
+      }
+      repl_idx <- which(plateau_idx)[has_prior]
+      cat(sprintf("  Plateau fallback: %d cells with gamma > %d replaced by the good-level prior\n",
+                  length(repl_idx), plateau_threshold))
+      if (length(repl_idx) > 0L) {
+        regional_results[repl_idx, gamma := exp(fb$ln_gamma_prior[has_prior])]
+        if ("gamma_se" %in% names(regional_results))
+          regional_results[repl_idx, gamma_se := NA_real_]
+        if ("gamma_se_total" %in% names(regional_results))
+          regional_results[repl_idx, gamma_se_total := NA_real_]
+        if ("gamma_se_status" %in% names(regional_results))
+          regional_results[repl_idx, gamma_se_status := "plateau_fallback"]
+
+        # Recompute optimal tariffs for every cell touched by a replacement.
+        touched <- unique(regional_results[repl_idx, .(importer, good)])
+        regional_results[touched, on = .(importer, good), `:=`(
+          opt_tariff = {
+            est <- !is.na(tier) & tier < 3L
+            if (any(est)) optimal_tariff(gamma[est], sigma[est][1], avg_trade[est])
+            else NA_real_
+          },
+          opt_tariff_all = optimal_tariff(gamma, sigma[1], avg_trade)
+        ), by = .EACHI]
+      }
     }
 
     saveRDS(regional_results, regional_file)
