@@ -252,11 +252,17 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
 }
 
 #' Cell-level robustness screen for gamma under sigma uncertainty.
-#' FALSE if sigma clamped (adjust in {4,5}), sigma_se non-finite, the sigma band
-#' reaches the sigma=1 pole, or propagation more than INFL_THRESH-folds any SE.
+#' FALSE if sigma itself is clamped (adjust == 4), sigma_se non-finite, the
+#' sigma band reaches the sigma=1 pole, or propagation more than
+#' INFL_THRESH-folds any SE.
+#' B9 NOTE (v0.3.0): previously failed adjust == 5 too. Under the new
+#' adjust semantics code 5 means omega alone was capped while sigma is an
+#' interior Step-2 estimate carrying a valid SE, so those cells are now
+#' screened on the merits (pole distance + inflation) instead of
+#' auto-failed.
 assess_sigma_robust <- function(sigma_hat, sigma_se, adjust, se_cond, se_prop,
                                 K_POLE = 2.5, INFL_THRESH = 2.0, eps = 1e-6) {
-  if (isTRUE(adjust %in% c(4L, 5L)))            return(FALSE)
+  if (isTRUE(adjust == 4L))                     return(FALSE)
   if (!is.finite(sigma_se))                     return(FALSE)
   if (sigma_hat - K_POLE * sigma_se <= 1 + eps) return(FALSE)
   ok <- is.finite(se_cond) & se_cond > 0 & is.finite(se_prop)

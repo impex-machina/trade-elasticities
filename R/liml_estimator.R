@@ -474,20 +474,35 @@ kleibergen_paap_F <- function(endog, Z, weights = NULL) {
   V_hat <- endog - Z %*% Pi_hat                     # n x k_endog (first-stage resid)
   Sigma_VV <- crossprod(V_hat) / (n - l)            # k_endog x k_endog
   
-  # rk statistic: trace( Pi' Z'Z Pi Sigma_VV^{-1} ) / k_endog
-  # then divided by l for F-form
-  Sigma_VV_inv <- tryCatch(solve(Sigma_VV), error = function(e) NULL)
-  if (is.null(Sigma_VV_inv)) return(NA_real_)
-  
-  num_mat <- crossprod(Pi_hat, ZtZ) %*% Pi_hat %*% Sigma_VV_inv
-  rk <- sum(diag(num_mat))
-  F_kp <- rk / (k_endog * l) * (n - l) / n  # Stata's normalization
+  # B7 FIX (v0.3.0): the Stock-Yogo critical values tabulated above are for
+  # the MINIMUM-EIGENVALUE Cragg-Donald statistic. The previous trace-form
+  # statistic averages over the endogenous directions, so one weakly
+  # identified direction was masked by a strong one and the screen was
+  # anti-conservative. Compute the CD minimum eigenvalue:
+  #   G = Sigma_VV^{-1/2} (Pi' Z'Z Pi) Sigma_VV^{-1/2};  F_CD = min eig(G) / l
+  # (homoskedastic CD, not the robust Kleibergen-Paap rk; the function name
+  # is kept for schema stability — the output column is fstat_kp.)
+  A <- crossprod(Pi_hat, ZtZ) %*% Pi_hat            # Pi' Z'Z Pi, k_endog x k_endog
+  A <- (A + t(A)) / 2
+  S_chol <- tryCatch(chol(Sigma_VV), error = function(e) NULL)
+  if (is.null(S_chol)) return(NA_real_)
+  S_inv <- backsolve(S_chol, diag(k_endog))         # R^{-1}, Sigma = R'R
+  G <- crossprod(S_inv, A) %*% S_inv                # R^{-T} A R^{-1}, symmetric
+  G <- (G + t(G)) / 2
+  eigvals <- tryCatch(eigen(G, symmetric = TRUE, only.values = TRUE)$values,
+                      error = function(e) NULL)
+  if (is.null(eigvals)) return(NA_real_)
+  F_kp <- min(eigvals) / l
   
   F_kp
 }
 
 
-# Hansen J statistic for overidentification
+# Sargan overidentification statistic (homoskedastic form).
+# NOTE: despite the function name (kept for call-site stability), this is
+# the Sargan statistic u'P_Z u / (u'u/n), not the heteroskedasticity-robust
+# Hansen J. The HLIML path's J_h (computed in hncs_sandwich_se) is the
+# heteroskedasticity-adjusted overid statistic.
 hansen_J <- function(u_hat, Z, weights = NULL) {
   # u_hat: residuals from LIML estimation
   # Z: instrument matrix
@@ -979,8 +994,15 @@ estimate_cell_liml <- function(cell_df,
   # Weak-instrument F (Kleibergen-Paap) on the weighted regression
   F_kp <- kleibergen_paap_F(cbind(cell_df$x1, cell_df$x2),
                             Z, weights = weights_step2)
-  # Hansen J on weighted residuals
-  J_stat <- hansen_J(fit2$u_hat, Z, weights = NULL)  # already-weighted residuals
+  # Sargan overidentification statistic on the Step-2 fit.
+  # B8 FIX (v0.3.0): fit2$u_hat are residuals in the WEIGHTED metric
+  # (Y, X, Z were rescaled by sqrt(w) inside fuller_liml_core), so the
+  # projection must use the equally rescaled Z. Previously the unweighted
+  # Z was projected against weighted residuals — a metric mismatch that
+  # made jstat/jstat_pval unreliable. (This is the homoskedastic Sargan
+  # form, not a robust Hansen J; see hansen_J's header.)
+  w_sqrt_s2 <- sqrt(weights_step2 * n / sum(weights_step2))
+  J_stat <- hansen_J(fit2$u_hat, Z * w_sqrt_s2, weights = NULL)
   J_dof <- l_excluded - 2  # 2 endogenous regressors
   J_pval <- if (J_dof > 0) 1 - pchisq(J_stat, df = J_dof) else NA_real_
   
@@ -1056,6 +1078,8 @@ estimate_cell_liml <- function(cell_df,
   #   1 = HLIML failed, sigma from Step 2 (sigma_w > 1)
   #   2 = HLIML failed, omega from Step 2 (omega_w != .)
   #   3 = omega < 0, clamped to 0.0001
+  #   4 = sigma clamped at the upper cap (omega state in omega_capped)
+  #   5 = omega clamped at the upper cap, sigma NOT capped
   adjust <- 0L
   final_sigma <- sigma_hliml
   final_omega <- omega_hliml
@@ -1073,13 +1097,24 @@ estimate_cell_liml <- function(cell_df,
   
   if (!hliml_admissible) {
     # Try Step 2 fallback, applying the same admissibility caps as HLIML.
+    # B9 FIX (v0.3.0): track sigma/omega capping in two explicit booleans
+    # rather than letting the omega branch overwrite the ordinal adjust
+    # code. Previously a cell with sigma capped AND omega capped reported
+    # adjust = 5 only (undercounting the sigma-cap share), and a cell with
+    # a valid interior Step-2 sigma whose omega blew up reported adjust = 5
+    # and had its perfectly usable sigma_se NA'd by the A1 rule. New
+    # semantics: adjust = 4 whenever sigma is capped (omega state in
+    # omega_capped), adjust = 5 only when omega alone is capped, and the
+    # A1 invalidation applies per-parameter.
+    sigma_capped <- FALSE
+    omega_capped <- FALSE
     if (!is.na(inv2$sigma) && inv2$sigma > 1 && inv2$sigma < sigma_start_cap) {
       final_sigma <- inv2$sigma
       adjust <- 1L
     } else if (!is.na(inv2$sigma) && inv2$sigma >= sigma_start_cap) {
       # Sigma blew up; clamp to cap
       final_sigma <- sigma_start_cap
-      adjust <- 4L  # new code: sigma clamped to upper cap
+      sigma_capped <- TRUE
     } else {
       final_sigma <- NA_real_
     }
@@ -1089,9 +1124,14 @@ estimate_cell_liml <- function(cell_df,
     } else if (!is.na(inv2$omega) && inv2$omega > omega_start_cap) {
       # Omega blew up; clamp to cap
       final_omega <- omega_start_cap
-      adjust <- 5L  # new code: omega clamped to upper cap
+      omega_capped <- TRUE
     } else {
       final_omega <- NA_real_
+    }
+    if (sigma_capped) {
+      adjust <- 4L         # sigma at cap (omega may or may not be; see omega_capped)
+    } else if (omega_capped) {
+      adjust <- 5L         # omega at cap, sigma NOT capped
     }
     # If omega < 0 (shouldn't reach here from invert_structural but defensive)
     if (!is.na(final_omega) && final_omega < 0) {
@@ -1106,12 +1146,16 @@ estimate_cell_liml <- function(cell_df,
     final_omega_se <- ses$omega_se
     final_rho_se   <- ses$rho_se
     final_source <- "step2_weighted"
-    # A1: clamped point (adjust 4/5) otherwise carries the Step-2 SE of the
-    # un-clamped blow-up, meaningless for the clamped value. NA it for consistency.
-    if (adjust %in% c(4L, 5L)) {
-      final_sigma_se <- NA_real_
-      final_omega_se <- NA_real_
-    }
+    # A1 (per-parameter): a clamped point otherwise carries the Step-2 SE
+    # of the un-clamped blow-up, meaningless for the clamped value. NA the
+    # capped parameter's SE only — an interior sigma estimate keeps its SE
+    # even when omega capped (and vice versa).
+    if (sigma_capped) final_sigma_se <- NA_real_
+    if (omega_capped) final_omega_se <- NA_real_
+    if (sigma_capped || omega_capped) final_rho_se <- NA_real_
+  } else {
+    sigma_capped <- FALSE
+    omega_capped <- FALSE
   }
   
   # Final sanity: if both HLIML and Step 2 fallback failed, mark as failed.
@@ -1142,8 +1186,12 @@ estimate_cell_liml <- function(cell_df,
     omega_se = final_omega_se,
     rho_se   = final_rho_se,
     adjust   = adjust,
-    # A1: weakly-identified sigma flag (clamped). Joins Stage-2 sigma_robust==FALSE.
-    sigma_weak = isTRUE(adjust %in% c(4L, 5L)),
+    # B9: explicit per-parameter cap flags (see the fallback block above).
+    sigma_capped = sigma_capped,
+    omega_capped = omega_capped,
+    # A1: weakly-identified sigma flag — sigma itself sits at the cap.
+    # (Previously TRUE for adjust 5 too, i.e. when only omega was capped.)
+    sigma_weak = sigma_capped,
     # B3: ω was clamped to its lower admissibility floor (1e-4, matching
     # invert_structural's omega_floor) rather than estimated at an interior
     # point. invert_structural floors ω before the adjust block sees it, so a
