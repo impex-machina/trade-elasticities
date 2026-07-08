@@ -102,3 +102,4 @@ analysis/figures/
 # the prose explanation of how it was built and why is local.
 # ============================================================================
 docs/methodology/build_readme.md
+results/audits/
