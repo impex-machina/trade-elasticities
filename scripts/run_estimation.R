@@ -327,12 +327,21 @@ if (should_run("2a", opts, paths)) {
     cat(sprintf("  Found: %s\n\n", regional_file))
     regional_results <- readRDS(regional_file)
   } else {
-    cat("========== STAGE 2a: REGIONAL GAMMA (fixed sigma, unshrunk) ==========\n")
-    cat("  Shrinkage lambda=0 (regional panel well-identified)\n")
+    # Stage 2a shrinkage lambda: light ridge pull toward the Stage-1
+    # good-level priors. Defined BEFORE the banner so the banner cannot
+    # drift from the value actually used (the pre-v0.3.1 banner claimed
+    # lambda=0 while the config used 0.05). Whether 2a should be fully
+    # unshrunk (lambda=0) is a methodological choice, not a display fix;
+    # v0.2.0 and v0.3.0 both published with 0.05, so it stays.
+    lambda_2a <- 0.05
+
+    cat("========== STAGE 2a: REGIONAL GAMMA (fixed sigma, light shrinkage) ==========\n")
+    cat(sprintf("  Shrinkage lambda=%g (ridge pull toward Stage-1 good-level priors)\n",
+                lambda_2a))
     cat("  Plateau fallback: gamma > 20 replaced by Feenstra anchor\n\n")
 
     config_2a <- config_regional
-    config_2a$shrinkage_lambda <- 0.05
+    config_2a$shrinkage_lambda <- lambda_2a
     config_2a$shrinkage_priors <- feenstra_priors
 
     rmap <- build_region_map()

@@ -5,8 +5,10 @@
 # Reads from data/derived/ (populated by scripts/download_outputs.R).
 #
 # Default: ~5 min wall time (reads published outputs, makes figures).
-# With --rerun-pillars: ~25 min (re-runs validation pillars 2, 3, 4 from
-# validation/ scripts instead of reading their published CSVs).
+# With --rerun-pillars: ~25-60 min depending on hardware (re-runs validation
+# pillars 2 and 3 from validation/ scripts BEFORE summaries are emitted, and
+# refreshes the published CSVs under data/derived/validation/; a single pass
+# leaves JSONs, CSVs, and figures mutually consistent).
 #
 # Usage:
 #   Rscript analysis/master.R
@@ -90,6 +92,39 @@ write_log(sprintf("Output dir: %s", OUTPUT_DIR))
 analysis_scripts <- sort(list.files("analysis", pattern = "^\\d+_.*\\.R$",
                                      full.names = TRUE))
 write_log(sprintf("Discovered %d analysis scripts", length(analysis_scripts)))
+
+# --- Pillar rerun prologue (v0.3.1 fix) -------------------------------------
+# 00_setup.R emits results/pillar{2,3}_summary.json from the docs/methodology
+# CSVs. Before this prologue existed, --rerun-pillars regenerated those CSVs
+# inside 05_/06_ (i.e., AFTER 00_setup had already emitted the JSONs), so a
+# single pass committed stale JSONs beside fresh CSVs and a second
+# no-flag pass was required. Fix: run the harnesses FIRST, sync the
+# refreshed CSVs into the published data/derived/validation/ location, and
+# clear the flag so 05_/06_ take their read branch against fresh files.
+if (RERUN_PILLARS) {
+  write_log("RERUN_PILLARS: running validation harnesses before 00_setup")
+  source("validation/capture_liml_validation.R", local = TRUE)
+  source("validation/monte_carlo_se.R", local = TRUE)
+
+  derived_val <- "data/derived/validation"   # matches 00_setup's DERIVED_VAL
+  dir.create(derived_val, showWarnings = FALSE, recursive = TRUE)
+  for (f in c("liml_validation_tier1a.csv", "liml_validation_tier1b.csv",
+              "se_calibration_mc_summary.csv")) {
+    file.copy(file.path("docs/methodology", f), file.path(derived_val, f),
+              overwrite = TRUE)
+  }
+  # The per-param CSV is date-stamped by the harness; publish the newest
+  # under the manifest's undated name.
+  pp <- sort(list.files("docs/methodology",
+                        pattern = "^se_calibration_mc_per_param_\\d{8}\\.csv$",
+                        full.names = TRUE), decreasing = TRUE)
+  if (length(pp) > 0) {
+    file.copy(pp[1], file.path(derived_val, "se_calibration_mc_per_param.csv"),
+              overwrite = TRUE)
+  }
+  write_log("Pillar CSVs refreshed and synced to data/derived/validation/")
+  RERUN_PILLARS <- FALSE   # 05_/06_ now read the refreshed published copies
+}
 
 # 00_setup.R loads the published outputs and sets shared plotting state that
 # the pillar scripts rely on. Source it into the GLOBAL environment first, so
