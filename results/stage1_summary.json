@@ -2,70 +2,70 @@
   "n_cells": 280649,
   "n_products": 1240,
   "n_importers": 234,
-  "sy_fails": 60831,
-  "sy_evaluated": 149564,
+  "sy_fails": 117224,
+  "sy_evaluated": 141817,
   "adjust_x_final_source": {
     "code_0": {
-      "hliml": 52722,
+      "hliml": 51038,
       "step2_weighted": 0,
       "pre_discard": 0
     },
     "code_1": {
       "hliml": 0,
-      "step2_weighted": 72703,
+      "step2_weighted": 66843,
       "pre_discard": 0
     },
     "code_4": {
       "hliml": 0,
-      "step2_weighted": 18054,
+      "step2_weighted": 19104,
       "pre_discard": 0
     },
     "code_5": {
       "hliml": 0,
-      "step2_weighted": 6098,
+      "step2_weighted": 4839,
       "pre_discard": 0
     },
     "code_pre_discard": {
       "hliml": 0,
       "step2_weighted": 0,
-      "pre_discard": 131072
+      "pre_discard": 138825
     }
   },
   "routing_summary": {
-    "hliml_interior": 52722,
-    "step2_clean": 72703,
+    "hliml_interior": 51038,
+    "step2_clean": 66843,
     "step2_omega_only": 0,
     "omega_negative_floor": 0,
-    "clamped_at_sigma_cap": 18054,
-    "clamped_at_omega_cap": 6098,
-    "pre_discard": 131072,
-    "step2_total": 96855,
-    "clamped_total": 24152
+    "clamped_at_sigma_cap": 19104,
+    "clamped_at_omega_cap": 4839,
+    "pre_discard": 138825,
+    "step2_total": 90786,
+    "clamped_total": 23943
   },
   "omega_floor": {
-    "n_floor": 47724,
+    "n_floor": 44125,
     "denominator": 280649
   },
   "status_breakdown": {
-    "ok": 149577,
-    "all_inversions_failed": 72741,
-    "fail_too_few_exporters": 4025,
-    "step1_fail_singular_QWW": 1876,
-    "step2_fail_singular_QWW_fellback_to_step1": 721,
-    "prep_thin_total": 40206,
+    "ok": 141824,
+    "all_inversions_failed": 66429,
+    "fail_too_few_exporters": 4944,
+    "step1_fail_singular_QWW": 1658,
+    "step2_fail_singular_QWW_fellback_to_step1": 645,
+    "prep_thin_total": 53646,
     "thin_panel_total": 11503
   },
   "provenance_rates": {
     "interior_full_universe": {
-      "numerator": 52722,
+      "numerator": 51038,
       "denominator": 280649
     },
     "interior_conditional_on_ok": {
-      "numerator": 52722,
-      "denominator": 149577
+      "numerator": 51038,
+      "denominator": 141824
     },
     "step2_full_universe": {
-      "numerator": 96855,
+      "numerator": 90786,
       "denominator": 280649
     }
   }
