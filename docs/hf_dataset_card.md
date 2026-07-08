@@ -14,7 +14,8 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
 # Trade Elasticities — BACI HS92 V202601
 
 Importer-product-exporter trade elasticity estimates: heterogeneous
-import-demand (sigma) and export-supply (gamma) elasticities estimated
+import-demand elasticities (sigma) and inverse export-supply
+elasticities (gamma) estimated
 from CEPII BACI bilateral trade data, following Soderbery (2018) and
 Grant & Soderbery (2024).
 

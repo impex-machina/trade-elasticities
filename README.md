@@ -28,8 +28,9 @@ pipeline:
 
 Outputs cover 1,240 HS4 products across 233 importers and 233 exporters,
 producing 6,809,496 (importer, exporter, HS4) cell-level γ estimates with
-standard errors. Stage 1 estimates σ for 280,649 (importer, HS4) cells
-across 234 importers (one importer present at Stage 1 has no country-pair γ at Stage 2b after the minimum-destinations filter).
+standard errors. Stage 1 attempts σ estimation on 280,649 (importer, HS4)
+cells across 234 importers, returning an estimate for
+149,577 of them (one importer present at Stage 1 has no country-pair γ at Stage 2b after the minimum-destinations filter).
 
 The accompanying paper is in preparation; this repo will be the reference
 replication artifact when it is submitted.
@@ -54,7 +55,7 @@ and the underlying source data:
 |---|---|---|
 | Read the methodology and analytic choices | [`docs/methodology/README.md`](docs/methodology/README.md) | — |
 | Reproduce paper figures and tables from published outputs | `Rscript scripts/download_outputs.R` → `Rscript analysis/master.R` | ~30 min |
-| Re-run the validation pillars (synthetic recovery, SE Monte Carlo, Tier 4) | `Rscript analysis/master.R --rerun-pillars` | ~1 hour (Tier 4 needs the BACI cache + GMM archive) |
+| Re-run the validation pillars (synthetic recovery, SE Monte Carlo) | `Rscript analysis/master.R --rerun-pillars` | ~1 hour |
 | Re-run the full estimation pipeline from BACI raw → outputs | Download BACI from CEPII, then `Rscript scripts/run_estimation.R --data <dir>` | r7a.16xlarge, several hours |
 
 ## Quick start (figure reproducer)
@@ -89,8 +90,8 @@ library, or anywhere for want of a C++ toolchain), see
 ## A worked example
 
 The core output is the Stage 2b country-level table. Each row is one
-(importer, exporter, HS4-product) cell with its estimated export-supply
-parameter γ (defined below — γ is not itself an elasticity) and the σ that
+(importer, exporter, HS4-product) cell with its estimated inverse
+export-supply elasticity γ (defined below) and the σ that
 was fixed in for that product. To load it and
 read the first rows:
 
@@ -108,7 +109,7 @@ Columns:
 | `importer`, `exporter` | Numeric country codes (BACI/COMTRADE convention). |
 | `good` | **HS4 product code, stored as a character string with leading zeros** (e.g. `"0302"`, not `302`). Read it as character; coercing to integer drops the leading zero and silently mismatches chapters 01–09. |
 | `sigma` | Import-demand (substitution) elasticity for the product, fixed from Stage 1 and constant within a product. For 24.2% of rows this is a global-median fallback (σ ≈ 2.875) rather than a cell-specific estimate, and a further 10.7% sit at the cap value of 10 (see Known limitations). |
-| `gamma` | Export-supply **parameter** for the (importer, exporter, product) cell — the headline estimate. This is γ = ω / (1 + ω), bounded in (0, 1), where ω is the inverse export-supply elasticity; **γ is not itself an elasticity.** The implied export-supply elasticity is (1 - γ) / γ (median ≈ 3.205). Most cells are shrunk toward a good-level prior (see Known limitations). |
+| `gamma` | **Inverse export-supply elasticity** for the (importer, exporter, product) cell — the headline estimate, Soderbery's γ. Lower-bounded near 0 by the optimizer and **unbounded above** (extreme values are handled by the Stage 2a plateau fallback and the 0.5%-per-tail trim; see Known limitations). γ is the *inverse* of an elasticity: the implied export-supply elasticity is 1 / γ (median ≈ 4.205). Small γ means near-perfectly-elastic supply; large γ means strong importer market power. Most cells are shrunk toward a good-level prior (see Known limitations). |
 | `gamma_se` | Penalized Gauss-Newton standard error for `gamma`. |
 | `gamma_se_status` | `"ok"` when the SE is usable; other values flag degenerate cases. |
 | `gamma_se_total` | Standard error for `gamma` with Stage-1 σ uncertainty propagated in by the delta method: `sqrt(gamma_se² + (∂γ/∂σ · sigma_se)²)`. Populated only where `sigma_robust` is `TRUE`; `NA` otherwise (all Tier-3 cells, and any cell where σ-uncertainty could not be propagated stably). Where present, this is the wider, σ-aware SE; where `NA`, `gamma_se` (conditional on σ) is the only SE available. |
@@ -119,7 +120,7 @@ Columns:
 | `ref_exporter` | Reference exporter used in the supply system. |
 | `tier` | Estimator-provenance tier (1–4) recording how the cell was identified. |
 | `convergence`, `obj_value` | Optimizer convergence code and objective value. |
-| `opt_tariff`, `opt_tariff_all` | Implied optimal tariff derived from (σ, γ): the per-cell value and the all-exporter variant. This equals the inverse export-supply elasticity ω = γ / (1 - γ) (Soderbery's optimal-tariff result). Downstream of the estimates — treat as derived, not primary — and biased downward for inelastic-supply products (see Known limitations). |
+| `opt_tariff`, `opt_tariff_all` | Implied optimal tariff derived from (σ, γ): Soderbery's heterogeneous-exporter optimal-tariff statistic, a trade-weighted aggregate of γ across the cell's exporters (weights ∝ trade / (1 + γσ)), **constant within an (importer, product) cell**. `opt_tariff` aggregates directly estimated exporters (tiers 0-2) only; `opt_tariff_all` includes Tier-3 imputations. Downstream of the estimates — treat as derived, not primary — and collapsing toward zero where supply identification floors ω (see Known limitations). |
 
 A reader reproducing the headline numbers should find σ median ≈ 2.875 on
 the canonical 1,240-product universe. `analysis/master.R` prints this as
@@ -132,7 +133,7 @@ trade-elasticities/
 ├── R/                 # estimation library (HLIML, Stage 2 solvers, SEs, CLI)
 ├── scripts/           # entry points: run_estimation.R, download_outputs.R, build_readme.R
 ├── analysis/          # master.R + 7 numbered pillar scripts (figures/tables)
-├── validation/        # synthetic-recovery, SE Monte Carlo, Tier 4 harnesses
+├── validation/        # synthetic-recovery and SE Monte Carlo harnesses
 ├── tests/             # testthat suite
 ├── data/
 │   ├── raw/           # BACI input (gitignored; not redistributed)
@@ -221,12 +222,17 @@ are not redistributed (see [Getting BACI](#replication-setup)).
 
 Stated forthrightly:
 
-- **σ upward bias from the Feenstra homogeneity assumption.** The Stage 1
-  σ estimates inherit the known small-sample upward bias of the LIML-class
-  estimator; synthetic recovery (Pillar 2) shows the estimator recovers
-  true σ in 30.5%–58.0% of cells across the σ × ω grid
-  (median 37.5%), with recovery declining as sample size grows — a
-  selection-bias signature where harder cells converge only with more data.
+- **σ small-sample bias and selection under the Stage-1 homogeneity
+  assumption.** Synthetic recovery (Pillar 2) shows the estimator *returns
+  an estimate* in only 30.5%–58.0% of replications across the σ × ω grid
+  (median 37.5%) — a yield rate, not a recovery-within-tolerance rate —
+  with the yield declining as sample size grows: a selection signature
+  where harder cells converge only with more data. Conditional on
+  success, the median σ bias across the grid runs from
+  -74.9% to 21.3% and is predominantly *downward*, worst where
+  supply is inelastic (high true ω), so comparisons to Feenstra-GMM or
+  Broda–Weinstein estimates should not assume the upward bias of that
+  tradition.
 - **Estimator-provenance composition.** On the full universe, 18.8% of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
   to the Step 2 fallback, of which 8.6% of the full universe (24,152 cells)
@@ -242,7 +248,8 @@ Stated forthrightly:
 - **Supply-side flooring, and shrinkage that masks it.** The Stage 1
   inversion clamps the supply parameter ω to a lower floor (1e-4); a cell
   pushed there is reported as near-perfectly-elastic supply, not as a
-  failure, and the floor is not flagged in the estimator-path code. Stage 2
+  failure; the `adjust` code does not flag it, though the Stage 1
+  `omega_floored` boolean isolates exactly these cells. Stage 2
   ridge shrinkage toward good-level priors then lifts most of that floored
   mass, so the published γ floors in only 0.0% of cells and looks
   better-behaved than the Stage 1 supply identification underneath it (the
