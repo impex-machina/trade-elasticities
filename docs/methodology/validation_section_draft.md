@@ -103,7 +103,9 @@ an implementation defect. Two mitigations are in place -- the published
 per-cell weak-IV statistic lets users condition on identification
 strength, and all headline aggregates are medians, which the bias
 surface suggests are less distorted than means -- but the natural next
-increment is an exporter-cluster bootstrap benchmark on real data:
+increment is an exporter-cluster bootstrap benchmark on real data
+(implemented in validation/bootstrap_se.R; results to be reported when
+the benchmark is run against the production cache):
 
 - Sampling frame: a stratified subsample of 500-1,000 estimated
   (importer, HS4) cells, stratified on the joint distribution of
