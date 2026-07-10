@@ -97,10 +97,12 @@ cat(sprintf("  Eligible cells (ok, finite sigma_se, uncapped): %s of %s ok\n",
             format(nrow(elig), big.mark = ","),
             format(s1[status == "ok", .N], big.mark = ",")))
 
-elig[, nexp_bin := cut(n_exporters, breaks = c(3, 9, 19, 49, Inf),
-                       labels = c("4-9", "10-19", "20-49", "50+"))]
-elig[, f_bin := cut(fstat_kp, breaks = c(-Inf, 2, 7, Inf),
-                    labels = c("F<2", "F2-7", "F>=7"))]
+elig[, nexp_bin := as.character(cut(n_exporters, breaks = c(3, 9, 19, 49, Inf),
+                       labels = c("4-9", "10-19", "20-49", "50+")))]
+elig[is.na(nexp_bin), nexp_bin := "nexp_NA"]
+elig[, f_bin := as.character(cut(fstat_kp, breaks = c(-Inf, 2, 7, Inf),
+                    labels = c("F<2", "F2-7", "F>=7")))]
+elig[is.na(f_bin), f_bin := "F_NA"]
 elig[, stratum := paste(nexp_bin, f_bin, final_source, sep = " | ")]
 
 # Proportional allocation with a floor, then trim largest strata to total.
@@ -125,14 +127,35 @@ cat(sprintf("  Sampled %d cells across %d strata (floor %d/stratum)\n",
 cat("  Loading raw cache (this is the slow, memory-heavy step)...\n")
 cache <- readRDS(opts$cache)
 setDT(cache)
+# The raw cache stores (year, cusval); run_estimation.R renames these to
+# (t, value) before the Stage 1 driver, and prepare_cell_moments expects
+# the renamed schema. Do the same here (accept either schema).
+if (!"t" %in% names(cache) && "year" %in% names(cache))
+  setnames(cache, "year", "t")
+if (!"value" %in% names(cache) && "cusval" %in% names(cache))
+  setnames(cache, "cusval", "value")
+need_cache <- c("importer", "exporter", "good", "t", "value", "quantity")
+miss_cache <- setdiff(need_cache, names(cache))
+if (length(miss_cache) > 0)
+  stop("Cache lacks columns (after year/cusval rename): ",
+       paste(miss_cache, collapse = ", "))
+# Coerce lookup keys to the cache's classes so the keyed join cannot
+# silently miss on type.
+cells[, importer := methods::as(importer, class(cache$importer)[1])]
+cells[, good     := methods::as(good,     class(cache$good)[1])]
 setkey(cache, importer, good)
 slices <- vector("list", nrow(cells))
 for (i in seq_len(nrow(cells))) {
-  slices[[i]] <- cache[.(cells$importer[i], cells$good[i])]
+  slices[[i]] <- cache[.(cells$importer[i], cells$good[i]), nomatch = NULL]
 }
 rm(cache); invisible(gc())
-cat(sprintf("  Sliced %d cell panels (%.0f MB)\n", length(slices),
-            as.numeric(object.size(slices)) / 1e6))
+nr <- vapply(slices, nrow, integer(1))
+cat(sprintf("  Sliced %d cell panels (%.0f MB); rows/slice min %d | med %d | max %d\n",
+            length(slices), as.numeric(object.size(slices)) / 1e6,
+            min(nr), as.integer(median(nr)), max(nr)))
+if (median(nr) == 0)
+  stop("ABORT: slices are empty -- cache/stage1 key or schema mismatch. ",
+       "No outputs written.")
 
 # --- 3. Per-cell bootstrap worker --------------------------------------------
 fit_sigma <- function(panel_df) {
@@ -203,6 +226,20 @@ cat(sprintf("  Done in %.1f min\n",
 res <- rbindlist(res_list, fill = TRUE)
 res[, ratio_sd  := boot_sd / sigma_se_pub]
 res[, ratio_mad := boot_mad_sd / sigma_se_pub]
+
+n_base_ok <- sum(is.finite(res$sigma_base))
+match_rate <- mean(abs(res$sigma_base - res$sigma_pub) <
+                     pmax(1e-6, 1e-6 * abs(res$sigma_pub)), na.rm = TRUE)
+cat(sprintf("  Baseline refits ok: %d/%d; refit == published sigma: %.1f%%\n",
+            n_base_ok, nrow(res), 100 * match_rate))
+if (n_base_ok == 0)
+  stop("ABORT: zero baseline refits succeeded -- schema or interface ",
+       "mismatch upstream of the bootstrap. No outputs written.")
+if (is.finite(match_rate) && match_rate < 0.95)
+  warning(sprintf("Only %.1f%% of baseline refits reproduce the published sigma; ",
+                  100 * match_rate),
+          "the bootstrap may not be perturbing the production path.",
+          immediate. = TRUE)
 
 cells_path <- file.path(opts$out_dir,
                         sprintf("bootstrap_se_cells_%s.csv", today))
