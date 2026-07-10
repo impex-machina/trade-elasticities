@@ -406,3 +406,46 @@ Do not touch `refactored_run_20260519/`.
 - [ ] Commit + tag + push; CI green
 - [ ] HF: data files uploaded atomically; LFS sha256 verified against manifest; card updated
 - [ ] Downstream consumers notified of level changes
+
+## Appendix: bootstrap SE benchmark (validation/bootstrap_se.R)
+
+Recipe (executed 2026-07-10; ~64 min wall on r7a.16xlarge/62 cores with
+prescheduled parallelism -- expect ~30-40 min after the dynamic-scheduling
+fix). Launch per Phases 1-2, then:
+
+```bash
+# bash -- EC2 only
+mkdir -p ~/bench     # NOT /tmp: see lesson 1
+aws s3 cp s3://<BUCKET>/refactored_run_20260519/stage1/<base>_raw_cache.rds ~/bench/
+aws s3 cp s3://<BUCKET>/<run_prefix>/<base>_feenstra_sigma.rds ~/bench/
+cd ~/trade-elasticities
+nohup env RENV_CONFIG_AUTOLOADER_ENABLED=FALSE Rscript validation/bootstrap_se.R \
+  --cache ~/bench/<base>_raw_cache.rds --stage1 ~/bench/<base>_feenstra_sigma.rds \
+  --ncores 62 > ~/bench/bootstrap.log 2>&1 &
+```
+
+Health checkpoints, in order: eligible count printed; sampled cells x
+strata; `rows/slice min | med | max` (median must be >0 -- the harness
+aborts otherwise); after the run, `Baseline refits ok: N/N; refit ==
+published sigma: ~100%`. Upload outputs with ABSOLUTE paths.
+
+Lessons hit live (2026-07-10):
+
+1. [OBSERVED 2026-07-10] `/tmp` does NOT survive a stop/start on this
+   AMI (staged inputs vanished). Stage run inputs under `~/` if the
+   instance might be stopped rather than terminated. A stop/start also
+   rotates the public IP -- re-read it from the console and expect to
+   refresh the security-group source again.
+2. [OBSERVED 2026-07-10] The AMI site library
+   (/usr/local/lib/R/site-library) is root-owned: the scan-and-install
+   step must run under `sudo` (`sudo Rscript /tmp/scan_install.R`).
+   Fresh instances ALWAYS need the scan -- the AMI predates optparse,
+   ggplot2, jsonlite et al.
+3. [OBSERVED 2026-07-10] With `mc.preschedule=TRUE`, stratum-sorted cell
+   lists dealt entire giant-cell blocks to single workers (~1 h
+   straggler tail on 1 core while 61 idled). Fixed in the harness with
+   dynamic scheduling; result-identical because per-cell seeds are
+   index-based.
+4. [OBSERVED 2026-07-10] Upload steps in a fresh SSH session start in
+   `~`, not the repo: relative `docs/methodology/...` paths silently
+   fail. Use absolute paths in upload blocks, always.

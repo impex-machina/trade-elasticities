@@ -51,7 +51,11 @@ appendix as a bias diagnostic, not an SE test. The standard errors are
 instead validated by the two channels that isolate them: the analytic
 Jacobian verification above, and the Pillar 3 Monte Carlo, in which the
 production SE formula's median calibration ratio lies within -1.8% to
-+6.7% of unity in every regime.
++6.7% of unity in every regime. Both channels validate the formula
+conditional on the selected estimator branch; Section 4 reports a
+real-data bootstrap that quantifies how far these conditional SEs sit
+from unconditional resampling dispersion, and in which direction, by
+branch.
 
 A within-release A/B supports this reading. The v0.3.0 release corrected
 the Stage 1 SE Jacobian and replaced the weak-instrument diagnostic (see
@@ -102,29 +106,64 @@ a property of the estimator class in this data environment rather than
 an implementation defect. Two mitigations are in place -- the published
 per-cell weak-IV statistic lets users condition on identification
 strength, and all headline aggregates are medians, which the bias
-surface suggests are less distorted than means -- but the natural next
-increment is an exporter-cluster bootstrap benchmark on real data
-(implemented in validation/bootstrap_se.R; results to be reported when
-the benchmark is run against the production cache):
+surface suggests are less distorted than means. To quantify how far the
+analytic standard errors sit from real-data resampling dispersion, we
+ran the exporter-cluster bootstrap benchmark specified above
+(validation/bootstrap_se.R; executed 2026-07-10 on the production
+cache): 750 estimated cells drawn from the 122,720 eligible
+(status ok, finite sigma_se, uncapped), stratified on n_exporters x
+Cragg-Donald F x estimator source with per-stratum floors; within each
+cell, exporters resampled with replacement (draws relabeled so
+duplicates enter as distinct panels; the reference exporter re-selected
+per replicate by the production rule); B = 399 replicates per cell.
+Internal validity is exact: all 750 baseline refits reproduce the
+published sigma bit-for-bit. Median bootstrap yield is 74.8%, falling
+from 92-98% in the largest-exporter strata to 21-53% in the smallest --
+the within-bootstrap selection caveat, quantified.
 
-- Sampling frame: a stratified subsample of 500-1,000 estimated
-  (importer, HS4) cells, stratified on the joint distribution of
-  n_exporters, the Cragg-Donald statistic, and the adjust code, so the
-  weakly and strongly identified regions are both represented.
-- Resampling: within each cell, resample exporters with replacement
-  (the exporter is the independent sampling unit in the moment
-  construction), re-selecting the reference exporter per replicate by
-  the production rule; B = 299-499 replicates per cell.
-- Comparison: the bootstrap standard deviation of sigma-hat across
-  successful replicates against the analytic sigma_se, reported as a
-  ratio distribution by stratum, in the spirit of the Pillar 3 design
-  but on real rather than synthetic data.
-- Caveats to state up front: the bootstrap validates dispersion, not
-  bias (a bootstrap distribution centered on a biased point estimate
-  inherits the bias), and within-bootstrap selection (replicates that
-  fail estimation are dropped) parallels the selection already
-  documented in Pillar 2. Compute cost is modest: on the production
-  instance class the full design is a matter of hours.
+The results (docs/methodology/bootstrap_se_summary.csv; per-cell detail
+in bootstrap_se_cells_20260710.csv, 736 cells reporting) do not deliver
+the ratio-near-one verdict a well-calibrated conditional SE would hope
+for; they deliver something more specific. The dominant axis is not
+instrument strength but estimator branch. On HLIML-interior cells the
+bootstrap SD of sigma-hat runs 4-9x the analytic sigma_se at stratum
+medians (2-17x across strata), and even a median-absolute-deviation
+dispersion measure -- robust to wild replicates -- sits at 1.2-2.5x.
+On Step-2 fallback cells the pattern inverts: bootstrap dispersion is
+BELOW the analytic SE in the weak- and mid-identification strata
+(SD ratios 0.24-0.73, MAD ratios 0.1-0.4), exceeding one only in the
+small strong-F strata. The corrected analytic SEs are therefore
+anti-conservative for the interior estimator and conservative for the
+fallback -- opposite-signed, branch-conditional miscalibration that no
+single scalar verdict captures.
+
+Two features of the replicate distributions discipline the
+interpretation. First, SD- and MAD-based ratios diverge by up to an
+order of magnitude in the explosive strata, the signature of
+heavy-tailed, plausibly bimodal resampling distributions: most
+replicates land near the estimate while a minority flip discretely --
+across the HLIML/Step-2 branch boundary, or to the sigma cap or the
+sigma = 1 pole. Second, and consequently, the bootstrap measures
+UNCONDITIONAL pipeline dispersion, including the variance contributed
+by the estimator-selection step itself, while the analytic sigma_se is
+conditional on the selected branch. Branch-switching variance is
+genuine sampling uncertainty that no within-branch formula credits;
+the synthetic calibration of Section 1 (Pillar 3) validates the
+formula within-branch and is not contradicted by these results. A
+branch-tagged rerun (recording each replicate's final_source) would
+decompose the two components and is the natural follow-up.
+
+Practical guidance for users of the published estimates follows
+directly. Treat sigma_se as a branch-conditional, frequently
+lower-bound dispersion measure: for sigma-critical inference on
+HLIML-interior cells, robust bootstrap factors of roughly 1.5-2.5x
+(MAD-based) to several-fold (SD-based, tail-sensitive) apply, while
+for Step-2 cells in the weak-identification mass the analytic SE is if
+anything conservative. The per-cell bootstrap file is published
+precisely so users can calibrate to their own cell mix rather than
+inherit a global factor. The pre-stated caveats stand: this
+benchmarks dispersion, not bias, and replicate selection parallels the
+selection documented in Pillar 2.
 
 ## 5. Release note for replication
 

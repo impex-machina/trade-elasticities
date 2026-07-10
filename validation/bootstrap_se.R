@@ -213,7 +213,13 @@ cat(sprintf("  Bootstrapping %d cells x %d replicates...\n",
 t0 <- Sys.time()
 res_list <- if (.Platform$OS.type == "unix" && opts$ncores > 1L) {
   parallel::mclapply(seq_len(nrow(cells)), boot_cell,
-                     mc.cores = opts$ncores, mc.preschedule = TRUE)
+                     # Dynamic scheduling: preschedule=TRUE dealt each worker a
+                     # contiguous, stratum-sorted block, so the workers holding
+                     # the 50+-exporter giants ran ~1 h alone while 60 cores
+                     # idled (observed 2026-07-10: 64 min wall). FALSE
+                     # work-steals instead. Result-identical: per-cell seeds
+                     # are index-based (seed + i), independent of scheduling.
+                     mc.cores = opts$ncores, mc.preschedule = FALSE)
 } else {
   if (.Platform$OS.type != "unix")
     warning("Windows detected: running serially. This harness is intended ",
