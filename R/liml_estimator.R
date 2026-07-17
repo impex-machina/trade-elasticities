@@ -25,10 +25,13 @@
 
 # -------------------------------------------------------------------------
 # 0. Stock-Yogo (2005) critical values for 2 endogenous regressors,
-#    LIML estimator, max bias relative to OLS as a fraction.
+#    LIML estimator, MAXIMAL SIZE of a nominal 5% Wald test (these are
+#    Stock-Yogo's size tables; SY tabulate bias only for TSLS/Fuller-k).
 #    Source: StockYogo2005_2EndogRegCritVals.csv in G&S 2024 replication.
 #    Rows: number of excluded instruments (suppliers in this context).
-#    Columns: bias thresholds 0.10, 0.15, 0.20, 0.25.
+#    Columns: maximal-size thresholds 0.10, 0.15, 0.20, 0.25.
+#    G&S (2024) screen at 0.25 as their rule of thumb; the headline
+#    stockyogo_pass in this pipeline uses the stricter 0.10 (see F8 note).
 # -------------------------------------------------------------------------
 
 .stockyogo_2endog_liml <- structure(list(
@@ -529,10 +532,10 @@ hansen_J <- function(u_hat, Z, weights = NULL) {
 
 
 # Stock-Yogo critical-value lookup
-stockyogo_pass <- function(F_stat, n_excluded_instruments, bias_threshold = 0.10) {
-  col_name <- sprintf("cv_%.2f", bias_threshold)
+stockyogo_pass <- function(F_stat, n_excluded_instruments, size_threshold = 0.10) {
+  col_name <- sprintf("cv_%.2f", size_threshold)
   if (!col_name %in% names(.stockyogo_2endog_liml))
-    stop("bias_threshold must be one of 0.10, 0.15, 0.20, 0.25")
+    stop("size_threshold must be one of 0.10, 0.15, 0.20, 0.25")
   tbl <- .stockyogo_2endog_liml
   if (n_excluded_instruments < min(tbl$suppliers)) return(NA)
   idx <- if (n_excluded_instruments > max(tbl$suppliers)) {
@@ -541,7 +544,7 @@ stockyogo_pass <- function(F_stat, n_excluded_instruments, bias_threshold = 0.10
     which(tbl$suppliers == n_excluded_instruments)
   }
   cv <- tbl[[col_name]][idx]
-  list(F_stat = F_stat, cv = cv, pass = F_stat > cv, threshold = bias_threshold)
+  list(F_stat = F_stat, cv = cv, pass = F_stat > cv, threshold = size_threshold)
 }
 
 
@@ -1007,8 +1010,12 @@ estimate_cell_liml <- function(cell_df,
   J_pval <- if (J_dof > 0) 1 - pchisq(J_stat, df = J_dof) else NA_real_
   
   # Stock-Yogo test (uses number of *suppliers* = number of exporter dummies)
-  sy <- stockyogo_pass(F_kp, n_excluded_instruments = l_excluded,
-                       bias_threshold = 0.10)
+  # F8 (v0.4.0): screen at both the strict 0.10 maximal-size threshold
+  # (headline, back-compatible) and G&S (2024)'s 0.25 rule of thumb.
+  sy   <- stockyogo_pass(F_kp, n_excluded_instruments = l_excluded,
+                         size_threshold = 0.10)
+  sy25 <- stockyogo_pass(F_kp, n_excluded_instruments = l_excluded,
+                         size_threshold = 0.25)
   
   # ---- STEP 3: HLIML (jackknife LIML) ----
   # GS_Estimation.do lines 94-198. Rescales y, x1, x2, ones by 1/shat
@@ -1196,7 +1203,8 @@ estimate_cell_liml <- function(cell_df,
     # invert_structural's omega_floor) rather than estimated at an interior
     # point. invert_structural floors ω before the adjust block sees it, so a
     # floored cell otherwise reads as adjust 0/1; this boolean makes the floored
-    # cells filterable (~17% of all cells, ~32% of estimated cells). A genuine
+    # cells filterable (15.7% of all cells, ~31% of estimated cells in the
+    # v0.3.0 run; see results/stage1_summary.json). A genuine
     # interior estimate never lands exactly on the floor.
     omega_floored = isTRUE(!is.na(final_omega) && final_omega <= 1e-4),
     final_source = final_source,
@@ -1208,6 +1216,18 @@ estimate_cell_liml <- function(cell_df,
     jstat_h  = J_h,           # HLIML-residual-based J
     stockyogo_pass = if (!is.null(sy)) sy$pass else NA,
     stockyogo_cv = if (!is.null(sy)) sy$cv else NA,
+    # F8/F9 (v0.4.0): G&S (2024) protocol columns -- SY pass at their 0.25
+    # maximal-size rule of thumb, Sargan pass at conventional p > 0.2
+    # (their tabulated "J P-value" is the complement, pchisq(J, df)),
+    # and the joint pass-both flag.
+    stockyogo_pass_gs25 = if (!is.null(sy25)) sy25$pass else NA,
+    stockyogo_cv_gs25 = if (!is.null(sy25)) sy25$cv else NA,
+    sargan_pass = if (!is.na(J_pval)) J_pval > 0.2 else NA,
+    gs_pass_both = {
+      .p25 <- if (!is.null(sy25)) sy25$pass else NA
+      .sp  <- if (!is.na(J_pval)) J_pval > 0.2 else NA
+      if (is.na(.p25) || is.na(.sp)) NA else (.p25 && .sp)
+    },
     # Step-specific estimates for diagnostic / comparison purposes
     sigma_step1 = inv1$sigma,
     omega_step1 = inv1$omega,

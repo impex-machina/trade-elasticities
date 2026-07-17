@@ -86,8 +86,9 @@ classify_exporter_tiers <- function(dt_nonref, exporter_dests, cfg) {
 #   - Under shrinkage, the prior's Hessian must be added or the unpenalized
 #     GN formula overstates SE by ~30%.
 #
-# The combined penalized GN formula calibrates within ~5% of empirical
-# variability across all tested regimes.
+# The combined penalized GN formula calibrates within ~7% of empirical
+# variability across all tested regimes (worst-regime median calibration
+# error +6.7%; see results/pillar3_summary.json).
 # =========================================================================
 compute_penalized_gn_se <- function(d_hat, sigma_val,
                                     imp_Y_vec, imp_X_mat,

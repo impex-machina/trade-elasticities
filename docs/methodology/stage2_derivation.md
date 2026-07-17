@@ -74,7 +74,7 @@ $$
   \frac{\gamma_j}{(1+\gamma_j)(\sigma-1)} \cdot X^{imp}_{j,0}
 + \frac{\gamma_j}{1+\gamma_j} \cdot X^{imp}_{j,1}
 + \frac{-1}{\sigma-1} \cdot X^{imp}_{j,2}
-+ \frac{\gamma_j \gamma_k}{(1+\gamma_j)(1+\gamma_k)(\sigma-1)} \cdot X^{imp}_{j,3}
++ \frac{\gamma_j (1+\gamma_k)}{\gamma_k (1+\gamma_j)(\sigma-1)} \cdot X^{imp}_{j,3}
 + \frac{\gamma_j - \gamma_k}{\gamma_k (1+\gamma_j)} \cdot X^{imp}_{j,4}
 $$
 
@@ -87,7 +87,7 @@ Differentiating each coefficient with respect to $\gamma_j$ (symbolic verificati
 | $X_0$ | $\gamma_j / ((1+\gamma_j)(\sigma-1))$ | $1 / ((1+\gamma_j)^2 (\sigma-1))$ |
 | $X_1$ | $\gamma_j / (1+\gamma_j)$ | $1 / (1+\gamma_j)^2$ |
 | $X_2$ | $-1 / (\sigma-1)$ | $0$ |
-| $X_3$ | $\gamma_j \gamma_k / ((1+\gamma_j)(1+\gamma_k)(\sigma-1))$ | $\gamma_k / ((1+\gamma_j)^2 (1+\gamma_k)(\sigma-1))$ |
+| $X_3$ | $\gamma_j (1+\gamma_k) / (\gamma_k (1+\gamma_j)(\sigma-1))$ | $(1+\gamma_k) / (\gamma_k (1+\gamma_j)^2 (\sigma-1))$ |
 | $X_4$ | $(\gamma_j - \gamma_k) / (\gamma_k (1+\gamma_j))$ | $(1+\gamma_k) / (\gamma_k (1+\gamma_j)^2)$ |
 
 So:
@@ -96,7 +96,7 @@ $$
 \frac{\partial \text{pred}^{imp}_j}{\partial \gamma_j}
 = \frac{X^{imp}_{j,0}}{(1+\gamma_j)^2 (\sigma-1)}
 + \frac{X^{imp}_{j,1}}{(1+\gamma_j)^2}
-+ \frac{\gamma_k \, X^{imp}_{j,3}}{(1+\gamma_j)^2 (1+\gamma_k)(\sigma-1)}
++ \frac{(1+\gamma_k) \, X^{imp}_{j,3}}{\gamma_k (1+\gamma_j)^2 (\sigma-1)}
 + \frac{(1+\gamma_k) X^{imp}_{j,4}}{\gamma_k (1+\gamma_j)^2}
 $$
 
@@ -107,14 +107,14 @@ Differentiating each coefficient with respect to $\gamma_k$:
 | $X_0$ | (same) | $0$ |
 | $X_1$ | (same) | $0$ |
 | $X_2$ | (same) | $0$ |
-| $X_3$ | (same) | $\gamma_j / ((1+\gamma_j)(1+\gamma_k)^2 (\sigma-1))$ |
+| $X_3$ | (same) | $-\gamma_j / (\gamma_k^2 (1+\gamma_j)(\sigma-1))$ |
 | $X_4$ | (same) | $-\gamma_j / (\gamma_k^2 (1+\gamma_j))$ |
 
 So:
 
 $$
 \frac{\partial \text{pred}^{imp}_j}{\partial \gamma_k}
-= \frac{\gamma_j \, X^{imp}_{j,3}}{(1+\gamma_j)(1+\gamma_k)^2 (\sigma-1)}
+= -\frac{\gamma_j \, X^{imp}_{j,3}}{\gamma_k^2 (1+\gamma_j) (\sigma-1)}
 - \frac{\gamma_j \, X^{imp}_{j,4}}{\gamma_k^2 (1+\gamma_j)}
 $$
 

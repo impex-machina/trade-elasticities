@@ -293,9 +293,13 @@ cat(sprintf("  gamma (omega-scale) median=%.3f (used as Stage 2a prior)\n\n",
 # 1e-4 admissibility floor (log = -9.2, which would drag per-good log-medians
 # toward the floor for heavily-floored goods). Both are documented in the
 # README's Known Limitations as caps/floors, not estimates.
+# F2 (v0.4.0): also exclude omega_capped -- under B9 semantics, adjust == 4
+# covers sigma-at-cap cells whose omega may ALSO sit at the cap (~0.6% of ok
+# cells); without this clause those omega = 10 values leak into the priors.
 feenstra_gamma_clean <- sigma_clean[!is.na(gamma) & gamma > 0 &
                                       adjust != 5L &
-                                      !(omega_floored %in% TRUE)]
+                                      !(omega_floored %in% TRUE) &
+                                      !(omega_capped %in% TRUE)]
 feenstra_priors <- feenstra_gamma_clean[, .(
   ln_gamma_prior = median(log(gamma), na.rm = TRUE)
 ), by = good]
