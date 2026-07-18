@@ -634,7 +634,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   keep_cols <- intersect(names(output),
     c("importer","exporter","good","sigma","gamma","gamma_se",
       "gamma_se_total","sigma_robust","sigma_se","dgamma_dsigma",
-      "gamma_se_status","gamma_exposure","ref_exporter",
+      "gamma_se_status","gamma_exposure","gamma_shrink_wt","ref_exporter",
       "opt_tariff","opt_tariff_all","convergence","obj_value","tier",
       "avg_trade"))
   output <- output[, ..keep_cols]

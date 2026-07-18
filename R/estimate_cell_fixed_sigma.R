@@ -86,8 +86,9 @@ classify_exporter_tiers <- function(dt_nonref, exporter_dests, cfg) {
 #   - Under shrinkage, the prior's Hessian must be added or the unpenalized
 #     GN formula overstates SE by ~30%.
 #
-# The combined penalized GN formula calibrates within ~5% of empirical
-# variability across all tested regimes.
+# The combined penalized GN formula calibrates within ~7% of empirical
+# variability across all tested regimes (worst-regime median calibration
+# error +6.7%; see results/pillar3_summary.json).
 # =========================================================================
 compute_penalized_gn_se <- function(d_hat, sigma_val,
                                     imp_Y_vec, imp_X_mat,
@@ -100,9 +101,10 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
   
   K <- length(d_hat)
   na_result <- list(
-    se       = rep(NA_real_, K),
-    status   = rep("not_computed", K),
-    exposure = rep(NA_integer_, K)
+    se        = rep(NA_real_, K),
+    status    = rep("not_computed", K),
+    exposure  = rep(NA_integer_, K),
+    shrink_wt = rep(NA_real_, K)
   )
   
   # If Rcpp Jacobian not loaded, can't compute SE
@@ -172,7 +174,8 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
   if (df_resid < 1L) {
     return(list(se = rep(NA_real_, K),
                 status = rep("insufficient_df", K),
-                exposure = exposure))
+                exposure = exposure,
+                shrink_wt = rep(NA_real_, K)))
   }
   sigma2 <- SSR / df_resid
   
@@ -186,11 +189,22 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
     }
   }
   
+  # Effective-shrinkage diagnostic (v0.4.0): per-parameter share of the
+  # curvature at the optimum contributed by the prior. 0 = pure data,
+  # 1 = pure prior; NA where neither side contributes. Published as
+  # gamma_shrink_wt so users can see, cell by cell, how much of gamma
+  # is data vs prior -- the binding question for Tier-2 cells.
+  d_JtWJ <- diag(JtWJ)
+  d_Hp   <- diag(H_prior)
+  curv_tot <- d_JtWJ + d_Hp
+  shrink_wt <- ifelse(curv_tot > 0, d_Hp / curv_tot, NA_real_)
+
   V <- tryCatch(sigma2 * solve(JtWJ + H_prior), error = function(e) NULL)
   if (is.null(V)) {
     return(list(se = rep(NA_real_, K),
                 status = rep("singular", K),
-                exposure = exposure))
+                exposure = exposure,
+                shrink_wt = shrink_wt))
   }
   
   d_V <- diag(V)
@@ -204,7 +218,7 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
     se[k] <- sqrt(d_V[k])
   }
   
-  list(se = se, status = status, exposure = exposure)
+  list(se = se, status = status, exposure = exposure, shrink_wt = shrink_wt)
 }
 
 
@@ -454,6 +468,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     gamma_j_status <- se_out$status[2:(J + 1)]
     gamma_k_expo   <- se_out$exposure[1]
     gamma_j_expo   <- se_out$exposure[2:(J + 1)]
+    gamma_k_shrink <- se_out$shrink_wt[1]
+    gamma_j_shrink <- se_out$shrink_wt[2:(J + 1)]
   } else {
     gamma_k_se     <- NA_real_
     gamma_j_se     <- rep(NA_real_, J)
@@ -461,6 +477,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     gamma_j_status <- rep("non_converged", J)
     gamma_k_expo   <- NA_integer_
     gamma_j_expo   <- rep(NA_integer_, J)
+    gamma_k_shrink <- NA_real_
+    gamma_j_shrink <- rep(NA_real_, J)
   }
   
   # --- sigma-propagated SE + robustness flag ---
@@ -509,6 +527,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     dgamma_dsigma   = c(dgds[2:(J + 1)], dgds[1]),
     gamma_se_status = c(gamma_j_status, gamma_k_status),
     gamma_exposure  = c(gamma_j_expo, gamma_k_expo),
+    gamma_shrink_wt = c(gamma_j_shrink, gamma_k_shrink),
     ref_exporter    = ref_exporter,
     convergence     = result$convergence,
     obj_value       = result$value,
@@ -530,6 +549,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       dgamma_dsigma   = NA_real_,
       gamma_se_status = "tier3_prior",
       gamma_exposure  = NA_integer_,
+      gamma_shrink_wt = NA_real_,
       ref_exporter    = ref_exporter,
       convergence     = -1L,   # flag: not estimated
       obj_value       = NA_real_,

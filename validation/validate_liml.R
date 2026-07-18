@@ -50,12 +50,22 @@ simulate_one_cell <- function(sigma_true, omega_true,
                               seed = NULL) {
   if (!is.null(seed)) set.seed(seed)
   # Reduced form after reference-differencing (cancels phi and aggregate
-  # price index):
-  #   tilde Delta s = (Delta eps - (sigma-1) Delta u) / D
-  #   tilde Delta p = (omega Delta eps + Delta u)     / D
-  # where D = 1 + (sigma-1) * omega.
-  denom <- (sigma_true - 1) * omega_true + 1
-  a_eps_s <-  1 / denom
+  # price index). F10 FIX (v0.4.0): the previous version wrote the supply
+  # side with slope 1/omega instead of (1+omega)/omega (its D was
+  # 1 + (sigma-1)*omega), which made the simulated system identical to the
+  # correct structural model at omega = omega_true/(1-omega_true): the
+  # omega truth-labels were wrong, while the pseudo-true sigma equaled
+  # sigma_true either way. Verified by feeding analytic population moments
+  # through estimate_cell_liml: pre-fix data labeled (3, 0.3) returned
+  # exactly (3.0000, 0.4286). Correct system, derived from
+  #   demand: Dk_s = -(sigma-1)*Dk_p + eps
+  #   supply: Dk_s = ((1+omega)/omega)*Dk_p - u/omega
+  # =>
+  #   Dk_p = (omega*eps + u) / D
+  #   Dk_s = ((1+omega)*eps - (sigma-1)*u) / D,   D = 1 + omega*sigma
+  # (tests/testthat/test-stage1-harness-dgp.R locks this to the paper.)
+  denom <- 1 + omega_true * sigma_true
+  a_eps_s <-  (1 + omega_true) / denom
   a_u_s   <- -(sigma_true - 1) / denom
   a_eps_p <-  omega_true / denom
   a_u_p   <-  1 / denom

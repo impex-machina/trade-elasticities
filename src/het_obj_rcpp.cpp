@@ -51,7 +51,10 @@ double het_obj_rcpp(NumericVector d,
     double pred = (gam_j * inv_1pgj / sm1)                             * imp_X(j, 0) +
                   (gam_j * inv_1pgj)                                    * imp_X(j, 1) +
                   (-1.0 / sm1)                                          * imp_X(j, 2) +
-                  (gam_j * gam_k * inv_1pgj / ((1.0 + gam_k) * sm1))   * imp_X(j, 3) +
+                  // F1 FIX (v0.4.0): Soderbery (2018) Eq. (10) term 4 is
+                  // gam_j*(1+gam_k)/(gam_k*(1+gam_j)*(sigma-1)); previous form
+                  // was a transcription error (see stage2_derivation.md).
+                  (gam_j * (1.0 + gam_k) * inv_1pgj / (gam_k * sm1))    * imp_X(j, 3) +
                   ((gam_j - gam_k) * inv_1pgj / gam_k)                 * imp_X(j, 4);
 
     double resid = imp_Y[j] - pred;

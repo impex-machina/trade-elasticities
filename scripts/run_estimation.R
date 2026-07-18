@@ -293,9 +293,13 @@ cat(sprintf("  gamma (omega-scale) median=%.3f (used as Stage 2a prior)\n\n",
 # 1e-4 admissibility floor (log = -9.2, which would drag per-good log-medians
 # toward the floor for heavily-floored goods). Both are documented in the
 # README's Known Limitations as caps/floors, not estimates.
+# F2 (v0.4.0): also exclude omega_capped -- under B9 semantics, adjust == 4
+# covers sigma-at-cap cells whose omega may ALSO sit at the cap (~0.6% of ok
+# cells); without this clause those omega = 10 values leak into the priors.
 feenstra_gamma_clean <- sigma_clean[!is.na(gamma) & gamma > 0 &
                                       adjust != 5L &
-                                      !(omega_floored %in% TRUE)]
+                                      !(omega_floored %in% TRUE) &
+                                      !(omega_capped %in% TRUE)]
 feenstra_priors <- feenstra_gamma_clean[, .(
   ln_gamma_prior = median(log(gamma), na.rm = TRUE)
 ), by = good]
@@ -472,7 +476,9 @@ if (should_run("2b", opts, paths)) {
                 config$shrinkage_lambda))
 
     config_2b <- config_country
-    config_2b$sigma_lookup     <- sigma_clean[, .(importer, good, sigma)]
+    # F7 (v0.4.0): character keys throughout -- dt_country's importer is
+    # character, so stop relying on integer-to-string coercion in the joins.
+    config_2b$sigma_lookup     <- sigma_clean[, .(importer = as.character(importer), good, sigma)]
 
     config_2b$sigma_se_lookup     <- sigma_estimates[, .(importer = as.character(importer),
                                                          good     = as.character(good), sigma_se)]
@@ -490,7 +496,7 @@ if (should_run("2b", opts, paths)) {
     config_2b$sigma_start     <- sigma_fallback
     config_2b$gamma_start     <- config_2b$gamma_V_default
 
-    config_2b$sigma_V_lookup <- sigma_clean[, .(importer, good, sigma)]
+    config_2b$sigma_V_lookup <- sigma_clean[, .(importer = as.character(importer), good, sigma)]
 
     rmap_2b <- build_region_map()
     gam_V_regional <- regional_clean[, .(gamma = median(gamma, na.rm = TRUE)),

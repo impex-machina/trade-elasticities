@@ -51,9 +51,11 @@ The full Stage 1 output. Key columns:
 | `sigma_se`, `omega_se`, `rho_se` | numeric | Standard errors (HNCS sandwich if HLIML, delta-method if Step 2) |
 | `fstat_kp` | numeric | Kleibergen-Paap rk Wald F-statistic |
 | `fstat_het` | numeric | HLIML heteroskedasticity-adjusted F (Step 3 of GS_Estimation.do) |
-| `jstat`, `jstat_pval`, `jstat_h` | numeric | Hansen J overidentification statistic and HLIML residual variant |
+| `jstat`, `jstat_pval`, `jstat_h` | numeric | Sargan overidentification statistic (homoskedastic; `jstat_pval` is the conventional p-value 1 - pchisq(J, df) -- the complement of the "J P-value" tabulated in G&S 2024) and the HLIML residual variant |
 | `stockyogo_pass` | logical | Whether fstat_kp exceeds the Stock-Yogo (2005) critical value for relevant l |
-| `stockyogo_cv` | numeric | The applicable Stock-Yogo critical value at 10% max bias |
+| `stockyogo_cv` | numeric | The applicable Stock-Yogo LIML critical value at 10% maximal size (size, not bias) |
+| `stockyogo_pass_gs25`, `stockyogo_cv_gs25` | logical, numeric | The same screen at the 25% maximal-size threshold -- the G&S (2024) rule of thumb. *Added in v0.4.0; absent in earlier outputs.* |
+| `sargan_pass`, `gs_pass_both` | logical | Sargan pass (conventional p > 0.2, per G&S 2024) and the joint F-and-J pass flag. *Added in v0.4.0; absent in earlier outputs.* |
 | `adjust` | integer | Estimator path flag (see below) |
 | `final_source` | character | `"hliml"` or `"step2_weighted"` — which estimator supplied σ |
 | `hliml_status` | character | `"ok"` or `"hliml_fail_no_convergence"` (or various failure subtypes) |

@@ -113,7 +113,8 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
         (gam_j * inv_1pgj / sm1)                                * imp_X(j, 0) +
         (gam_j * inv_1pgj)                                       * imp_X(j, 1) +
         (-1.0 / sm1)                                             * imp_X(j, 2) +
-        (gam_j * gam_k * inv_1pgj * inv_1pgk / sm1)              * imp_X(j, 3) +
+        // F1 FIX (v0.4.0): corrected Eq. (10) term 4 (see stage2_derivation.md)
+        (gam_j * (1.0 + gam_k) * inv_1pgj * inv_gk / sm1)        * imp_X(j, 3) +
         ((gam_j - gam_k) * inv_1pgj * inv_gk)                    * imp_X(j, 4);
 
     double r_j = imp_Y[j] - pred;
@@ -125,12 +126,12 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
     double dpred_dgj =
         imp_X(j, 0) * inv_1pgj_sq / sm1 +
         imp_X(j, 1) * inv_1pgj_sq +
-        imp_X(j, 3) * gam_k * inv_1pgj_sq * inv_1pgk / sm1 +
+        imp_X(j, 3) * (1.0 + gam_k) * inv_gk * inv_1pgj_sq / sm1 +
         imp_X(j, 4) * (1.0 + gam_k) * inv_gk * inv_1pgj_sq;
 
     // d pred / d gamma_k
     double dpred_dgk =
-        imp_X(j, 3) * gam_j * inv_1pgj * inv_1pgk_sq / sm1 -
+        - imp_X(j, 3) * gam_j * inv_gk_sq * inv_1pgj / sm1 -
         imp_X(j, 4) * gam_j * inv_gk_sq * inv_1pgj;
 
     // d residual / d theta = -d pred / d theta

@@ -66,7 +66,11 @@ het_obj <- function(d, imp_Y, imp_X, exp_Y, exp_X,
   pred_imp <- (gam_j * inv_1pgj / sm1)                         * imp_X[, 1] +
               (gam_j * inv_1pgj)                                * imp_X[, 2] +
               (-1 / sm1)                                        * imp_X[, 3] +
-              (gam_j * gam_k * inv_1pgj / ((1 + gam_k) * sm1)) * imp_X[, 4] +
+              # F1 FIX (v0.4.0): Soderbery (2018) Eq. (10) term 4 is
+              # gam_j*(1+gam_k)/(gam_k*(1+gam_j)*(sigma-1)); the previous
+              # gam_j*gam_k/((1+gam_j)*(1+gam_k)*(sigma-1)) was a
+              # transcription error (see docs/methodology/stage2_derivation.md).
+              (gam_j * (1 + gam_k) * inv_1pgj / (gam_k * sm1))  * imp_X[, 4] +
               ((gam_j - gam_k) * inv_1pgj / gam_k)             * imp_X[, 5]
 
   SSR_imp <- sum(wt_imp * (imp_Y - pred_imp)^2)
