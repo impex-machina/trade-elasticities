@@ -1,0 +1,38 @@
+{
+  "meta": {
+    "label": "v0.3.0",
+    "stage2a": "data/derived/stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds",
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "git_rev": "92af0cd",
+    "n_rows_2a": 423774,
+    "n_rows_2b": 6831781,
+    "definition": "pairing A: (imp_region, exp_region, good); pairing B: (imp_region, good); MAD = median |g2b - g2a|; R2 = squared Pearson; est_only = tier != 3 on both sides; regions via build_region_map(), unmapped -> OTHER",
+    "timestamp": "2026-07-18T16:39:52-0400"
+  },
+  "results": {
+    "all": {
+      "pairing_A_region_exporter_good": {
+        "n_pairs": 413631,
+        "mad": 0.04736689,
+        "r2": 0.1807598
+      },
+      "pairing_B_region_good": {
+        "n_pairs": 25101,
+        "mad": 0.01030286,
+        "r2": 0.80538721
+      }
+    },
+    "est_only": {
+      "pairing_A_region_exporter_good": {
+        "n_pairs": 377634,
+        "mad": 0.06213452,
+        "r2": 0.17409677
+      },
+      "pairing_B_region_good": {
+        "n_pairs": 25101,
+        "mad": 0.01984403,
+        "r2": 0.64119329
+      }
+    }
+  }
+}
