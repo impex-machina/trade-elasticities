@@ -29,7 +29,7 @@
 EXPECTED_COLS <- c(
   "importer", "exporter", "good",
   "sigma", "gamma",
-  "gamma_se", "gamma_se_status", "gamma_exposure",
+  "gamma_se", "gamma_se_status", "gamma_exposure", "gamma_shrink_wt",
   # sigma-uncertainty propagation columns (added by commit 53d751c)
   "gamma_se_total", "sigma_robust", "sigma_se", "dgamma_dsigma",
   "ref_exporter",
@@ -161,6 +161,9 @@ test_that("Stage 2b returns the documented schema and populates SE columns", {
   # (number of residual rows contributing to each parameter's identification).
   expect_true(all(ok_rows$gamma_exposure > 0L))
   expect_true(is.integer(result$gamma_exposure))
+  # v0.4.0: effective-shrinkage diagnostic is NA or in [0, 1]
+  sw <- result$gamma_shrink_wt
+  expect_true(all(is.na(sw) | (sw >= 0 & sw <= 1)))
 
   # ---- Diagnostic dump on test pass (helpful while iterating) ------------
   # Comment out once stable.

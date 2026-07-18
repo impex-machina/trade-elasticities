@@ -959,8 +959,12 @@ estimate_cell_liml <- function(cell_df,
   # Equivalent: mean of u^2 within exporter (for non-ref) and 0 for ref-only obs
   # We'll use mean-by-exporter for clarity
   u2_pred <- ave(u2, cell_df$exporter, FUN = function(x) mean(x))
-  # Guard against zero/negative predictions
-  u2_pred <- pmax(u2_pred, max(1e-10, min(u2[u2 > 0]) * 0.01))
+  # Guard against zero/negative predictions. Perfect-fit edge case (all
+  # u2 == 0) previously produced Inf via min() of an empty vector; fall
+  # back to the absolute floor instead. (v0.4.0)
+  pos_u2 <- u2[u2 > 0]
+  u2_floor <- if (length(pos_u2) > 0L) max(1e-10, min(pos_u2) * 0.01) else 1e-10
+  u2_pred <- pmax(u2_pred, u2_floor)
   
   weights_step2 <- 1 / u2_pred
   

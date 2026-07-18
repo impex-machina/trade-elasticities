@@ -82,6 +82,7 @@ The σ-γ ridge follow-up analysis is at
 | `gamma_se` | numeric | Penalized Gauss-Newton standard error on γ. NA if not estimable (see status column) |
 | `gamma_se_status` | character | SE quality flag: `ok`, `boundary`, `plateau`, `non_converged`, `singular`, `tier3_prior`, `insufficient_df`, or NA for legacy all-tier3 cells |
 | `gamma_exposure` | integer | Count of residual rows contributing to γ identification. Low values (≤2) indicate weak identification |
+| `gamma_shrink_wt` | numeric | Effective-shrinkage diagnostic: share of curvature at the optimum contributed by the log-ridge prior (0 = pure data, 1 = pure prior). NA for Tier-3, non-converged, and SE-unavailable cells. *Added in v0.4.0; absent in earlier outputs.* |
 | `ref_exporter` | character | Reference exporter chosen for this (importer, good) cell |
 | `convergence` | integer | optim() convergence code. 0 = converged, -1 = prior-assigned (Tier 3), other = non-convergence |
 | `obj_value` | numeric | Final SSR at optimizer convergence |

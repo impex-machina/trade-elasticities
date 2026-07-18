@@ -476,7 +476,9 @@ if (should_run("2b", opts, paths)) {
                 config$shrinkage_lambda))
 
     config_2b <- config_country
-    config_2b$sigma_lookup     <- sigma_clean[, .(importer, good, sigma)]
+    # F7 (v0.4.0): character keys throughout -- dt_country's importer is
+    # character, so stop relying on integer-to-string coercion in the joins.
+    config_2b$sigma_lookup     <- sigma_clean[, .(importer = as.character(importer), good, sigma)]
 
     config_2b$sigma_se_lookup     <- sigma_estimates[, .(importer = as.character(importer),
                                                          good     = as.character(good), sigma_se)]
@@ -494,7 +496,7 @@ if (should_run("2b", opts, paths)) {
     config_2b$sigma_start     <- sigma_fallback
     config_2b$gamma_start     <- config_2b$gamma_V_default
 
-    config_2b$sigma_V_lookup <- sigma_clean[, .(importer, good, sigma)]
+    config_2b$sigma_V_lookup <- sigma_clean[, .(importer = as.character(importer), good, sigma)]
 
     rmap_2b <- build_region_map()
     gam_V_regional <- regional_clean[, .(gamma = median(gamma, na.rm = TRUE)),
