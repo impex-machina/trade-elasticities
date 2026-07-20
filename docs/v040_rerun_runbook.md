@@ -184,6 +184,11 @@ artifacts in ~).
 1. Preserve v0.3.0: rename `data/derived` -> `data/derived_v030`. Download
    the v040 stage1 / stage2a / stage2b .rds (+ summary .txt/.csv) into a
    fresh `data/derived/` mirroring the manifest `local_path` layout.
+   [OBSERVED 2026-07-19] The download MUST include the summary .txt/.csv
+   files, not just the .rds set: the v0.4.0 pull was rds-only, which left
+   data/derived/stage2b/...summary.txt at its v0.3.0 content -- a stale,
+   manifest-tracked, HF-bound artifact. Nothing surfaced it until the
+   step-9 rehash reproduced the old hash while the .rds sibling updated.
 2. FIRST verification -- the sigma A/B, before anything else:
 
    ```powershell
@@ -287,6 +292,16 @@ artifacts in ~).
 9. Manifest rehash per v030 section 4.5 -- REMEMBER the buffered-read
    lesson (materialize Import-Csv before Export-Csv to the same file).
    Re-verify checksums against disk after any subsequent copy.
+   [HARDENED 2026-07-19] Run a coverage pass before hashing: (a) warn on
+   any manifest row whose local_path is absent -- a bare Test-Path guard
+   silently keeps the stale hash; (b) list release files with no manifest
+   row and decide each by convention (the manifest tracks only HF-shipped
+   data/derived/** artifacts; derived/validation holds canonical undated
+   copies, docs/methodology the git-side dated twins, so docs/results
+   additions usually need no row). After hashing, `git diff
+   data/manifest.csv` must change exactly the rows you expect -- an
+   UNCHANGED row for a file that should have changed is how the stale
+   summary.txt was caught.
 
 ## Phase 5 -- publish
 
@@ -331,4 +346,5 @@ artifacts in ~).
 - [ ] Commit + tag v0.4.0 + push; CI green
 - [ ] HF data + card updated; old revision pinned in changelog
 - [ ] Downstream consumers notified (sigma-only consumers explicitly cleared)
+
 
