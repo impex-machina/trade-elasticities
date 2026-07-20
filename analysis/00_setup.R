@@ -78,6 +78,8 @@ message("00_setup.R: loaded stage1 (", nrow(stage1), " rows) and ",
 # Stock-Yogo: stockyogo_pass is a per-cell logical in stage1 (TRUE = passes
 # weak-IV screen, FALSE = fails, NA = not evaluated). The headline fail rate
 # (sy_fails / sy_evaluated) excludes NA-status cells from the denominator.
+# v0.4.0 adds the G&S-protocol counterparts (sy_pass_gs25 / sargan_passes /
+# gs_both_passes, each with an *_evaluated denominator), same convention.
 
 if (!dir.exists("results")) dir.create("results", recursive = TRUE)
 
@@ -93,7 +95,16 @@ stage1_summary <- list(
   n_products   = data.table::uniqueN(stage1$good),
   n_importers  = data.table::uniqueN(stage1$importer),
   sy_fails     = sum(!stage1$stockyogo_pass, na.rm = TRUE),
-  sy_evaluated = sum(!is.na(stage1$stockyogo_pass))
+  sy_evaluated = sum(!is.na(stage1$stockyogo_pass)),
+  # G&S (2024) protocol columns (v0.4.0+): SY pass at the 0.25
+  # maximal-size rule of thumb, Sargan pass (conventional p > 0.2), and
+  # the joint pass-both flag.
+  sy_pass_gs25      = sum(stage1$stockyogo_pass_gs25, na.rm = TRUE),
+  sy_gs25_evaluated = sum(!is.na(stage1$stockyogo_pass_gs25)),
+  sargan_passes     = sum(stage1$sargan_pass, na.rm = TRUE),
+  sargan_evaluated  = sum(!is.na(stage1$sargan_pass)),
+  gs_both_passes    = sum(stage1$gs_pass_both, na.rm = TRUE),
+  gs_both_evaluated = sum(!is.na(stage1$gs_pass_both))
 )
 
 # adjust x final_source cross-tab is the routing-structure source of truth.

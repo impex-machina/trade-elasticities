@@ -229,15 +229,22 @@ Stated forthrightly:
   with the yield declining as sample size grows: a selection signature
   where harder cells converge only with more data. Conditional on
   success, the median σ bias across the grid runs from
-  {{format_prop_pct(min(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} to {{format_prop_pct(max(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} and is predominantly *downward*, worst where
-  supply is inelastic (high true ω), so comparisons to Feenstra-GMM or
+  {{format_prop_pct(min(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} to {{format_prop_pct(max(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} and is predominantly *downward*
+  across the tested grid, so comparisons to Feenstra-GMM or
   Broda–Weinstein estimates should not assume the upward bias of that
   tradition.
 - **Estimator-provenance composition.** On the full universe, {{format_pct(req(r$stage1$provenance_rates$interior_full_universe, "numerator"), req(r$stage1$provenance_rates$interior_full_universe, "denominator"))}} of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
   to the Step 2 fallback, of which {{format_pct(req(r$stage1$routing_summary, "clamped_total"), req(r$stage1, "n_cells"))}} of the full universe ({{format_int(req(r$stage1$routing_summary, "clamped_total"))}} cells)
   are clamped at the σ/ω caps and report the cap, not an estimate. {{format_pct(req(r$stage1, "sy_fails"), req(r$stage1, "sy_evaluated"))}} of cells fail the
-  Stock-Yogo weak-instrument threshold. Conditional on `status == "ok"`
+  Stock-Yogo weak-instrument threshold at the strict 10% maximal-size
+  critical value this pipeline screens at. At Grant-Soderbery (2024)'s own
+  25% rule of thumb, {{format_pct(req(r$stage1, "sy_pass_gs25"), req(r$stage1, "sy_gs25_evaluated"))}} of evaluated cells pass the
+  weak-instrument screen, {{format_pct(req(r$stage1, "sargan_passes"), req(r$stage1, "sargan_evaluated"))}} pass the Sargan
+  overidentification test (conventional p > 0.2), and {{format_pct(req(r$stage1, "gs_both_passes"), req(r$stage1, "gs_both_evaluated"))}} pass both --
+  the joint credibility screen of the G&S protocol. Per-cell flags
+  (`stockyogo_pass_gs25`, `sargan_pass`, `gs_pass_both`) ship in the Stage 1
+  output so either threshold can be applied downstream. Conditional on `status == "ok"`
   the interior rate rises to {{format_pct(req(r$stage1$provenance_rates$interior_conditional_on_ok, "numerator"), req(r$stage1$provenance_rates$interior_conditional_on_ok, "denominator"))}}; both framings appear in the methodology
   write-up. Headline σ medians are reported on the canonical {{format_int(req(r$stage1, "n_products"))}} HS4
   universe.

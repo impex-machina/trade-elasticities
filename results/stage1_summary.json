@@ -4,6 +4,12 @@
   "n_importers": 234,
   "sy_fails": 117224,
   "sy_evaluated": 141817,
+  "sy_pass_gs25": 82965,
+  "sy_gs25_evaluated": 141817,
+  "sargan_passes": 87446,
+  "sargan_evaluated": 141824,
+  "gs_both_passes": 40315,
+  "gs_both_evaluated": 141817,
   "adjust_x_final_source": {
     "code_0": {
       "hliml": 51038,

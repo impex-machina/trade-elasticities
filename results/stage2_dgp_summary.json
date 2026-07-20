@@ -1,0 +1,88 @@
+{
+  "meta": {
+    "engine": "rcpp",
+    "T_per_exporter": 1000000,
+    "seed": 20260717,
+    "quick": false,
+    "git_rev": "c5440c8",
+    "timestamp": "2026-07-19T16:49:34-0400"
+  },
+  "tolerances": {
+    "tol_A": 0.02,
+    "power_mult": 5,
+    "tol_B": 0.05,
+    "tol_C": 0.05
+  },
+  "test_A": {
+    "grid": [
+      {
+        "sigma": 2,
+        "gam_k": 0.3,
+        "resid_ratio_true": 0.00281198,
+        "resid_ratio_perturbed": 0.48577613
+      },
+      {
+        "sigma": 3,
+        "gam_k": 0.3,
+        "resid_ratio_true": 0.00170831,
+        "resid_ratio_perturbed": 0.2354516
+      },
+      {
+        "sigma": 5,
+        "gam_k": 0.3,
+        "resid_ratio_true": 0.00106008,
+        "resid_ratio_perturbed": 0.13776453
+      },
+      {
+        "sigma": 2,
+        "gam_k": 0.7,
+        "resid_ratio_true": 0.00206044,
+        "resid_ratio_perturbed": 0.21141888
+      },
+      {
+        "sigma": 3,
+        "gam_k": 0.7,
+        "resid_ratio_true": 0.00215161,
+        "resid_ratio_perturbed": 0.13325583
+      },
+      {
+        "sigma": 5,
+        "gam_k": 0.7,
+        "resid_ratio_true": 0.00186242,
+        "resid_ratio_perturbed": 0.11043381
+      },
+      {
+        "sigma": 2,
+        "gam_k": 1.5,
+        "resid_ratio_true": 0.0017773,
+        "resid_ratio_perturbed": 0.11016973
+      },
+      {
+        "sigma": 3,
+        "gam_k": 1.5,
+        "resid_ratio_true": 0.00234626,
+        "resid_ratio_perturbed": 0.08116596
+      },
+      {
+        "sigma": 5,
+        "gam_k": 1.5,
+        "resid_ratio_true": 0.00201829,
+        "resid_ratio_perturbed": 0.07332196
+      }
+    ],
+    "pass_truth": true,
+    "pass_power": true
+  },
+  "test_B": {
+    "median_abs_bias": 0.00163517,
+    "pass": true
+  },
+  "test_C": {
+    "gam_k_hat": 0.70152064,
+    "gam_k_true": 0.7,
+    "median_abs_bias_j": 0.00173448,
+    "convergence": 0,
+    "pass": true
+  },
+  "overall_pass": true
+}
