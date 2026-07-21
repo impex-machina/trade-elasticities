@@ -157,7 +157,7 @@ For the full methodology and the three-pillar evidence base, see
 - **Pillar 3** — SE calibration Monte Carlo.
 - **Stage-2 structural-DGP harness** (`validation/stage2_structural_dgp.R`)
   — the moment-identity check that guards the Eq. (10)/(11) coefficients
-  against the paper's structural equations: **PASS** at rev `c5440c8`, 2026-07-19 (import side only, Eq. (10); seed 20260717). Regenerate with `Rscript validation/stage2_structural_dgp.R`.
+  against the paper's structural equations: **PASS** at rev `4a947c0`, 2026-07-21 (import + export sides, Eqs. (10) and (11) with the G1 sign correction; seed 20260717). Regenerate with `Rscript validation/stage2_structural_dgp.R`.
 
 The `analysis/` scripts regenerate every paper figure and table from the
 published outputs; pass `--rerun-pillars` to regenerate the validation

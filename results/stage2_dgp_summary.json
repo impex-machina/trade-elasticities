@@ -4,15 +4,18 @@
     "T_per_exporter": 1000000,
     "seed": 20260717,
     "quick": false,
-    "git_rev": "c5440c8",
-    "timestamp": "2026-07-19T16:49:34-0400"
+    "git_rev": "4a947c0",
+    "timestamp": "2026-07-21T00:59:00-0400"
   },
   "tolerances": {
     "tol_A": 0.02,
     "power_mult": 5,
     "tol_B": 0.05,
-    "tol_C": 0.05
+    "tol_C": 0.05,
+    "tol_D": 0.02,
+    "tol_E": 0.05
   },
+  "eq11_signs": "corrected (G1, v0.4.1); Test D negative control is the printed equation",
   "test_A": {
     "grid": [
       {
@@ -82,6 +85,44 @@
     "gam_k_true": 0.7,
     "median_abs_bias_j": 0.00173448,
     "convergence": 0,
+    "pass": true
+  },
+  "test_D": {
+    "grid": [
+      {
+        "sigma": 2.5,
+        "sigma_V": 3,
+        "gam_V": 0.9,
+        "resid_ratio_true": 0.00177047,
+        "resid_ratio_printed": 0.48195915
+      },
+      {
+        "sigma": 4,
+        "sigma_V": 3,
+        "gam_V": 0.9,
+        "resid_ratio_true": 0.00107142,
+        "resid_ratio_printed": 0.2795597
+      },
+      {
+        "sigma": 2.5,
+        "sigma_V": 5,
+        "gam_V": 0.9,
+        "resid_ratio_true": 0.00061269,
+        "resid_ratio_printed": 1.77150727
+      },
+      {
+        "sigma": 4,
+        "sigma_V": 5,
+        "gam_V": 0.9,
+        "resid_ratio_true": 0.00109549,
+        "resid_ratio_printed": 0.98005966
+      }
+    ],
+    "pass_truth": true,
+    "pass_power": true
+  },
+  "test_E": {
+    "median_abs_bias": 0.00192748,
     "pass": true
   },
   "overall_pass": true
