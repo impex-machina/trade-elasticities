@@ -155,6 +155,9 @@ For the full methodology and the three-pillar evidence base, see
 - **Pillar 1** — BACI HS4 empirical core (Stage 1 / 2a / 2b production).
 - **Pillar 2** — Synthetic recovery validation (Tier 1 of `validate_liml.R`).
 - **Pillar 3** — SE calibration Monte Carlo.
+- **Stage-2 structural-DGP harness** (`validation/stage2_structural_dgp.R`)
+  — the moment-identity check that guards the Eq. (10)/(11) coefficients
+  against the paper's structural equations: **PASS** at rev `c5440c8`, 2026-07-19 (import side only, Eq. (10); seed 20260717). Regenerate with `Rscript validation/stage2_structural_dgp.R`.
 
 The `analysis/` scripts regenerate every paper figure and table from the
 published outputs; pass `--rerun-pillars` to regenerate the validation

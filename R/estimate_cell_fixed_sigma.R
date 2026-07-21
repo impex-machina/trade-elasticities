@@ -97,7 +97,8 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
                                     wt_imp_vec, wt_exp,
                                     shrinkage_lambda,
                                     boundary_thresh = 0.01,
-                                    plateau_thresh = 5.0) {
+                                    plateau_thresh = 5.0,
+                                    paper_exact_eq11 = FALSE) {
   
   K <- length(d_hat)
   na_result <- list(
@@ -125,7 +126,8 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
       exp_Y = exp_Y, exp_X = exp_X,
       exp_jmap = exp_jmap,
       exp_sig_V = exp_sig_V, exp_gam_V = exp_gam_V,
-      wt_imp = wt_imp_vec, wt_exp = wt_exp
+      wt_imp = wt_imp_vec, wt_exp = wt_exp,
+      paper_exact_eq11 = paper_exact_eq11
     ),
     error = function(e) NULL
   )
@@ -233,7 +235,8 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
 compute_dgamma_dsigma <- function(d_hat, sigma_val,
                                   imp_Y_vec, imp_X_mat, exp_Y, exp_X, exp_jmap,
                                   exp_sig_V, exp_gam_V, wt_imp_vec, wt_exp,
-                                  shrinkage_lambda, delta = 1e-4) {
+                                  shrinkage_lambda, delta = 1e-4,
+                                  paper_exact_eq11 = FALSE) {
   K  <- length(d_hat); na <- rep(NA_real_, K)
   if (!is.finite(sigma_val) || sigma_val <= 1) return(na)
   delta <- min(delta, (sigma_val - 1) / 10)
@@ -242,7 +245,8 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
       d = d_hat, sigma = sg, imp_Y = imp_Y_vec, imp_X = imp_X_mat,
       exp_Y = exp_Y, exp_X = exp_X, exp_jmap = exp_jmap,
       exp_sig_V = exp_sig_V, exp_gam_V = exp_gam_V,
-      wt_imp = wt_imp_vec, wt_exp = wt_exp),
+      wt_imp = wt_imp_vec, wt_exp = wt_exp,
+      paper_exact_eq11 = paper_exact_eq11),
     error = function(e) NULL)
   j0 <- JJ(sigma_val)
   if (is.null(j0) || !identical(j0$status, "ok")) return(na)
@@ -318,6 +322,11 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     prior_row <- cfg$shrinkage_priors[good == g_code]
     if (nrow(prior_row) > 0L) ln_gamma_prior <- prior_row$ln_gamma_prior[1]
   }
+
+  # G1 (v0.4.1): corrected Eq. (11) x5/x6 signs are the default. Set
+  # cfg$paper_exact_eq11 <- TRUE to reproduce the printed-equation
+  # (v0.4.0) behaviour for comparison runs.
+  pe11 <- isTRUE(cfg$paper_exact_eq11)
 
   # --- Reference-differencing and import-side moments ---
   ref_exporter <- choose_reference(dt)
@@ -427,6 +436,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
           wt_imp = wt_imp_vec, wt_exp = exp_mom$wt_exp,
           ln_gamma_prior = ln_gamma_prior,
           shrinkage_lambda = shrinkage_lambda,
+          paper_exact_eq11 = pe11,
           control = list(maxit = 500)),
     error = function(e) NULL)
 
@@ -441,6 +451,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
             wt_imp = wt_imp_vec, wt_exp = exp_mom$wt_exp,
             ln_gamma_prior = ln_gamma_prior,
             shrinkage_lambda = shrinkage_lambda,
+            paper_exact_eq11 = pe11,
             control = list(maxit = 1000)),
       error = function(e) NULL)
   }
@@ -460,7 +471,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       exp_jmap = exp_mom$jmap,
       exp_sig_V = exp_mom$sig_V, exp_gam_V = exp_mom$gam_V,
       wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
-      shrinkage_lambda = shrinkage_lambda
+      shrinkage_lambda = shrinkage_lambda,
+      paper_exact_eq11 = pe11
     )
     gamma_k_se     <- se_out$se[1]
     gamma_j_se     <- se_out$se[2:(J + 1)]
@@ -498,7 +510,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       exp_Y = exp_mom$exp_Y, exp_X = exp_mom$exp_X, exp_jmap = exp_mom$jmap,
       exp_sig_V = exp_mom$sig_V, exp_gam_V = exp_mom$gam_V,
       wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
-      shrinkage_lambda = shrinkage_lambda)
+      shrinkage_lambda = shrinkage_lambda,
+      paper_exact_eq11 = pe11)
     se_prop_vec <- abs(dgds) * sigma_se_cell
   } else {
     dgds <- rep(NA_real_, length(d_hat)); se_prop_vec <- rep(NA_real_, length(d_hat))

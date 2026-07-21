@@ -40,7 +40,7 @@
 #'
 het_obj <- function(d, imp_Y, imp_X, exp_Y, exp_X,
                     exp_jmap, exp_sig_V, exp_gam_V,
-                    wt_imp, wt_exp) {
+                    wt_imp, wt_exp, paper_exact_eq11 = FALSE) {
 
   sig   <- d[1]
   gam_k <- d[2]
@@ -93,12 +93,26 @@ het_obj <- function(d, imp_Y, imp_X, exp_Y, exp_X,
     inv_1pgI <- 1 / (1 + gam_I)
     inv_1pgV <- 1 / (1 + gam_V)
 
+    # G1 FIX (v0.4.1): the x5/x6 coefficients as PRINTED in Soderbery (2018)
+    # Eq. (11) carry the wrong sign. Expanding the product of the paper's own
+    # printed error terms (Eq. 8 supply residual x Eq. 9 demand residual) and
+    # solving for (D^v lp)^2 reproduces the printed Eq. (11) exactly --
+    # including its stated error term u = q*eps/(sigma-1) -- on seven of nine
+    # coefficients, but yields x5 and x6 NEGATED. Verified symbolically
+    # (sympy) and by exact-equilibrium simulation; the corrected signs
+    # satisfy the population moment identity to Monte Carlo error while the
+    # printed signs miss by ~7-8% of the outcome scale. See
+    # docs/methodology/eq11_sign_correction.md. s56 = -1 applies the
+    # correction; paper_exact_eq11 = TRUE reproduces the printed (v0.4.0)
+    # behaviour for comparison runs.
+    s56 <- if (isTRUE(paper_exact_eq11)) 1 else -1
+
     pred_exp <- (gam_I * inv_1pgI / sm1)                                     * exp_X[, 1] +
                 ((gam_I * (sig - 2) - 1) * inv_1pgI / sm1)                   * exp_X[, 2] +
                 (gam_V * inv_1pgV / sm1)                                      * exp_X[, 3] +
                 ((1 - gam_V * (sig - 2)) * inv_1pgV / sm1)                   * exp_X[, 4] +
-                ((1 - gam_V * (sig_V - 2)) * inv_1pgV / sm1)                * exp_X[, 5] +
-                ((gam_I * (sig_V - 2) - 1) * inv_1pgI / sm1)                * exp_X[, 6] +
+                (s56 * (1 - gam_V * (sig_V - 2)) * inv_1pgV / sm1)          * exp_X[, 5] +
+                (s56 * (gam_I * (sig_V - 2) - 1) * inv_1pgI / sm1)          * exp_X[, 6] +
                 (-(gam_V * (1 + gam_I) + gam_I * (1 + gam_V)) *
                    inv_1pgI * inv_1pgV / sm1)                                 * exp_X[, 7] +
                 ((sig - sig_V) / sm1)                                         * exp_X[, 8] +

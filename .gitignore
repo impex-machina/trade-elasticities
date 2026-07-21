@@ -103,3 +103,4 @@ analysis/figures/
 # ============================================================================
 docs/methodology/build_readme.md
 results/audits/
+results/stage2_dgp_summary_quick.json

@@ -25,10 +25,19 @@
 
 # -------------------------------------------------------------------------
 # 0. Stock-Yogo (2005) critical values for 2 endogenous regressors,
-#    LIML estimator, MAXIMAL SIZE of a nominal 5% Wald test (these are
-#    Stock-Yogo's size tables; SY tabulate bias only for TSLS/Fuller-k).
-#    Source: StockYogo2005_2EndogRegCritVals.csv in G&S 2024 replication.
-#    Rows: number of excluded instruments (suppliers in this context).
+#    MAXIMAL SIZE of a nominal 5% Wald test.
+#    Source: the G&S 2024 replication package. G3 NOTE (v0.4.1): their
+#    package file is named StockYogo2005_2EndogRegFullerCritVals.dta, i.e.
+#    these are (per the filename) the FULLER-k size tables, not the LIML
+#    ones as this header previously claimed. That is arguably the right
+#    table for the Step-2 Fuller(1) screen; SY tabulate no CVs for HLIML
+#    at all. TODO: verify the numeric values against SY (2005) directly.
+#    Rows: number of excluded instruments. G3 (v0.4.1): the row used for
+#    the headline screen is the EFFECTIVE excluded count (dummies span the
+#    constant once reference rows are dropped, so l_eff = J_nr - 1);
+#    the gs25 screen uses G&S's own row convention (total supplier count
+#    including the reference -- see Step_5 / error_construct in their
+#    replication).
 #    Columns: maximal-size thresholds 0.10, 0.15, 0.20, 0.25.
 #    G&S (2024) screen at 0.25 as their rule of thumb; the headline
 #    stockyogo_pass in this pipeline uses the stricter 0.10 (see F8 note).
@@ -85,19 +94,19 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   # fuller_alpha: 0 for plain LIML, 1 for Fuller(1)
   #
   # Returns: list with eta (k-vector of coefs on X), kappa, lambda, residuals, SEs.
-  
+
   Y <- as.numeric(Y)
   X <- as.matrix(X)
   Z <- as.matrix(Z)
   n <- length(Y)
   k <- ncol(X)
   l <- ncol(Z)
-  
+
   if (nrow(X) != n || nrow(Z) != n)
     stop("Dimension mismatch among Y, X, Z")
   if (l < k)
     stop(sprintf("Not enough instruments: l=%d < k=%d (need l >= k)", l, k))
-  
+
   # If endog_idx not provided, infer it: endogenous regressors are columns of X
   # that are NOT also columns of Z. For our setup [x1, x2, ones] vs [dummies, ones],
   # the endog are columns 1 and 2 (x1, x2).
@@ -118,7 +127,7 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   }
   if (length(endog_idx) == 0)
     stop("No endogenous regressors identified")
-  
+
   # Z2 = included exogenous part of X = X minus endogenous columns
   # In our case Z2 = ones (just the constant column of X).
   Z2_cols <- setdiff(seq_len(k), endog_idx)
@@ -127,7 +136,7 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   } else {
     Z2 <- NULL
   }
-  
+
   # Apply Stata aweight semantics: rescale weights so sum = n, then multiply
   # Y, X, Z, Z2 by sqrt(w_rescaled). This makes (weighted X)' (weighted X) =
   # sum_i w_i_rescaled * x_i x_i' which matches Stata.
@@ -142,11 +151,11 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
     Z <- Z * w_sqrt
     if (!is.null(Z2)) Z2 <- Z2 * w_sqrt
   }
-  
+
   # Build Y_aug = [y, X_endog]  (n x (1 + n_endog))
   # This is Stata's "Y" matrix inside s_liml.
   Y_aug <- cbind(Y, X[, endog_idx, drop = FALSE])
-  
+
   # ---- LIML eigenvalue lambda ----
   # Stata's algorithm (from s_liml):
   #   QWW  = Y_aug' M_Z  Y_aug = Y_aug' Y_aug - Y_aug' Z (Z'Z)^-1 Z' Y_aug
@@ -155,9 +164,9 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   #   lambda = min eigenvalue of QWW^{-1/2} QWW1 QWW^{-1/2}
   #
   # Important: lambda >= 1 (with equality iff exactly identified or perfect fit)
-  
+
   YaugYaug <- crossprod(Y_aug)  # Y_aug' Y_aug
-  
+
   # Compute Y_aug' Z (Z'Z)^-1 Z' Y_aug
   ZtZ <- crossprod(Z)
   ZtY <- crossprod(Z, Y_aug)
@@ -167,7 +176,7 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   YaugPYaug <- crossprod(ZtY, chol2inv(ZtZ_chol) %*% ZtY)
   QWW <- YaugYaug - YaugPYaug
   QWW <- (QWW + t(QWW)) / 2  # symmetrize
-  
+
   # Compute Y_aug' Z2 (Z2'Z2)^-1 Z2' Y_aug
   if (!is.null(Z2)) {
     Z2tZ2 <- crossprod(Z2)
@@ -181,7 +190,7 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
     QWW1 <- YaugYaug
   }
   QWW1 <- (QWW1 + t(QWW1)) / 2
-  
+
   # lambda = min eigenvalue of QWW^{-1} QWW1
   # Equivalent: min eigenvalue of (QWW^{-1/2}) QWW1 (QWW^{-1/2})
   QWW_chol <- tryCatch(chol(QWW), error = function(e) NULL)
@@ -192,17 +201,17 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   A <- (A + t(A)) / 2
   eigvals <- eigen(A, symmetric = TRUE, only.values = TRUE)$values
   lambda <- min(eigvals)
-  
+
   # Sanity check: lambda should be >= 1 - epsilon
   if (lambda < 0.99) {
     # Numerical issue; lambda < 1 should not happen with correct algorithm
     # Could indicate near-singular matrices
   }
-  
+
   # Fuller(alpha) correction: k = lambda - alpha / (n - l)
   # With Stata's formulation, k is slightly LESS than lambda but typically > 1.
   kappa <- lambda - fuller_alpha / (n - l)
-  
+
   # ---- k-class estimator ----
   # beta = ( (1-k) X'X + k X'P_Z X )^-1 ( (1-k) X'y + k X'P_Z y )
   # equivalently: ( X'P_Z X - (k-1)/k * something ... )
@@ -210,32 +219,32 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   #   QXhXh = (1-k)*QXX + k*QXZ*QZZinv*QXZ'
   #   beta = QXhXh^-1 * [ (1-k)*QXy + k*QXZ*QZZinv*QZy ]
   # We replicate that here.
-  
+
   ZtX <- crossprod(Z, X)
   ZtY1 <- crossprod(Z, Y)  # Y (not Y_aug) for the equation y ~ X
   XtX <- crossprod(X)
   XtY <- crossprod(X, Y)
-  
+
   # X'P_Z X = X'Z (Z'Z)^-1 Z'X
   ZtZ_inv <- chol2inv(ZtZ_chol)
   XPZX <- crossprod(ZtX, ZtZ_inv %*% ZtX)
   XPZX <- (XPZX + t(XPZX)) / 2
   # X'P_Z y = X'Z (Z'Z)^-1 Z'y
   XPZY <- crossprod(ZtX, ZtZ_inv %*% ZtY1)
-  
+
   K_mat <- (1 - kappa) * XtX + kappa * XPZX
   K_rhs <- (1 - kappa) * XtY + kappa * XPZY
-  
+
   eta_hat <- tryCatch(solve(K_mat, K_rhs), error = function(e) NULL)
   if (is.null(eta_hat))
     return(list(status = "fail_singular_K"))
   eta_hat <- as.numeric(eta_hat)
-  
+
   # Residuals
   u_hat <- Y - X %*% eta_hat
   rss <- sum(u_hat^2)
   sigma2_u <- rss / (n - k)
-  
+
   # ---- Variance ----
   # Homoskedastic-assumed variance (Stata default with no `robust`):
   #   V = sigma^2 * K_mat^{-1}   where K_mat = X'X(1-k) + k X'P_Z X
@@ -248,7 +257,7 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   # We follow the default (coviv unset): V = sigma^2 * K_mat^{-1}
   K_inv <- solve(K_mat)
   V_eta_homo <- sigma2_u * K_inv
-  
+
   # Robust (HC0-style) variance for LIML
   # Stata's robust LIML variance is more involved. Use the standard sandwich:
   #   V_robust = K_mat^{-1} * X' diag(u^2) X * K_mat^{-1}
@@ -257,7 +266,7 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   # this is the simplest robust variant.
   meat <- crossprod(X, as.numeric(u_hat^2) * X)
   V_eta_robust <- K_inv %*% meat %*% K_inv
-  
+
   list(
     status = "ok",
     eta = eta_hat,
@@ -293,50 +302,50 @@ invert_structural <- function(eta_1, eta_2,
                               rho_floor = 1e-4, rho_ceil = 0.999,
                               sigma_ceil = 1000, omega_floor = 1e-4,
                               omega_ceil = 1000) {
-  
+
   if (!is.finite(eta_1) || !is.finite(eta_2))
     return(list(sigma = NA, rho = NA, omega = NA, status = "non_finite_eta"))
-  
+
   # Argument under the square root: 1/4 - 1/(4 + eta_2^2 / eta_1)
   # For real-valued rho we need 4 + eta_2^2/eta_1 > 4, i.e., eta_2^2/eta_1 > 0,
   # which requires eta_1 > 0. (Galstyan footnote 3 discusses this case.)
   if (eta_1 <= 0)
     return(list(sigma = NA, rho = NA, omega = NA, status = "eta1_nonpositive"))
-  
+
   disc <- 0.25 - 1 / (4 + eta_2^2 / eta_1)
   if (disc < 0)
     return(list(sigma = NA, rho = NA, omega = NA, status = "neg_discriminant"))
-  
+
   rho_root <- sqrt(disc)
   rho <- if (eta_2 > 0) 0.5 + rho_root else 0.5 - rho_root
-  
+
   # Apply admissible-region clamps (mirrors GS_Estimation.do lines 31-33)
   if (rho > rho_ceil) rho <- rho_ceil
   if (rho < rho_floor) rho <- rho_floor
-  
+
   sigma <- 1 + (2 * rho - 1) / ((1 - rho) * eta_2)
-  
+
   if (!is.finite(sigma) || sigma <= 1)
     return(list(sigma = NA, rho = rho, omega = NA,
                 status = "sigma_below_1"))
   if (sigma > sigma_ceil) sigma <- sigma_ceil
-  
+
   denom <- sigma - 1 - sigma * rho
   if (abs(denom) < 1e-12)
     return(list(sigma = sigma, rho = rho, omega = NA,
                 status = "omega_div_zero"))
-  
+
   omega <- rho / denom
   if (!is.finite(omega))
     return(list(sigma = sigma, rho = rho, omega = NA,
                 status = "non_finite_omega"))
   if (omega < omega_floor) omega <- omega_floor
   if (omega > omega_ceil) omega <- omega_ceil
-  
+
   # Check Feenstra constraint: 0 <= rho < (sigma - 1) / sigma
   # which is equivalent to omega > 0 (the natural admissibility condition)
   feasible <- (rho >= 0) && (rho < (sigma - 1) / sigma)
-  
+
   list(sigma = sigma, rho = rho, omega = omega,
        status = if (feasible) "ok" else "constraint_violated")
 }
@@ -373,7 +382,7 @@ delta_method_ses <- function(sigma, rho, V_eta, n, l, endog_idx = c(1L, 2L)) {
   # endog_idx: which rows/cols of V_eta correspond to (eta_x1, eta_x2).
   #            Default = c(1, 2) for the Stata-convention ordering [x1, x2, _cons].
   V_sub <- V_eta[endog_idx, endog_idx, drop = FALSE]
-  
+
   # Jacobian J = d(sigma, rho) / d(eta_1, eta_2), in closed form.
   # Forward map (with omega = rho / (sigma - 1 - sigma*rho)):
   #   eta_1 = rho / ((sigma - 1)^2 (1 - rho))
@@ -395,7 +404,7 @@ delta_method_ses <- function(sigma, rho, V_eta, n, l, endog_idx = c(1L, 2L)) {
     (1 - 2 * rho) * (sigma - 1)^2 * (1 - rho)^2,         # d rho   / d eta_1
     2 * rho * (sigma - 1) * (1 - rho)^2                  # d rho   / d eta_2
   ), nrow = 2, byrow = TRUE)
-  
+
   # Sandwich: J V J'. Standard delta method form.
   # NOTE: Stata's GS_Estimation.do divides this by (n-l), which is consistent
   # with the spurious division we found in the Step 3 HNCS sandwich. Both
@@ -404,15 +413,15 @@ delta_method_ses <- function(sigma, rho, V_eta, n, l, endog_idx = c(1L, 2L)) {
   # matches the bootstrap SD, while the Stata-exact divided version is off
   # by ~500x. By symmetry we drop the division here too.
   delta_mat <- d_sub %*% V_sub %*% t(d_sub)
-  
+
   # Defensive: if floating-point error produced tiny negative diagonals,
   # clamp to zero before sqrt.
   diag(delta_mat) <- pmax(diag(delta_mat), 0)
-  
+
   sigma_se <- sqrt(delta_mat[1, 1])
   rho_se   <- sqrt(delta_mat[2, 2])
   cov_sr   <- delta_mat[1, 2]
-  
+
   # Omega SE via further delta method
   denom4 <- (sigma * (rho - 1) + 1)^4
   if (denom4 < 1e-20) {
@@ -425,7 +434,7 @@ delta_method_ses <- function(sigma, rho, V_eta, n, l, endog_idx = c(1L, 2L)) {
     )
     omega_se <- if (omega_var >= 0) sqrt(omega_var) else NA_real_
   }
-  
+
   list(sigma_se = sigma_se, rho_se = rho_se, omega_se = omega_se,
        delta_mat = delta_mat)
 }
@@ -455,28 +464,59 @@ kleibergen_paap_F <- function(endog, Z, weights = NULL) {
   # endog: n x k_endog matrix of endogenous regressors (here x1, x2)
   # Z: n x l matrix of instruments (excluded instruments + any included exog)
   # Returns rk Wald F-stat
-  
+
   endog <- as.matrix(endog)
   Z <- as.matrix(Z)
   n <- nrow(endog)
   k_endog <- ncol(endog)
-  l <- ncol(Z)
-  
+
   if (!is.null(weights)) {
     w_sqrt <- sqrt(weights * n / sum(weights))
     endog <- endog * w_sqrt
     Z <- Z * w_sqrt
   }
-  
+
+  # G3 FIX (v0.4.1): partial the constant out of both the endogenous block
+  # and the instruments before the Cragg-Donald computation. In the normal
+  # cell the reference exporter's all-zero rows have been dropped, so the
+  # exporter dummies sum to the ones vector: the constant lies inside
+  # span(Z) and the EFFECTIVE number of excluded instruments is
+  # ncol(Z) - 1. Previously the statistic was computed on unpartialled
+  # matrices (inflating Pi'Z'Z Pi by the means component) and divided by
+  # ncol(Z) (deflating it), and the Stock-Yogo lookup used ncol(Z)
+  # (lenient by one row). ivreg2 -- the reference implementation in the
+  # G&S replication -- partials included exogenous regressors and drops
+  # one collinear dummy automatically, so this also restores fidelity to
+  # the Stata behaviour. The constant direction in the weighted metric is
+  # w_sqrt * 1 (plain ones when unweighted).
+  cvec <- if (!is.null(weights)) w_sqrt else rep(1, n)
+  ones_coef <- tryCatch(qr.coef(qr(Z), cvec), error = function(e) NULL)
+  spans_const <- !is.null(ones_coef) && !anyNA(ones_coef) &&
+    max(abs(Z %*% ones_coef - cvec)) < 1e-8
+  if (spans_const) {
+    proj_out <- function(M) M - cvec %*% (crossprod(cvec, M) / sum(cvec^2))
+    endog <- proj_out(endog)
+    Zp <- proj_out(Z)
+    qz <- qr(Zp)
+    r <- qz$rank
+    if (r < 1L) return(NA_real_)
+    Z <- Zp[, qz$pivot[seq_len(r)], drop = FALSE]  # independent columns; span unchanged
+    l <- r                        # effective excluded-instrument count
+    n_inst_total <- r + 1L        # + the partialled constant
+  } else {
+    l <- ncol(Z)
+    n_inst_total <- l
+  }
+
   # First-stage OLS: endog = Z Pi + V
   ZtZ <- crossprod(Z)
   ZtZ_inv <- tryCatch(solve(ZtZ), error = function(e) NULL)
   if (is.null(ZtZ_inv)) return(NA_real_)
-  
+
   Pi_hat <- ZtZ_inv %*% crossprod(Z, endog)        # l x k_endog
   V_hat <- endog - Z %*% Pi_hat                     # n x k_endog (first-stage resid)
-  Sigma_VV <- crossprod(V_hat) / (n - l)            # k_endog x k_endog
-  
+  Sigma_VV <- crossprod(V_hat) / (n - n_inst_total) # k_endog x k_endog
+
   # B7 FIX (v0.3.0): the Stock-Yogo critical values tabulated above are for
   # the MINIMUM-EIGENVALUE Cragg-Donald statistic. The previous trace-form
   # statistic averages over the endogenous directions, so one weakly
@@ -496,7 +536,7 @@ kleibergen_paap_F <- function(endog, Z, weights = NULL) {
                       error = function(e) NULL)
   if (is.null(eigvals)) return(NA_real_)
   F_kp <- min(eigvals) / l
-  
+
   F_kp
 }
 
@@ -510,17 +550,17 @@ hansen_J <- function(u_hat, Z, weights = NULL) {
   # u_hat: residuals from LIML estimation
   # Z: instrument matrix
   # J ~ chi^2(l - k_endog) under correct specification
-  
+
   u_hat <- as.numeric(u_hat)
   Z <- as.matrix(Z)
   n <- length(u_hat)
-  
+
   if (!is.null(weights)) {
     w_sqrt <- sqrt(weights * n / sum(weights))
     u_hat <- u_hat * w_sqrt
     Z <- Z * w_sqrt
   }
-  
+
   # J = u' P_Z u / sigma2_u
   ZtZ <- crossprod(Z)
   Ztu <- crossprod(Z, u_hat)
@@ -576,15 +616,15 @@ hliml_core <- function(Y, X_ohx, Z, sigma_start, omega_start, theta0_start = 0,
   # Z: n x l instruments (exporter dummies + ones)
   # sigma_start, omega_start: starting values from Step 2
   # theta0_start: starting value for constant (from Step 2 cons_w)
-  
+
   Y <- as.numeric(Y)
   X_ohx <- as.matrix(X_ohx)
   Z <- as.matrix(Z)
   n <- length(Y)
-  
+
   if (ncol(X_ohx) != 3)
     stop("hliml_core expects X_ohx with 3 columns in order [ones, x1, x2]")
-  
+
   # Project matrix: P = Z (Z'Z)^-1 Z'
   ZtZ <- crossprod(Z)
   ZtZ_chol <- tryCatch(chol(ZtZ), error = function(e) NULL)
@@ -592,12 +632,12 @@ hliml_core <- function(Y, X_ohx, Z, sigma_start, omega_start, theta0_start = 0,
     return(list(status = "hliml_fail_singular_ZtZ"))
   ZtZ_inv <- chol2inv(ZtZ_chol)
   P <- Z %*% ZtZ_inv %*% t(Z)   # n x n
-  
+
   # Pre-compute P - diag(P) used in objective
   diag_P <- diag(P)
   P_minus_diag <- P
   diag(P_minus_diag) <- 0       # zero out diagonal in-place
-  
+
   # Objective: Q(d) = A'(P - diag(P))A / A'A
   obj_fun <- function(d) {
     theta0 <- d[1]
@@ -619,13 +659,13 @@ hliml_core <- function(Y, X_ohx, Z, sigma_start, omega_start, theta0_start = 0,
     if (!is.finite(Q)) return(.Machine$double.xmax)
     Q
   }
-  
+
   # Starting values from Step 2
   d_start <- c(theta0_start, sigma_start, omega_start)
   # Clamp starting values into the feasible interior
   if (d_start[2] <= 1) d_start[2] <- 1.5
   if (d_start[3] <= 0) d_start[3] <- 0.1
-  
+
   # Optimize with BFGS. Mata uses Newton-Raphson; BFGS is the practical
   # R equivalent and avoids analytic Hessian.
   opt <- tryCatch(
@@ -633,27 +673,27 @@ hliml_core <- function(Y, X_ohx, Z, sigma_start, omega_start, theta0_start = 0,
           control = list(maxit = control$maxit, reltol = control$reltol)),
     error = function(e) NULL
   )
-  
+
   if (is.null(opt) || opt$convergence != 0)
     return(list(status = "hliml_fail_no_convergence",
                 d_start = d_start,
                 last_value = if (!is.null(opt)) opt$value else NA))
-  
+
   d_hat <- opt$par
   theta0_hat <- d_hat[1]
   sigma_hat  <- d_hat[2]
   omega_hat  <- d_hat[3]
-  
+
   # Recompute residuals at the optimum
   denom <- (1 + omega_hat) * (sigma_hat - 1)
   theta1 <- omega_hat / denom
   theta2 <- (omega_hat * (sigma_hat - 2) - 1) / denom
   theta_eq <- c(theta0_hat, theta1, theta2)
   e_hat <- as.numeric(Y - X_ohx %*% theta_eq)
-  
+
   # rho = omega * (sigma - 1) / (1 + sigma * omega)   per GS line 142
   rho_hat <- omega_hat * (sigma_hat - 1) / (1 + sigma_hat * omega_hat)
-  
+
   list(
     status = "ok",
     sigma = sigma_hat,
@@ -704,7 +744,7 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   # e_hat: residuals from HLIML
   # P, diag_P, P_minus_diag: precomputed projection and its diagonal pieces
   # sigma, omega, rho: HLIML point estimates
-  
+
   Y <- as.numeric(Y)
   X_ohx <- as.matrix(X_ohx)
   Z <- as.matrix(Z)
@@ -712,7 +752,7 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   n <- length(Y)
   l <- ncol(Z)
   k <- ncol(X_ohx)
-  
+
   # Step 1: alpha = min eig of (X_circle'X_circle)^-1 (X_circle' P_diff X_circle)
   X_circle <- cbind(Y, X_ohx)                # n x (1 + k) = n x 4
   XcXc <- crossprod(X_circle)
@@ -725,13 +765,13 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   if (is.null(eig))
     return(list(status = "hncs_fail_eig"))
   alpha <- min(Re(eig))
-  
+
   # Step 2: P_circle = P - diag(P) - alpha * I
   P_circle <- P_minus_diag - alpha * diag(n)
-  
+
   # Step 3: H_bar = X' P_circle X
   H_bar <- crossprod(X_ohx, P_circle %*% X_ohx)
-  
+
   # Step 4: X_bar = X - e_hat * (e_hat'X / e_hat'e_hat)
   # i.e., residualize X against e_hat
   ee <- as.numeric(crossprod(e_hat))
@@ -740,7 +780,7 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   eX <- as.numeric(crossprod(e_hat, X_ohx))  # length k (was 1 x k matrix)
   # Outer product: e_hat (n) outer with eX/ee (k) gives n x k matrix
   X_bar <- X_ohx - outer(as.numeric(e_hat), eX / ee)  # n x k
-  
+
   # Step 5a: sigma_first vectorized
   # sigma_first[a,b] = sum_i [(PXb)_i (PXb)_i' - P_ii Xb_i (PXb)_i' - P_ii (PXb)_i Xb_i'] * e_i^2
   #                  = sum_i e_i^2 (PXb_i)(PXb_i)'
@@ -755,7 +795,7 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   term2a <- crossprod(X_bar, PiiE2 * PXb)     # k x k
   term2  <- term2a + t(term2a)
   sigma_first <- term1 - term2
-  
+
   # Step 5b: sigma_second vectorized
   # sigma_second[a,b] = sum_ij P_ij^2 Xb_i,a Xb_j,b e_i e_j
   # Let M = diag(e) %*% Xb so M[i,a] = e_i Xb_{i,a}
@@ -763,10 +803,10 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   M_mat <- e_hat * X_bar                       # n x k (e_hat is recycled by row)
   P_sq <- P * P                                # element-wise square, n x n
   sigma_second <- crossprod(M_mat, P_sq %*% M_mat)  # k x k
-  
+
   # Total sigma_bar
   sigma_bar <- sigma_first + sigma_second
-  
+
   # Step 6: v_bar = H_bar^-1 * sigma_bar * H_bar^-1
   # NOTE: This deliberately deviates from Stata's GS_Estimation.do which has
   # v_bar = (1/n) * H_bar^-1 * sigma_bar * H_bar^-1, AND then divides delta
@@ -780,12 +820,12 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   if (is.null(H_bar_inv))
     return(list(status = "hncs_fail_singular_Hbar"))
   v_bar <- H_bar_inv %*% sigma_bar %*% H_bar_inv
-  
+
   # Heteroskedasticity-adjusted F and J statistics (lines 178, 180)
   ePde <- as.numeric(crossprod(e_hat, P_minus_diag %*% e_hat))
   ee2 <- as.numeric(crossprod(e_hat^2))
   F_het <- l * ePde / ee2
-  
+
   # J_h: e_hat' P_diff e_hat / sqrt((1/l) (e_hat')^2 P_diff^2 e_hat^2) + l
   # Translating Mata's element-wise notation:
   # (e_hat')^2 elementwise = e_hat^2 (as row vector)
@@ -796,13 +836,13 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
   Pd_sq <- P_minus_diag * P_minus_diag
   inner <- as.numeric(t(e_hat2) %*% Pd_sq %*% e_hat2) / l
   J_h <- ePde / sqrt(max(inner, 1e-30)) + l
-  
+
   # Now delta method: V_eta is in (theta0, theta1, theta2) order = (cons, x1, x2)
   # Stata code uses indices 2,3 of e(V), which corresponds to the (x1, x2)
   # submatrix when e(V) is ordered [_cons, x1, x2]. We follow Stata convention
   # here since X_ohx is [ones, x1, x2].
   V_sub <- v_bar[2:3, 2:3, drop = FALSE]
-  
+
   # Jacobian J = d(sigma, rho) / d(theta1, theta2) — same closed form as in
   # delta_method_ses (the theta1/theta2 map is identical to eta_1/eta_2).
   # B4 FIX (v0.3.0): previous matrix was the elementwise-absolute transpose;
@@ -813,15 +853,15 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
     (1 - 2 * rho) * (sigma - 1)^2 * (1 - rho)^2,         # d rho   / d theta1
     2 * rho * (sigma - 1) * (1 - rho)^2                  # d rho   / d theta2
   ), nrow = 2, byrow = TRUE)
-  
+
   # Delta method: standard form J V J' (no /(n-l) division; see note above
   # at v_bar construction).
   delta_mat <- d_sub %*% V_sub %*% t(d_sub)
   diag(delta_mat) <- pmax(diag(delta_mat), 0)
-  
+
   sigma_se <- sqrt(delta_mat[1, 1])
   rho_se   <- sqrt(delta_mat[2, 2])
-  
+
   # Omega SE via further delta method, same formula as Step 2
   denom4 <- (sigma * (rho - 1) + 1)^4
   if (denom4 < 1e-20) {
@@ -834,7 +874,7 @@ hncs_sandwich_se <- function(Y, X_ohx, Z, e_hat, P, diag_P, P_minus_diag,
     )
     omega_se <- if (omega_var >= 0) sqrt(omega_var) else NA_real_
   }
-  
+
   list(
     status = "ok",
     sigma_se = sigma_se,
@@ -872,18 +912,18 @@ estimate_cell_liml <- function(cell_df,
                                omega_start_cap = 10,
                                omega_start_floor = 0.001,
                                rho_clamp = c(0.0001, 0.999)) {
-  
+
   # Drop missing
   cell_df <- cell_df[complete.cases(cell_df[, c("y", "x1", "x2", "exporter")]), ]
   cell_df <- cell_df[!(cell_df$y == 0 & cell_df$x1 == 0 & cell_df$x2 == 0), ]
-  
+
   n <- nrow(cell_df)
   if (n < 5) return(list(status = "fail_insufficient_obs", n = n))
-  
+
   exporters_unique <- unique(cell_df$exporter)
   if (length(exporters_unique) < 3) return(list(status = "fail_too_few_exporters",
                                                 n_exporters = length(exporters_unique)))
-  
+
   # Build exporter dummies, excluding the reference exporter as the omitted category
   # NOTE: in the Stata code (GS_Estimation.do line 18), the instruments are
   # `c_I_*` which are dummies for all products *except* the reference.
@@ -895,12 +935,12 @@ estimate_cell_liml <- function(cell_df,
   non_ref_exporters <- setdiff(exporters_unique, ref_exporter)
   if (length(non_ref_exporters) < 2)
     return(list(status = "fail_too_few_nonref_exporters"))
-  
+
   # Construct dummies
   exporter_dummies <- sapply(non_ref_exporters, function(e) as.numeric(cell_df$exporter == e))
   if (is.null(dim(exporter_dummies))) exporter_dummies <- matrix(exporter_dummies, ncol = 1)
   colnames(exporter_dummies) <- paste0("c_I_", non_ref_exporters)
-  
+
   Y <- cell_df$y
   # Stata convention for ivreg2: regressors are ordered [endogenous, included_exog, constant]
   # Our endogenous regressors are x1 and x2; constant is the only included exogenous.
@@ -918,25 +958,32 @@ estimate_cell_liml <- function(cell_df,
   # add one back. We detect this dynamically.
   any_ref <- any(cell_df$exporter == ref_exporter)
   Z <- if (any_ref) cbind(exporter_dummies, ones = 1) else exporter_dummies
-  
-  l_excluded <- ncol(exporter_dummies)  # number of excluded instruments
-  
+
+  l_excluded <- ncol(exporter_dummies)  # raw dummy count
+  # G3 (v0.4.1): once the reference exporter's all-zero rows are dropped
+  # (the normal case, any_ref == FALSE), the dummies span the constant and
+  # the EFFECTIVE excluded-instrument count is one less than the dummy
+  # count. n_exp_total is the supplier count including the reference --
+  # the row convention G&S's own screening merges Stock-Yogo CVs on.
+  l_eff_excluded <- if (any_ref) l_excluded else l_excluded - 1L
+  n_exp_total    <- length(exporters_unique) + (if (any_ref) 0L else 1L)
+
   # ---- STEP 1: Unweighted Fuller(1) LIML for starting values + residuals ----
   fit1 <- fuller_liml_core(Y, X, Z, weights = NULL, fuller_alpha = fuller_alpha,
                            endog_idx = endog_idx)
   if (fit1$status != "ok")
     return(list(status = paste0("step1_", fit1$status), n = n))
-  
+
   eta1 <- fit1$eta  # (eta_x1, eta_x2, const)
   # In the new ordering, eta1[1] = coef on x1, eta1[2] = coef on x2, eta1[3] = const
   inv1 <- invert_structural(eta1[1], eta1[2])
-  
+
   # Step 1 is primarily a residual generator + source of starting values for
   # Step 2. If its structural inversion fails (e.g., eta1 < 0), we still
   # have valid Step 1 residuals and can proceed to Step 2. The cap logic
   # below handles NA starting values (replaces them with caps/floors), so
   # Step 1 inversion failure does NOT abort cell estimation.
-  
+
   # Apply starting-value caps from GS_Estimation.do lines 36-41
   # NB: invert_structural can return NA for any component when constraints
   # are violated. Treat NA as "use cap" rather than letting the comparison
@@ -950,7 +997,7 @@ estimate_cell_liml <- function(cell_df,
     omega_start <- omega_start_floor
   if (is.na(rho_start)) rho_start <- mean(rho_clamp)
   rho_start <- pmin(pmax(rho_start, rho_clamp[1]), rho_clamp[2])
-  
+
   # ---- STEP 2: Heteroskedasticity correction ----
   # Regress squared residuals on exporter dummies (no constant) to get per-obs variance
   u2 <- fit1$u_hat^2
@@ -965,9 +1012,9 @@ estimate_cell_liml <- function(cell_df,
   pos_u2 <- u2[u2 > 0]
   u2_floor <- if (length(pos_u2) > 0L) max(1e-10, min(pos_u2) * 0.01) else 1e-10
   u2_pred <- pmax(u2_pred, u2_floor)
-  
+
   weights_step2 <- 1 / u2_pred
-  
+
   fit2 <- fuller_liml_core(Y, X, Z, weights = weights_step2,
                            fuller_alpha = fuller_alpha, endog_idx = endog_idx)
   if (fit2$status != "ok") {
@@ -978,17 +1025,17 @@ estimate_cell_liml <- function(cell_df,
                 sigma_se = NA, omega_se = NA, rho_se = NA,
                 step1_eta = eta1, fallback_used = TRUE))
   }
-  
+
   eta2 <- fit2$eta
   # eta2[1] = coef on x1, eta2[2] = coef on x2, eta2[3] = const
   inv2 <- invert_structural(eta2[1], eta2[2])
-  
+
   # Step 2 inversion failure is non-fatal: HLIML doesn't depend on Step 2's
   # structural inversion (it parameterizes directly in sigma/omega space and
   # uses the eta vector as a starting point for BFGS). If inv2 fails, we
   # produce NA Step 2 SEs but still run HLIML.
   inv2_ok <- !is.na(inv2$sigma)
-  
+
   # Standard errors via delta method using ROBUST V_eta from step 2.
   # Skip if Step 2 inversion failed; we'll rely on HLIML SEs in that case.
   if (inv2_ok) {
@@ -997,7 +1044,7 @@ estimate_cell_liml <- function(cell_df,
   } else {
     ses <- list(sigma_se = NA_real_, omega_se = NA_real_, rho_se = NA_real_)
   }
-  
+
   # Weak-instrument F (Kleibergen-Paap) on the weighted regression
   F_kp <- kleibergen_paap_F(cbind(cell_df$x1, cell_df$x2),
                             Z, weights = weights_step2)
@@ -1010,17 +1057,27 @@ estimate_cell_liml <- function(cell_df,
   # form, not a robust Hansen J; see hansen_J's header.)
   w_sqrt_s2 <- sqrt(weights_step2 * n / sum(weights_step2))
   J_stat <- hansen_J(fit2$u_hat, Z * w_sqrt_s2, weights = NULL)
-  J_dof <- l_excluded - 2  # 2 endogenous regressors
+  # G3 FIX (v0.4.1): overidentifying restrictions = effective excluded
+  # instruments minus 2 endogenous regressors = J_nr - 3 in the normal
+  # (reference-rows-dropped) case, previously J_nr - 2. In particular a
+  # 3-exporter cell is JUST-identified: the Sargan test does not exist,
+  # J_dof = 0, and sargan_pass is NA rather than a mechanical pass.
+  J_dof <- l_eff_excluded - 2  # 2 endogenous regressors
   J_pval <- if (J_dof > 0) 1 - pchisq(J_stat, df = J_dof) else NA_real_
-  
-  # Stock-Yogo test (uses number of *suppliers* = number of exporter dummies)
-  # F8 (v0.4.0): screen at both the strict 0.10 maximal-size threshold
-  # (headline, back-compatible) and G&S (2024)'s 0.25 rule of thumb.
-  sy   <- stockyogo_pass(F_kp, n_excluded_instruments = l_excluded,
+
+  # Stock-Yogo screens.
+  # F8 (v0.4.0): both the strict 0.10 maximal-size threshold (headline)
+  # and G&S (2024)'s 0.25 rule of thumb.
+  # G3 (v0.4.1): the headline row is the EFFECTIVE excluded count
+  # (l_eff_excluded = J_nr - 1 in the normal case); the gs25 row follows
+  # G&S's own published convention -- their Step_5/error_construct merge
+  # the CV table at the TOTAL supplier count including the reference
+  # (n_exp_total) -- so gs25 pass rates are comparable to their paper.
+  sy   <- stockyogo_pass(F_kp, n_excluded_instruments = l_eff_excluded,
                          size_threshold = 0.10)
-  sy25 <- stockyogo_pass(F_kp, n_excluded_instruments = l_excluded,
+  sy25 <- stockyogo_pass(F_kp, n_excluded_instruments = n_exp_total,
                          size_threshold = 0.25)
-  
+
   # ---- STEP 3: HLIML (jackknife LIML) ----
   # GS_Estimation.do lines 94-198. Rescales y, x1, x2, ones by 1/shat
   # before HLIML estimation (lines 94-96). This is the heteroskedasticity
@@ -1033,7 +1090,7 @@ estimate_cell_liml <- function(cell_df,
                    x2   = cell_df$x2 / shat)   # ORDER MATTERS: [ones, x1, x2]
   # Z stays unscaled — exporter dummies aren't divided by shat in Stata code
   # (only y, x1, x2, ones are rescaled in the foreach loop).
-  
+
   # Starting values from Step 2's weighted LIML estimates
   # cons_w = eta2[3] (constant) in our X = [x1, x2, ones] ordering
   cons_w <- eta2[3]
@@ -1042,19 +1099,19 @@ estimate_cell_liml <- function(cell_df,
   # Clamp omega_w to be strictly positive for HLIML start
   if (is.na(omega_w) || omega_w <= 0) omega_w <- 0.1
   if (is.na(sigma_w) || sigma_w <= 1) sigma_w <- 1.5
-  
+
   hliml_fit <- hliml_core(Y_h, X_h_ohx, Z,
                           sigma_start = sigma_w,
                           omega_start = omega_w,
                           theta0_start = cons_w)
-  
+
   # Decide which estimate to report based on feasibility-adjustment logic
   # (GS_Estimation.do lines 200-214)
   hliml_status <- hliml_fit$status
   sigma_hliml <- if (hliml_status == "ok") hliml_fit$sigma else NA_real_
   omega_hliml <- if (hliml_status == "ok") hliml_fit$omega else NA_real_
   rho_hliml   <- if (hliml_status == "ok") hliml_fit$rho   else NA_real_
-  
+
   # Compute HLIML SEs if HLIML converged
   if (hliml_status == "ok") {
     se_h <- tryCatch(
@@ -1076,7 +1133,7 @@ estimate_cell_liml <- function(cell_df,
   rho_hliml_se   <- if (isTRUE(se_h$status == "ok")) se_h$rho_se   else NA_real_
   F_het <- if (isTRUE(se_h$status == "ok")) se_h$F_het else NA_real_
   J_h   <- if (isTRUE(se_h$status == "ok")) se_h$J_h   else NA_real_
-  
+
   # ---- Feasibility-adjustment (lines 200-214) ----
   # The final reported (sigma, omega, rho) follows this priority:
   #  1. HLIML if admissible (sigma > 1, omega > 0, sigma <= 10 implied by start cap)
@@ -1099,13 +1156,13 @@ estimate_cell_liml <- function(cell_df,
   final_omega_se <- omega_hliml_se
   final_rho_se   <- rho_hliml_se
   final_source <- "hliml"
-  
+
   # Check HLIML admissibility - must have admissible sigma AND omega
   hliml_admissible <- !is.na(sigma_hliml) && sigma_hliml > 1 &&
     sigma_hliml < sigma_start_cap &&
     !is.na(omega_hliml) && omega_hliml > 0 &&
     omega_hliml < omega_start_cap
-  
+
   if (!hliml_admissible) {
     # Try Step 2 fallback, applying the same admissibility caps as HLIML.
     # B9 FIX (v0.3.0): track sigma/omega capping in two explicit booleans
@@ -1168,7 +1225,7 @@ estimate_cell_liml <- function(cell_df,
     sigma_capped <- FALSE
     omega_capped <- FALSE
   }
-  
+
   # Final sanity: if both HLIML and Step 2 fallback failed, mark as failed.
   if (is.na(final_sigma) && is.na(final_omega)) {
     return(list(
@@ -1183,7 +1240,7 @@ estimate_cell_liml <- function(cell_df,
       lambda_min = fit2$lambda_min
     ))
   }
-  
+
   list(
     status = "ok",
     n = n,
@@ -1227,9 +1284,26 @@ estimate_cell_liml <- function(cell_df,
     stockyogo_pass_gs25 = if (!is.null(sy25)) sy25$pass else NA,
     stockyogo_cv_gs25 = if (!is.null(sy25)) sy25$cv else NA,
     sargan_pass = if (!is.na(J_pval)) J_pval > 0.2 else NA,
+    # G3 (v0.4.1): G&S's published overid screen is NOT the Step-2 Sargan
+    # above -- error_construct.do screens the HLIML-residual Hausman-Newey
+    # J (our jstat_h) at chi-square dof (total suppliers - 3) using the
+    # CDF < 0.8 rule (equivalently conventional p > 0.2). Reproduce it so
+    # pass rates are comparable to their paper.
+    jstat_h_pval_gs = {
+      .df <- n_exp_total - 3L
+      if (!is.na(J_h) && .df > 0L) 1 - pchisq(J_h, df = .df) else NA_real_
+    },
+    sargan_pass_gs = {
+      .df <- n_exp_total - 3L
+      if (!is.na(J_h) && .df > 0L) (1 - pchisq(J_h, df = .df)) > 0.2 else NA
+    },
+    # G3 (v0.4.1): gs_pass_both now pairs the two G&S-protocol screens
+    # (previously sy25 with the internal Sargan). The internal pair remains
+    # available as stockyogo_pass && sargan_pass.
     gs_pass_both = {
       .p25 <- if (!is.null(sy25)) sy25$pass else NA
-      .sp  <- if (!is.na(J_pval)) J_pval > 0.2 else NA
+      .df <- n_exp_total - 3L
+      .sp <- if (!is.na(J_h) && .df > 0L) (1 - pchisq(J_h, df = .df)) > 0.2 else NA
       if (is.na(.p25) || is.na(.sp)) NA else (.p25 && .sp)
     },
     # Step-specific estimates for diagnostic / comparison purposes
@@ -1286,9 +1360,9 @@ prepare_cell_moments <- function(trade_df,
                                  value_col = "value",
                                  quantity_col = "quantity",
                                  min_year = NULL) {
-  
+
   use_dt <- requireNamespace("data.table", quietly = TRUE)
-  
+
   if (use_dt) {
     d <- data.table::data.table(
       exporter = trade_df[[exporter_col]],
@@ -1425,12 +1499,12 @@ estimate_elasticities <- function(trade_df,
                                   quantity_col = "quantity",
                                   min_year = NULL,
                                   fuller_alpha = 1) {
-  
+
   prep <- prepare_cell_moments(trade_df, exporter_col, time_col,
                                value_col, quantity_col, min_year)
   if (prep$n_obs < 5)
     return(list(status = "fail_prepare_insufficient_obs", prep = prep))
-  
+
   fit <- estimate_cell_liml(prep$moments,
                             ref_exporter = prep$ref_exporter,
                             fuller_alpha = fuller_alpha)

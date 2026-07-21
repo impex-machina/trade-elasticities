@@ -24,7 +24,8 @@ double het_obj_rcpp(NumericVector d,
                     NumericVector exp_Y, NumericMatrix exp_X,
                     IntegerVector exp_jmap,
                     NumericVector exp_sig_V, NumericVector exp_gam_V,
-                    NumericVector wt_imp, NumericVector wt_exp) {
+                    NumericVector wt_imp, NumericVector wt_exp,
+                    bool paper_exact_eq11 = false) {
 
   double sig   = d[0];
   double gam_k = d[1];
@@ -80,12 +81,20 @@ double het_obj_rcpp(NumericVector d,
     double inv_1pgI = 1.0 / (1.0 + gam_I);
     double inv_1pgV = 1.0 / (1.0 + gam_V);
 
+    // G1 FIX (v0.4.1): printed Eq. (11) x5/x6 signs are wrong -- the product
+    // of the paper's own Eq. (8) and Eq. (9) residuals yields these two
+    // coefficients NEGATED (all seven others and the stated error term match
+    // exactly). s56 = -1.0 applies the correction; paper_exact_eq11 = true
+    // reproduces the printed (v0.4.0) behaviour.
+    // See docs/methodology/eq11_sign_correction.md.
+    const double s56 = paper_exact_eq11 ? 1.0 : -1.0;
+
     double pred = (gam_I * inv_1pgI / sm1)                                         * exp_X(m, 0) +
                   ((gam_I * (sig - 2.0) - 1.0) * inv_1pgI / sm1)                   * exp_X(m, 1) +
                   (gam_V * inv_1pgV / sm1)                                          * exp_X(m, 2) +
                   ((1.0 - gam_V * (sig - 2.0)) * inv_1pgV / sm1)                   * exp_X(m, 3) +
-                  ((1.0 - gam_V * (sig_V - 2.0)) * inv_1pgV / sm1)                 * exp_X(m, 4) +
-                  ((gam_I * (sig_V - 2.0) - 1.0) * inv_1pgI / sm1)                 * exp_X(m, 5) +
+                  (s56 * (1.0 - gam_V * (sig_V - 2.0)) * inv_1pgV / sm1)           * exp_X(m, 4) +
+                  (s56 * (gam_I * (sig_V - 2.0) - 1.0) * inv_1pgI / sm1)           * exp_X(m, 5) +
                   (-(gam_V * (1.0 + gam_I) + gam_I * (1.0 + gam_V)) *
                      inv_1pgI * inv_1pgV / sm1)                                     * exp_X(m, 6) +
                   ((sig - sig_V) / sm1)                                             * exp_X(m, 7) +

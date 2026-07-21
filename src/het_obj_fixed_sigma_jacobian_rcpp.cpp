@@ -47,7 +47,8 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
     NumericVector exp_Y, NumericMatrix exp_X,
     IntegerVector exp_jmap,
     NumericVector exp_sig_V, NumericVector exp_gam_V,
-    NumericVector wt_imp, NumericVector wt_exp) {
+    NumericVector wt_imp, NumericVector wt_exp,
+    bool paper_exact_eq11 = false) {
 
   // d[0]    = gamma_k
   // d[1..J] = gamma_j
@@ -154,6 +155,14 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
   //  Reason: exp_jmap is 1-based into the full-d (sigma, gamma_k, gamma_j...).
   //  Subtract 1 for 0-based, then 1 more because sigma was removed.
   // ====================================================================
+  // G1 FIX (v0.4.1): printed Eq. (11) x5/x6 signs are wrong -- the product
+  // of the paper's own Eq. (8) and Eq. (9) residuals yields these two
+  // coefficients NEGATED (all seven others and the stated error term match
+  // exactly). s56 = -1.0 applies the correction; paper_exact_eq11 = true
+  // reproduces the printed (v0.4.0) behaviour.
+  // See docs/methodology/eq11_sign_correction.md.
+  const double s56 = paper_exact_eq11 ? 1.0 : -1.0;
+
   for (int m = 0; m < N_exp; m++) {
     int col_I = exp_jmap[m] - 2;  // 0-based column index in theta
     double gam_I = d[col_I];
@@ -170,8 +179,8 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
         ((gam_I * (sig - 2.0) - 1.0) * inv_1pgI / sm1)                        * exp_X(m, 1) +
         (gam_V * inv_1pgV / sm1)                                               * exp_X(m, 2) +
         ((1.0 - gam_V * (sig - 2.0)) * inv_1pgV / sm1)                        * exp_X(m, 3) +
-        ((1.0 - gam_V * (sig_V - 2.0)) * inv_1pgV / sm1)                      * exp_X(m, 4) +
-        ((gam_I * (sig_V - 2.0) - 1.0) * inv_1pgI / sm1)                      * exp_X(m, 5) +
+        (s56 * (1.0 - gam_V * (sig_V - 2.0)) * inv_1pgV / sm1)                * exp_X(m, 4) +
+        (s56 * (gam_I * (sig_V - 2.0) - 1.0) * inv_1pgI / sm1)                * exp_X(m, 5) +
         (-(gam_V * (1.0 + gam_I) + gam_I * (1.0 + gam_V)) *
             inv_1pgI * inv_1pgV / sm1)                                        * exp_X(m, 6) +
         ((sig - sig_V) / sm1)                                                  * exp_X(m, 7) +
@@ -186,13 +195,13 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
     // Verified symbolic forms:
     //   X0:  1 / ((1+gI)^2 (sigma-1))
     //   X1:  1 / (1+gI)^2
-    //   X5:  (sigma_V - 1) / ((1+gI)^2 (sigma-1))
+    //   X5:  s56 * (sigma_V - 1) / ((1+gI)^2 (sigma-1))   [G1: sign tracks c6]
     //   X6: -1 / ((1+gI)^2 (sigma-1))
     //   X2,X3,X4,X7,X8: 0
     double dpred_dgI =
         exp_X(m, 0) * inv_1pgI_sq / sm1 +
         exp_X(m, 1) * inv_1pgI_sq +
-        exp_X(m, 5) * (sig_V - 1.0) * inv_1pgI_sq / sm1 -
+        s56 * exp_X(m, 5) * (sig_V - 1.0) * inv_1pgI_sq / sm1 -
         exp_X(m, 6) * inv_1pgI_sq / sm1;
 
     jac_row[triplet] = row_idx;

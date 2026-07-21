@@ -121,6 +121,30 @@ format_prop_pct <- function(p) sprintf("%.1f%%", 100 * p)
 # Generic numeric to N significant figures (default 3): 2.875208 -> "2.875"
 format_num <- function(x, digits = 3L) formatC(x, digits = digits, format = "f")
 
+# --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
+# One rendered sentence for the validation section, built from
+# results/stage2_dgp_summary.json. NULL-tolerant on the fields added in
+# v0.4.1 (test_D / test_E) so the README builds against both the v0.4.0
+# import-only artifact and the extended import+export one.
+
+dgp_harness_line <- function(dgp) {
+  if (is.null(dgp)) {
+    return(paste0("not yet run -- generate with ",
+                  "`Rscript validation/stage2_structural_dgp.R`."))
+  }
+  verdict  <- if (isTRUE(req(dgp, "overall_pass"))) "**PASS**" else "**FAIL**"
+  meta     <- req(dgp, "meta")
+  coverage <- if (!is.null(dgp$test_D))
+    "import + export sides, Eqs. (10) and (11) with the G1 sign correction"
+  else
+    "import side only, Eq. (10)"
+  quick_note <- if (isTRUE(meta$quick)) " QUICK run -- not release grade;" else ""
+  sprintf("%s at rev `%s`, %s (%s%s; seed %s). Regenerate with `Rscript validation/stage2_structural_dgp.R`.",
+          verdict, req(meta, "git_rev"),
+          substr(req(meta, "timestamp"), 1, 10),
+          quick_note, coverage, req(meta, "seed"))
+}
+
 # --- Asymmetry conditional -------------------------------------------------
 # stage2b$n_importers_asymmetry_vs_stage1 = stage1.n_importers - stage2b.n_importers.
 # Currently 1. Prose has to change shape on 0 and >1; the helper encapsulates
@@ -155,6 +179,7 @@ render_env$req <- req
 render_env$format_int <- format_int
 render_env$format_pct <- format_pct
 render_env$format_prop_pct <- format_prop_pct
+render_env$dgp_harness_line <- dgp_harness_line
 render_env$format_num <- format_num
 render_env$asymmetry_phrase <- asymmetry_phrase
 
