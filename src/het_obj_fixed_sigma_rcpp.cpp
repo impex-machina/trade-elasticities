@@ -63,7 +63,17 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
 
   double SSR_imp = 0.0;
 
-  for (int j = 0; j < J; j++) {
+  // G6 FIX (v0.4.1 hotfix): bound the import loop by the ROW count, not the
+  // parameter count. The validation harness (Test D) legitimately calls this
+  // objective with an empty import block (export-only residuals); the old
+  // J-bounded loop then read imp_Y/imp_X/wt_imp out of bounds -- benign on
+  // Linux heaps, an access violation (silent Rscript death) on Windows.
+  // Production always supplies one import row per gamma_j, so behaviour
+  // there is unchanged.
+  int N_imp = imp_Y.size();
+  if (N_imp > J) stop("het_obj_fixed_sigma_rcpp: imp_Y has more rows than gamma parameters");
+
+  for (int j = 0; j < N_imp; j++) {
     double gam_j = d[j + 1];
     double inv_1pgj = 1.0 / (1.0 + gam_j);
 

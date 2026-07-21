@@ -104,6 +104,8 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
   //  So yes, for the j-th import obs (0-indexed), gamma_j = d[j+1].
   //  Column index in theta = j+1, NOT j.
   // ====================================================================
+  // G6 (v0.4.1 hotfix): defensive size check mirroring the objectives.
+  if (N_imp > J) stop("het_residuals_and_jacobian_fixed_sigma_rcpp: imp_Y has more rows than gamma parameters");
   for (int j = 0; j < N_imp; j++) {
     double gam_j        = d[j + 1];
     double inv_1pgj     = 1.0 / (1.0 + gam_j);
