@@ -83,6 +83,23 @@ for (path in json_files) {
 message(sprintf("build_readme.R: loaded %d JSON file(s) into r$%s",
                 length(r), paste(names(r), collapse = ", r$")))
 
+# --- Manifest file count ---------------------------------------------------
+# The repo-structure tree quotes how many published files the manifest
+# lists. Derive it from data/manifest.csv rather than hardcoding: a
+# hardcoded count in the template is exactly the drift class this
+# architecture exists to kill. (Pre-audit, the template said "12" while
+# the manifest held 11 rows; the hub's twelfth object is the unmanifested
+# zero-byte data/derived/.gitkeep, a git empty-dir placeholder.)
+
+MANIFEST_PATH <- "data/manifest.csv"
+if (!file.exists(MANIFEST_PATH)) {
+  message(sprintf("FATAL: manifest not found at %s (run from repo root)",
+                  MANIFEST_PATH))
+  quit(status = 3L)
+}
+manifest_n_files <- nrow(utils::read.csv(MANIFEST_PATH,
+                                         stringsAsFactors = FALSE))
+
 # --- Required-key wrapper: loud failure on NULL/NA -------------------------
 # Templates access fields via req() to get an informative error if a key is
 # missing or NA. Bare `r$stage1$nonexistent` silently returns NULL and would
@@ -191,6 +208,7 @@ render_env$format_prop_pct <- format_prop_pct
 render_env$dgp_harness_line <- dgp_harness_line
 render_env$format_num <- format_num
 render_env$asymmetry_phrase <- asymmetry_phrase
+render_env$manifest_n_files <- manifest_n_files
 
 rendered <- tryCatch(
   glue::glue(template_text,

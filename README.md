@@ -138,7 +138,7 @@ trade-elasticities/
 ├── data/
 │   ├── raw/           # BACI input (gitignored; not redistributed)
 │   ├── derived/       # published outputs (downloaded from HF; gitignored)
-│   └── manifest.csv   # the 12 published files, with SHA-256 checksums
+│   └── manifest.csv   # the 11 published data files, with SHA-256 checksums
 ├── docs/methodology/  # methodology write-up + three-pillar evidence base
 ├── inst/              # Grant & Soderbery (2024) reference PDF
 ├── results/           # generated summary JSONs feeding the README build
