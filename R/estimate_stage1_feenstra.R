@@ -17,7 +17,9 @@
 #  FEENSTRA (1994) SIGMA ESTIMATION
 #
 #  Import-side-only, 2-parameter (sigma, gamma_common) objective.
-#  Under homogeneity gamma_j = gamma_k, Eq (10) simplifies.
+#  Under homogeneity gamma_j = gamma_k, Eq (10) reduces exactly to
+#  Feenstra (1994)'s two-regressor form (footnote 12); see
+#  tests/testthat/test-feenstra-homogeneity-limit.R for the lock.
 # ===========================================================================
 
 feenstra_sigma_obj <- function(d, imp_Y, imp_X, wt_imp) {
@@ -29,7 +31,20 @@ feenstra_sigma_obj <- function(d, imp_Y, imp_X, wt_imp) {
   pred <- (g_frac / sm1)   * imp_X[, 1] +
           g_frac           * imp_X[, 2] +
           (-1 / sm1)       * imp_X[, 3] +
-          (g_frac^2 / sm1) * imp_X[, 4]
+          # F1 FIX (post-v0.4.1 audit): under homogeneity gamma_j = gamma_k
+          # the corrected Eq. (10) term-4 coefficient
+          # gam_j*(1+gam_k)/(gam_k*(1+gam_j)*(sigma-1)) collapses to
+          # 1/(sigma-1). The previous g_frac^2/sm1 here was the homogeneity
+          # limit of the pre-F1 transcription error -- it survived in this
+          # optional path after v0.4.0 corrected the production objectives
+          # (src/het_obj.R and the .cpp twins). With the correct coefficient,
+          # terms 3+4 merge to -(1/(sigma-1)) * Dk_ls * Dk_lp and the
+          # objective is exactly Feenstra (1994)'s two-regressor form under
+          # rho = gamma*(sigma-1)/(1+gamma*sigma) -- the footnote-12 limit.
+          # Term 5's coefficient (gam_j-gam_k)/((1+gam_j)*gam_k) vanishes in
+          # the limit, so imp_X[, 5] is correctly unused. Locked by
+          # tests/testthat/test-feenstra-homogeneity-limit.R.
+          (1 / sm1)        * imp_X[, 4]
   sum(wt_imp * (imp_Y - pred)^2)
 }
 
