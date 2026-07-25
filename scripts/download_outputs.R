@@ -8,12 +8,9 @@
 # Usage: Rscript scripts/download_outputs.R [--force] [--no-verify]
 #
 #   --force       re-download even if the local file already exists
-#   --no-verify   skip SHA-256 verification (required until the manifest
-#                 carries real checksums; see Section 10)
-#
-# NB: at commit 1 the manifest's sha256 and hf_url columns are placeholders.
-# Until Section 10 finalizes them, run with --no-verify; the download URLs
-# will not resolve until the HF dataset is live.
+#   --no-verify   skip SHA-256 verification (not recommended: the manifest
+#                 has carried real checksums since v0.2.0, and verification
+#                 is the point of the manifest)
 #
 # This script intentionally does NOT use R/parse_cli.R: that parser is the
 # estimation pipeline's CLI (it requires --data to be a valid BACI directory

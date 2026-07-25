@@ -36,9 +36,14 @@ opt_list <- list(
               dest = "old_stage2b"),
   make_option("--new-stage2b", type = "character", default = NULL,
               dest = "new_stage2b"),
-  make_option("--old-label",   type = "character", default = "v0.2.0",
+  # POST-v0.4.1 AUDIT: labels are now REQUIRED. The old defaults
+  # ("v0.2.0"/"v0.3.0") were release-specific and went stale the moment
+  # v0.4.0 shipped -- a forgotten flag would silently mislabel every
+  # column header in a shipped comparison doc. A loud requirement beats
+  # a plausible-looking wrong default.
+  make_option("--old-label",   type = "character", default = NULL,
               dest = "old_label"),
-  make_option("--new-label",   type = "character", default = "v0.3.0",
+  make_option("--new-label",   type = "character", default = NULL,
               dest = "new_label"),
   make_option("--out",         type = "character",
               default = "docs/methodology/run_comparison.md")
@@ -47,6 +52,11 @@ opts <- parse_args(OptionParser(option_list = opt_list))
 
 if (is.null(opts$old_stage2b) || is.null(opts$new_stage2b)) {
   stop("--old-stage2b and --new-stage2b are required.", call. = FALSE)
+}
+if (is.null(opts$old_label) || is.null(opts$new_label)) {
+  stop("--old-label and --new-label are required (e.g. --old-label v0.4.0 ",
+       "--new-label v0.4.1). They caption every table in the emitted ",
+       "comparison doc; there is no safe default.", call. = FALSE)
 }
 
 # ---- helpers ---------------------------------------------------------------
