@@ -320,6 +320,14 @@ artifacts in ~).
    independent derivation and locked by a new structural-DGP validation
    pillar; sigma unchanged. Pin the pre-v0.4.0 revision hash for
    consumers who need the old gammas.
+   [HARDENED 2026-07-25: the card step is now repo-first. Changelog
+   entries were being drafted hub-side, which left the repo copy
+   (docs/hf_dataset_card.md) four releases stale -- no changelog, no
+   pins, no supersession warning, and two manifested bootstrap files
+   missing from its table. Going forward: edit docs/hf_dataset_card.md
+   in the release commit (it carries an AUTHORITATIVE SOURCE header),
+   then paste it wholesale to the hub at this step. The hub is a
+   mirror of the repo card, never the drafting surface.]
 4. Downstream: Tarifflation analyses consuming gamma, opt_tariff,
    gamma_se_total, sigma_robust, or the SY screens must re-pull.
    Sigma-only consumers are unaffected -- say so explicitly.
