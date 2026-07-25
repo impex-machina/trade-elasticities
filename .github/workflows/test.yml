@@ -47,3 +47,22 @@ jobs:
         run: |
           Rscript -e 'testthat::test_dir("tests/testthat", stop_on_failure = TRUE)'
         shell: bash
+
+      - name: Verify README.md matches its build inputs
+        # The README-as-build-artifact lock: README.md must be exactly what
+        # scripts/build_readme.R generates from README.template.md and the
+        # committed results/*.json. Same mechanism as the optional local
+        # pre-commit hook (scripts/hooks/pre-commit): build to a temp file
+        # via README_BUILD_OUTPUT, compare content with line endings
+        # normalized. This step is the enforced gate; the hook is a
+        # convenience that catches drift before it reaches CI.
+        run: |
+          TMP="$(mktemp)"
+          README_BUILD_OUTPUT="$TMP" Rscript scripts/build_readme.R
+          if ! diff -u <(tr -d '\r' < "$TMP") <(tr -d '\r' < README.md); then
+            echo "::error::README.md is out of sync with README.template.md + results/*.json."
+            echo "::error::Regenerate with: Rscript scripts/build_readme.R  (then commit README.md)"
+            exit 1
+          fi
+          echo "README.md is in sync with its build inputs."
+        shell: bash

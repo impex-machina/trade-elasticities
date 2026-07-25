@@ -2,10 +2,19 @@
 # scripts/build_readme.R
 #
 # Generate README.md from README.template.md and the JSON files in results/.
-# Run from the repo root. CI runs this then diffs the output against the
-# committed README.md and fails on any difference; that is the lock that
-# prevents prose from drifting from data. See docs/methodology/build_readme.md
-# (forthcoming) for the full architecture.
+# Run from the repo root.
+#
+# The drift lock has two layers (post-v0.4.1 audit -- before then, this
+# header claimed CI enforcement that did not exist; only the opt-in local
+# hook did):
+#   1. CI (.github/workflows/test.yml, "Verify README.md matches its build
+#      inputs"): rebuilds to a temp file and fails the workflow on any
+#      difference from the committed README.md. This is the enforced gate.
+#   2. The optional local pre-commit hook (scripts/hooks/pre-commit;
+#      install with `git config core.hooksPath scripts/hooks`), which runs
+#      the same check at commit time and soft-skips if Rscript is absent.
+# See docs/methodology/build_readme.md (forthcoming) for the full
+# architecture.
 #
 # Inputs
 #   results/stage1_summary.json     (emitted by analysis/00_setup.R)
