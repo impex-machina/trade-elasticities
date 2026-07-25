@@ -116,7 +116,7 @@ List het_residuals_and_jacobian_fixed_sigma_rcpp(
         (gam_j * inv_1pgj / sm1)                                * imp_X(j, 0) +
         (gam_j * inv_1pgj)                                       * imp_X(j, 1) +
         (-1.0 / sm1)                                             * imp_X(j, 2) +
-        // F1 FIX (v0.4.0): corrected Eq. (10) term 4 (see stage2_derivation.md)
+        // F1 FIX (v0.4.0): corrected Eq. (10) term 4 (see docs/methodology/v030_v040_comparison.md)
         (gam_j * (1.0 + gam_k) * inv_1pgj * inv_gk / sm1)        * imp_X(j, 3) +
         ((gam_j - gam_k) * inv_1pgj * inv_gk)                    * imp_X(j, 4);
 

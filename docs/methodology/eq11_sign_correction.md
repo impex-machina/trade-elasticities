@@ -92,3 +92,30 @@ the issue; the import-side $\sigma$ estimates are unaffected either way.
 Releases ≤ v0.4.0 of this repository implemented the printed signs; v0.4.1
 switches the default to the derivation-consistent signs. Stage-2b outputs
 must be regenerated after upgrading.
+
+## Companion note: the printed Eq. (10) error term
+
+The same product check applied to the import side (Eq. 10, stated to follow
+from the product of the Eq. 5 demand and Eq. 6 supply residuals) confirms
+that the five implemented coefficients — including the F1-corrected term 4
+(see `docs/methodology/v030_v040_comparison.md`) — are the **unique** set
+closing the moment identity: $Y - \sum_m c_m x_m$ is exactly proportional
+to the residual product. But the proportionality constant consistent with
+the printed coefficients is
+
+$$u \;=\; -\,\frac{\gamma_j}{(1+\gamma_j)(\sigma-1)}\, q\,\tilde\varepsilon,$$
+
+with $q,\tilde\varepsilon$ as printed in Eqs. (5)–(6), whereas the paper
+prints the **positive** sign; the residual difference between the two
+conventions is exactly $2u$. This is estimation-irrelevant — only
+$E[u]=0$ enters the moment condition, and both signs are mean-zero — so
+unlike the x5/x6 flips above it changes no estimate and no code. Note the
+contrast: the analogous check on Eq. (11) closes with its printed error
+term ($+q\varepsilon/(\sigma-1)$) as-is.
+
+Caveat before citing this externally: the sign conventions of $q$ and
+$\tilde\varepsilon$ here follow this repo's text extraction of the printed
+Eqs. (5)–(6); confirm against the typeset PDF before treating the display
+sign as a bona fide erratum. If it holds up, it is a candidate second
+(cosmetic) item for the correspondence with the author, alongside the
+substantive x5/x6 signs.

@@ -69,7 +69,7 @@ het_obj <- function(d, imp_Y, imp_X, exp_Y, exp_X,
               # F1 FIX (v0.4.0): Soderbery (2018) Eq. (10) term 4 is
               # gam_j*(1+gam_k)/(gam_k*(1+gam_j)*(sigma-1)); the previous
               # gam_j*gam_k/((1+gam_j)*(1+gam_k)*(sigma-1)) was a
-              # transcription error (see docs/methodology/stage2_derivation.md).
+              # transcription error (see docs/methodology/v030_v040_comparison.md).
               (gam_j * (1 + gam_k) * inv_1pgj / (gam_k * sm1))  * imp_X[, 4] +
               ((gam_j - gam_k) * inv_1pgj / gam_k)             * imp_X[, 5]
 
