@@ -353,45 +353,90 @@ validate_tier2 <- function(seed = 20260511L, tol = 1e-8) {
   
   # --- 2.2 exporter relabeling invariance ---
   .cat_section("Test 2.2: invariance to exporter ID relabeling")
+  # FIXED (post-v0.4.1 audit): these two invariance checks skipped with
+  # "estimation failed" in every capture since the harness shipped -- they
+  # had never actually exercised. Two causes, two fixes:
+  #
+  #   1. The simulated cell sat at (sigma, omega) = (3, 1), i.e.
+  #      rho = omega*(sigma-1)/(1+omega*sigma) = 0.5 EXACTLY -- the
+  #      closed-form inversion's singular point (eta_2 = 0; the same point
+  #      Test 2.1's grid deliberately avoids). Moved to (3, 0.5), rho = 0.4.
+  #   2. Even off the singularity, estimability at J = 25, T = 30 is
+  #      seed-dependent (the documented Tier-1 norm is a 25-45% success
+  #      rate), so a single seed is a coin flip. Scan a deterministic seed
+  #      sequence and test invariance on the first estimable cell; the
+  #      properties under test are invariance-conditional-on-estimability,
+  #      so any estimable cell serves.
+  #
+  # A transformed cell failing to estimate where the base cell succeeded is
+  # itself an invariance FAILURE (status is part of the estimator's output),
+  # not a skip.
   set.seed(seed)
-  mom1 <- simulate_one_cell(sigma_true = 3, omega_true = 1, J = 25, T = 30,
-                            seed = seed)
-  fit1 <- estimate_cell_liml(mom1, ref_exporter = 1L)
-  mapping <- c(1L, sample(2:25))
-  mom2 <- mom1
-  mom2$exporter <- mapping[mom1$exporter]
-  fit2 <- estimate_cell_liml(mom2, ref_exporter = 1L)
-  if (isTRUE(fit1$status == "ok") && isTRUE(fit2$status == "ok")) {
-    d_s <- abs(fit1$sigma - fit2$sigma)
-    d_o <- abs(fit1$omega - fit2$omega)
-    if (max(d_s, d_o) < 1e-8) {
-      cat("  PASS: estimates identical under relabeling.\n")
-    } else {
-      cat(sprintf("  FAIL: sigma diff = %.2e, omega diff = %.2e\n", d_s, d_o))
-      fails <- c(fails, "exporter_invariance")
+  base_fit <- NULL; base_mom <- NULL; base_seed <- NA_integer_
+  n_attempts <- 25L
+  for (s_try in seed + seq_len(n_attempts) - 1L) {
+    m_try <- simulate_one_cell(sigma_true = 3, omega_true = 0.5,
+                               J = 25, T = 30, seed = s_try)
+    f_try <- estimate_cell_liml(m_try, ref_exporter = 1L)
+    if (isTRUE(f_try$status == "ok")) {
+      base_fit <- f_try; base_mom <- m_try; base_seed <- s_try
+      break
     }
-  } else {
-    cat("  SKIP: estimation failed on one or both runs.\n")
+  }
+  if (is.null(base_fit)) {
+    cat(sprintf("  SKIP: no estimable cell in %d seeded attempts.\n",
+                n_attempts))
+    cat("        At the documented 25-45% success rates this has\n")
+    cat("        probability < 0.1%; investigate the estimator.\n")
     fails <- c(fails, "skip:exporter_invariance")
+  } else {
+    cat(sprintf("  Base cell: seed %d (attempt %d of %d), status ok.\n",
+                base_seed, base_seed - seed + 1L, n_attempts))
+    mapping <- c(1L, sample(2:25))
+    mom2 <- base_mom
+    mom2$exporter <- mapping[base_mom$exporter]
+    fit2 <- estimate_cell_liml(mom2, ref_exporter = 1L)
+    if (!isTRUE(fit2$status == "ok")) {
+      cat(sprintf("  FAIL: relabeled cell returned status '%s' where the\n",
+                  fit2$status))
+      cat("        base cell estimated -- status is not invariant.\n")
+      fails <- c(fails, "exporter_invariance")
+    } else {
+      d_s <- abs(base_fit$sigma - fit2$sigma)
+      d_o <- abs(base_fit$omega - fit2$omega)
+      if (max(d_s, d_o) < 1e-8) {
+        cat("  PASS: estimates identical under relabeling.\n")
+      } else {
+        cat(sprintf("  FAIL: sigma diff = %.2e, omega diff = %.2e\n", d_s, d_o))
+        fails <- c(fails, "exporter_invariance")
+      }
+    }
   }
   
   # --- 2.3 time shift invariance ---
   .cat_section("Test 2.3: invariance to time shift")
-  mom3 <- mom1
-  mom3$t <- mom1$t + 1000L
-  fit3 <- estimate_cell_liml(mom3, ref_exporter = 1L)
-  if (isTRUE(fit1$status == "ok") && isTRUE(fit3$status == "ok")) {
-    d_s <- abs(fit1$sigma - fit3$sigma)
-    d_o <- abs(fit1$omega - fit3$omega)
-    if (max(d_s, d_o) < 1e-8) {
-      cat("  PASS: estimates identical under time shift.\n")
-    } else {
-      cat(sprintf("  FAIL: sigma diff = %.2e, omega diff = %.2e\n", d_s, d_o))
-      fails <- c(fails, "time_invariance")
-    }
-  } else {
-    cat("  SKIP: estimation failed on one or both runs.\n")
+  if (is.null(base_fit)) {
+    cat("  SKIP: no estimable base cell (see Test 2.2).\n")
     fails <- c(fails, "skip:time_invariance")
+  } else {
+    mom3 <- base_mom
+    mom3$t <- base_mom$t + 1000L
+    fit3 <- estimate_cell_liml(mom3, ref_exporter = 1L)
+    if (!isTRUE(fit3$status == "ok")) {
+      cat(sprintf("  FAIL: time-shifted cell returned status '%s' where the\n",
+                  fit3$status))
+      cat("        base cell estimated -- status is not invariant.\n")
+      fails <- c(fails, "time_invariance")
+    } else {
+      d_s <- abs(base_fit$sigma - fit3$sigma)
+      d_o <- abs(base_fit$omega - fit3$omega)
+      if (max(d_s, d_o) < 1e-8) {
+        cat("  PASS: estimates identical under time shift.\n")
+      } else {
+        cat(sprintf("  FAIL: sigma diff = %.2e, omega diff = %.2e\n", d_s, d_o))
+        fails <- c(fails, "time_invariance")
+      }
+    }
   }
   
   # --- 2.4 kappa in valid range ---
