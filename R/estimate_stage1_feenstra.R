@@ -56,6 +56,15 @@ estimate_feenstra_sigma_cell <- function(imp_dt, focal_importer, cfg) {
   if (n_exp < cfg$min_exporters || max_pd < cfg$min_periods)
     return(cell_failure("insufficient_data"))
 
+  # Post-v0.4.1 audit, deferred BW-lag item: same gating as the production
+  # sites so the Tier-4 legacy baseline stays comparable in A/B runs. See
+  # build_config.R for the stay-legacy-until-v0.5 rule.
+  bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
+  if (bw_lag_calendar) {
+    dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",
+                                    by = "exporter")]
+  }
+
   ref_exporter <- choose_reference(dt)
   ref_vals <- dt[exporter == ref_exporter,
                  .(t, ref_ls_dif = ls_imp_dif, ref_lp_dif = lp_dif)]
@@ -69,8 +78,11 @@ estimate_feenstra_sigma_cell <- function(imp_dt, focal_importer, cfg) {
   dt_nonref <- dt[exporter != ref_exporter]
   if (nrow(dt_nonref) == 0L) return(cell_failure("no_nonref_exporters"))
 
+  # calendar mode: cusval_lag already attached on the pre-filter panel.
   setorder(dt_nonref, exporter, t)
-  dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
+  if (!bw_lag_calendar) {
+    dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
+  }
   dt_nonref[, bw_w := bw_weight(cusval, cusval_lag, period_count)]
   imp_moments <- dt_nonref[,
     lapply(.SD, weighted.mean, w = bw_w, na.rm = TRUE),
@@ -188,7 +200,7 @@ estimate_all_feenstra_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) 
 
     clusterExport(cl, varlist = c("estimate_product_feenstra",
       "estimate_feenstra_sigma_cell", "choose_reference", "bw_weight",
-      "feenstra_sigma_obj", "compute_exporter_weights",
+      "calendar_lag", "feenstra_sigma_obj", "compute_exporter_weights",
       "cell_failure", "cfg", "tmp_dir"),
       envir = environment())
     clusterEvalQ(cl, library(data.table))

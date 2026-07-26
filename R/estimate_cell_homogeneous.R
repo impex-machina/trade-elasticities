@@ -96,6 +96,13 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
   sig_V_vec    <- numeric(0)
   gam_V_vec    <- numeric(0)
 
+  # Post-v0.4.1 audit, deferred BW-lag item. This function computes the
+  # export-side fn-14 weights for BOTH Stage 1/2a (estimate_importer_product)
+  # and Stage 2b (estimate_importer_product_fixed_sigma), so gating it here
+  # covers every export-side moment. Semantics mirror the import sites: see
+  # build_config.R for the stay-legacy-until-v0.5 rule.
+  bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
+
   # Helpers: lookup (importer, good) -> (sigma, gamma) with fallback.
   # Indexed by importer for O(log n) lookup via setkey; caller is
   # responsible for having keyed these lookups once upstream.
@@ -128,6 +135,14 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
                                  ref_ls_exp = ls_exp_dif)]
 
     focal_vals <- exp_flows[importer == focal_importer]
+    # calendar mode: attach the fn-14 lag on the pre-filter bilateral
+    # series (one exporter -> the focal importer, so no `by` needed),
+    # before the reference-destination join and exp_y filter can drop
+    # rows and stale a positional shift.
+    if (bw_lag_calendar) {
+      focal_vals[, cusval_lag := calendar_lag(focal_vals,
+                                              value = "cusval", t = "t")]
+    }
     focal_vals <- ref_dest_vals[focal_vals, on = "t"]
     focal_vals <- focal_vals[!is.na(ref_lp_exp) & !is.na(ref_ls_exp) &
                              !is.na(lp_dif) & !is.na(ls_exp_dif)]
@@ -150,7 +165,11 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
     if (nrow(focal_vals) == 0L) next
 
     setorder(focal_vals, t)
-    focal_vals[, `:=`(cusval_lag = shift(cusval, 1L), pd_e = .N)]
+    if (bw_lag_calendar) {
+      focal_vals[, pd_e := .N]
+    } else {
+      focal_vals[, `:=`(cusval_lag = shift(cusval, 1L), pd_e = .N)]
+    }
     focal_vals[, bw_w_e := bw_weight(cusval, cusval_lag, pd_e)]
 
     exp_cols <- c("exp_y","exp_x1","exp_x2","exp_x3","exp_x4",
@@ -255,6 +274,18 @@ estimate_importer_product <- function(imp_dt, focal_importer, all_dt, cfg,
     return(cell_failure("insufficient_data"))
   }
 
+  # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
+  # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
+  # cell-level row drops below cannot stale it into an x_{t-2+}. Under
+  # "legacy" (the default; reproduces published v0.4.x output
+  # bit-for-bit) the positional shift at the weights block below runs
+  # unchanged. See build_config.R for the stay-legacy-until-v0.5 rule.
+  bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
+  if (bw_lag_calendar) {
+    dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",
+                                    by = "exporter")]
+  }
+
   # --- Choose reference exporter k ---
   ref_exporter <- choose_reference(dt)
 
@@ -284,8 +315,11 @@ estimate_importer_product <- function(imp_dt, focal_importer, all_dt, cfg,
   if (nrow(dt_nonref) == 0L) return(cell_failure("no_nonref_exporters"))
 
   # --- BW weights ---
+  # calendar mode: cusval_lag already attached on the pre-filter panel.
   setorder(dt_nonref, exporter, t)
-  dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
+  if (!bw_lag_calendar) {
+    dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
+  }
   dt_nonref[, bw_w := bw_weight(cusval, cusval_lag, period_count)]
 
   # --- Time-average with BW weights ---

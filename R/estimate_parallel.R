@@ -38,7 +38,8 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
   dt_by_product <- split(dt, by = "good", keep.by = TRUE)
 
   worker_fns <- c("estimate_product", "estimate_importer_product",
-                   "choose_reference", "bw_weight", "optimal_tariff",
+                   "choose_reference", "bw_weight", "calendar_lag",
+                   "optimal_tariff",
                    "assign_regions", "build_region_map",
                    "build_export_moments", "compute_exporter_lookup",
                    "compute_exporter_weights", "cell_failure")
@@ -403,7 +404,8 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
                    "compute_exporter_dest_counts",
                    "compute_exporter_lookup",
                    "compute_exporter_weights",
-                   "choose_reference", "bw_weight", "optimal_tariff",
+                   "choose_reference", "bw_weight", "calendar_lag",
+                   "optimal_tariff",
                    "assign_regions", "build_region_map",
                    "build_export_moments", "cell_failure",
                    "compute_dgamma_dsigma", "assess_sigma_robust",
