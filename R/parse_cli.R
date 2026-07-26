@@ -87,6 +87,16 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "LAMBDA"
     ),
     optparse::make_option(
+      c("--bw-lag"),
+      type = "character", default = "legacy",
+      help = paste("BW weight lag policy: 'legacy' (previous retained row",
+                   "via positional shift; reproduces published v0.4.x",
+                   "output bit-for-bit) or 'calendar' (previous calendar",
+                   "year from the cell panel, per Soderbery p. 50 fn 14).",
+                   "Default: %default"),
+      metavar = "MODE"
+    ),
+    optparse::make_option(
       c("--stage"),
       type = "character", default = "all",
       help = paste("Which stage(s) to run: 'all', '1', '2a', '2b'.",
@@ -163,6 +173,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage %in% c("all", "1", "2a", "2b")) {
     fail(sprintf("--stage must be one of 'all', '1', '2a', '2b', got: '%s'",
                  opts$stage))
+  }
+  if (!opts$bw_lag %in% c("legacy", "calendar")) {
+    fail(sprintf("--bw-lag must be 'legacy' or 'calendar', got: '%s'",
+                 opts$bw_lag))
   }
 
   # --- Year range ---

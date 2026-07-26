@@ -44,6 +44,16 @@ validate_config <- function(cfg) {
     stop("agg_level must be 'hs4' or 'hs6', got: ", cfg$agg_level)
   }
 
+  # --- BW lag policy ---
+  # Optional: absent means the estimators default to "legacy" (the
+  # published behaviour). When present it must be a recognized mode, so a
+  # typo cannot silently fall back to legacy on a run that intended the
+  # calendar fix. NOT in `required` above: hand-built cfg lists (tests,
+  # validation harnesses) predate the flag and stay valid without it.
+  if (!is.null(cfg$bw_lag) && !cfg$bw_lag %in% c("legacy", "calendar")) {
+    stop("bw_lag must be 'legacy' or 'calendar', got: ", cfg$bw_lag)
+  }
+
   # --- Year range ---
   if (!is.numeric(cfg$minyear) || cfg$minyear < 1900 || cfg$minyear > 2100) {
     stop("minyear must be a reasonable year, got: ", cfg$minyear)

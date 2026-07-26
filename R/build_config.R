@@ -56,6 +56,29 @@ build_config <- function(opts) {
     # --- Shrinkage (from CLI) ---
     shrinkage_lambda = opts$shrinkage_lambda,
 
+    # --- BW weight lag policy (from CLI) ---
+    #
+    # *** The default MUST stay "legacy" until the v0.5 release ships. ***
+    #
+    # "legacy" reproduces the published v0.4.x behaviour bit-for-bit: the
+    # fn-14 lag is the previous RETAINED row's customs value (a positional
+    # shift over the post-filter moment table), which after a filtered-out
+    # year silently becomes a stale x_{t-2+}. "calendar" sources the lag
+    # from the cell panel's previous calendar year instead (rows whose t-1
+    # is genuinely unobserved fall to bw_weight()'s NA -> 1 fallback, the
+    # same near-zero-influence path first rows already take).
+    #
+    # BW weights multiply into every weighted moment on both the import
+    # and export sides, so flipping this default CHANGES PUBLISHED
+    # ESTIMATES. It therefore requires the full v0.5 release train: EC2
+    # rerun, A/B via analysis/compare_runs.R against the archived v0.4.1
+    # outputs, HF card changelog + supersession note, manifest rehash, and
+    # HF upload. Until that ships, repo HEAD must keep reproducing the
+    # published v0.4.1 artifacts — that invariant is the reason the flag
+    # exists at all. Both modes are locked by
+    # tests/testthat/test-bw-weight-gaps.R.
+    bw_lag = opts$bw_lag,
+
     # --- Across-exporter weighting (methodological) ---
     exporter_weight     = "trade_value",
     weight_period_floor = 10L,
