@@ -20,7 +20,91 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
-# Trade Elasticities — BACI HS92 V202601
+> **v0.4.1 (2026-07-25).** Sign correction on Soderbery (2018) Eq. (11):
+> the export-supply moment used x5/x6 sign conventions inconsistent with
+> the paper (derivation and fix: `docs/methodology/eq11_sign_correction.md`
+> at GitHub tag `v0.4.1`; a `paper_exact_eq11` flag preserves the old
+> behavior for replication). Full test suite 120/120; estimator harness
+> (T = 1e6) OVERALL PASS with printed-sign separation 260.9x. **Sigma is
+> unchanged from v0.4.0** (bit-identical, 280,649 cells) -- sigma-only
+> consumers are unaffected. **Stage 2b gamma is superseded**: rows
+> 6,831,402 -> 6,831,219; gamma median 0.674 -> 0.679; optimal-tariff
+> median 0.713; tier shares and convergence stable (3.3/70.1/0.2/26.4;
+> 70.7%). **Stage-1 identification diagnostics are re-based**: earlier
+> releases overstated strength via a Sargan dof error and a
+> non-partialled Cragg-Donald F. Corrected: strict Stock-Yogo pass 6.1%
+> (was 17.3), G&S-25 pass 41.2% (was 58.5), Sargan pass 56.3% (was
+> 61.7), joint 22.4% (was 28.4); G&S-protocol Sargan 74.9%. Comparison
+> to Grant & Soderbery's 44% joint rate carries a robust-KP caveat
+> (`docs/methodology/stata_port_deviations.md`). Pervasive weak
+> identification is the empirical case for the shrinkage design (median
+> prior weight 0.98). **Lambda reviewed and retained at 0.1** after the
+> corrected moments fired the drift trigger: a full-scale five-point
+> sweep (`docs/methodology/lambda_sweep_20260723.md`) shows a flat
+> optimum over [0.1, 0.2]; 0.1 maximizes retained heterogeneity; drift
+> baseline reset to `results/lambda_diagnostic_v041.json`.
+> **Reproducibility**: an independent re-estimation reproduced this
+> release's Stage-2b table data-bit-identically after stripping the
+> `run_meta` attribute; file hashes differ across runs only through
+> embedded run metadata (a sidecar fix is slated). Full comparison:
+> `docs/methodology/v040_v041_comparison.md` at GitHub tag `v0.4.1`.
+> Data revision: `5493c51f`. **v0.4.0 remains available pinned at
+> revision `a76f2d7`** -- do not mix versions within one analysis.
+
+> **v0.4.0 (2026-07-19).** Full regeneration on the corrected Soderbery
+> (2018) Eq. (10): the coefficient on the fourth import-side moment was
+> mistranscribed in every prior release (found in a fresh-eyes audit
+> 2026-07-17; confirmed by hand derivation, the footnote-12 homogeneity
+> limit, and an independent structural-DGP simulation). **Sigma is
+> bit-identical to v0.3.0** on all shared columns (verified A/B, 280,649
+> cells) -- sigma-only consumers are unaffected. **Gamma, opt_tariff,
+> and the SE columns are superseded**: the marginals move little (gamma
+> median 0.680 -> 0.674) but 44% of cells move by more than 0.01 and
+> 11.5% by more than 10% of their v0.3.0 value -- re-pull anything
+> consuming gamma, opt_tariff, gamma_se_total, sigma_robust, or the
+> weak-identification screens, and do not mix versions within one
+> analysis. New columns: Stage 1 `stockyogo_pass_gs25`,
+> `stockyogo_cv_gs25`, `sargan_pass`, `gs_pass_both` (the Grant &
+> Soderbery 2024 screening protocol at their 25% rule of thumb alongside
+> the strict 10% screen, which is unchanged at 17.3% pass; the 25%
+> screen passes 58.5%), and Stage 2b `gamma_shrink_wt` (per-row share of
+> curvature contributed by the shrinkage prior; overall median 0.98).
+> The validation stack gains a structural-DGP pillar that simulates
+> Eqs (5)-(6) independently of all pipeline code, and the Pillar-2 omega
+> columns are re-based per the F10 harness correction. Full comparison:
+> `docs/methodology/v030_v040_comparison.md` at GitHub tag `v0.4.0`.
+> Data revision: `a76f2d7`. **v0.3.0 remains available pinned at
+> revision `ec59b57894cab18b2d0295c96334a96b7dd8a2cd`:**
+>
+> ```python
+> from huggingface_hub import hf_hub_download
+> hf_hub_download("impex-machina/trade-elasticities",
+>                 "stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+>                 repo_type="dataset", revision="ec59b57894cab18b2d0295c96334a96b7dd8a2cd")
+> ```
+
+> **v0.3.0 (2026-07-08).** Full regeneration on the six-patch fix series
+> (GitHub tag `v0.3.0`). Gamma re-levels onto Soderbery (2018) Table 2
+> benchmarks (gamma/(1+gamma) = 0.405 vs his 0.408): gamma median rises
+> 0.238 -> 0.680 and the implied median export-supply elasticity is now
+> 1.47 (the prior-scale bug in v0.2.0 biased gamma down and inflated the
+> implied elasticity). Sigma is essentially unchanged (median 2.878).
+> Standard errors are corrected (sigma_se was understated, rho_se
+> overstated); the weak-IV screen now uses the minimum-eigenvalue
+> Cragg-Donald statistic (Stock-Yogo pass 59% -> 17% -- the honest
+> number); `sigma_robust` passes on 10.6% of rows. Details:
+> `docs/methodology/v020_v030_comparison.md` in the GitHub repo.
+> **v0.2.0 remains available pinned at revision `7e598f6cb98e`** -- do
+> not mix versions within one analysis.
+>
+> **2026-07-10.** Added exporter-cluster bootstrap SE benchmark outputs
+> under `validation/` (`bootstrap_se_summary.csv`, per-cell
+> `bootstrap_se_cells.csv`, 736 cells): real-data calibration of the
+> analytic sigma_se by identification stratum and estimator branch. See
+> `docs/methodology/validation_section_draft.md` (Section 4) in the
+> GitHub repo for results and interpretation.
+
+# Trade Elasticities -- BACI HS92 V202601
 
 Importer-product-exporter trade elasticity estimates: heterogeneous
 import-demand elasticities (sigma) and inverse export-supply
@@ -41,8 +125,8 @@ repo) is licensed separately under **MIT**.
 
 ## What's here
 
-Outputs are organized by pillar. The authoritative index — including
-SHA-256 checksums and provenance — is `data/manifest.csv` in the GitHub
+Outputs are organized by pillar. The authoritative index -- including
+SHA-256 checksums and provenance -- is `data/manifest.csv` in the GitHub
 repo; the table below mirrors its human-readable view.
 
 | Path | Pillar | Description |
@@ -55,8 +139,8 @@ repo; the table below mirrors its human-readable view.
 | `validation/liml_validation_tier1b.csv` | 2 | Synthetic recovery: Tier 1b sample-size convergence |
 | `validation/se_calibration_mc_summary.csv` | 3 | SE calibration Monte Carlo (4 regimes x 3 formulas) |
 | `validation/se_calibration_mc_per_param.csv` | 3 | Per-parameter calibration detail |
-| `validation/bootstrap_se_summary.csv` | 3 | Exporter-cluster bootstrap SE benchmark: summary (736 reporting cells) |
-| `validation/bootstrap_se_cells.csv` | 3 | Exporter-cluster bootstrap SE benchmark: per-cell detail |
+| `validation/bootstrap_se_summary.csv` | 3 | Exporter-cluster bootstrap SE benchmark: ratio-by-stratum summary (2026-07-10 run) |
+| `validation/bootstrap_se_cells.csv` | 3 | Bootstrap SE benchmark: per-cell detail (736 reporting cells) |
 
 The three pillars: (1) the BACI HS4 empirical core, (2) synthetic
 recovery of the estimator, (3) standard-error calibration. See the
@@ -97,52 +181,6 @@ download.file(url, tmp, mode = "wb")
 x <- readRDS(tmp)
 head(x)
 ```
-
-## Versions and changelog
-
-**Using an old revision?** Stage-2b gamma estimates from revisions at or
-before the v0.4.0 pin are superseded by the v0.4.1 Eq. (11) sign
-correction; gamma from revisions before the v0.4.0 pin additionally
-predates the Eq. (10) term-4 correction. Import-side sigma estimates are
-unaffected by both (bit-identical across v0.3.0 -> v0.4.1). If you need
-an exact historical revision, pin it explicitly:
-
-```r
-# huggingface_hub-style pinned pull of a superseded revision
-url <- paste0("https://huggingface.co/datasets/impex-machina/",
-              "trade-elasticities/resolve/REVISION/",
-              "stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds")
-# substitute REVISION with a pin from the table below
-```
-
-> **v0.4.1 — 2026-07-25 — data revision [`5493c51f`](https://huggingface.co/datasets/impex-machina/trade-elasticities/tree/5493c51f)**
-> Corrects the signs of the x5/x6 coefficients in Soderbery (2018)
-> Eq. (11), which are flipped as printed relative to the product of the
-> paper's own Eqs. (8)–(9) residuals (adjudication:
-> `docs/methodology/eq11_sign_correction.md` in the repo). Stage-2b gamma
-> regenerated (6,831,219 rows; median gamma 0.679). Import-side sigma
-> bit-identical to v0.4.0. Stage-1 diagnostic columns corrected to the
-> partialled Cragg–Donald statistic. **Supersedes all earlier Stage-2b
-> gamma.** Repo tag `v0.4.1`.
-
-> **v0.4.0 — 2026-07-19 — data revision [`a76f2d7`](https://huggingface.co/datasets/impex-machina/trade-elasticities/tree/a76f2d7)**
-> Corrects a transcription error in the Eq. (10) term-4 coefficient
-> (present in every prior release; found by independent re-derivation and
-> locked by a structural-DGP validation pillar). Sigma bit-identical to
-> v0.3.0; gamma regenerated (median 0.674). Adds four Stage-1 instrument-
-> screen columns and `gamma_shrink_wt`. Repo tag `v0.4.0`.
-
-> **v0.3.0 — data revision [`ec59b57`](https://huggingface.co/datasets/impex-machina/trade-elasticities/tree/ec59b57)**
-> Prior-scale recalibration landing the gamma distribution on the
-> Soderbery (2018) Table 2 structural benchmarks; adds the
-> exporter-cluster bootstrap SE benchmark files. Repo tag `v0.3.0`.
-
-> **v0.2.0 — data revision [`7e598f6cb98e`](https://huggingface.co/datasets/impex-machina/trade-elasticities/tree/7e598f6cb98e)**
-> First manifest-verified release of the full-scale HS4 outputs under the
-> README-as-build-artifact architecture. Repo tag `v0.2.0`.
-
-Earlier history (v0.1.0, May 2026) is the initial dataset publication,
-before the checksum manifest; see the repo's release notes.
 
 ## Citation
 
