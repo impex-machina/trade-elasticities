@@ -565,6 +565,12 @@ write_estimation_summary <- function(results, cfg, out_prefix,
   cat("\nBuilding estimation summary...\n")
   summary <- build_summary(results, cfg, step1_results, scope)
 
+  # The summary RDS is the sidecar for the volatile run metadata: carry
+  # it wholesale here, because the main output RDS is saved through
+  # finalize_saved_output() with run_meta stripped (sha256 certifies
+  # content, not timestamps).
+  summary$run_meta <- attr(results, "run_meta")
+
   rds_path  <- paste0(out_prefix, "_summary.rds")
   text_path <- paste0(out_prefix, "_summary.txt")
 

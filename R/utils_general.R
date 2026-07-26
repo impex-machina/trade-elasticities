@@ -13,6 +13,7 @@
 #'   choose_reference(dt)                          — pick reference exporter for a market
 #'   bw_weight(cusval_t, cusval_lag, T_count)      — BW weights (Soderbery 2018, p.50 fn14)
 #'   calendar_lag(dt, value, t, by)                — previous-calendar-year value (fn14's x_{t-1})
+#'   finalize_saved_output(x, sort_cols)           — strip volatile attrs + canonical sort for saveRDS
 #'   cell_failure(reason)                          — lightweight cell-level failure indicator
 #'   optimal_tariff(gamma, sigma, trade_values)    — trade-weighted optimal tariff
 #'
@@ -79,6 +80,34 @@ calendar_lag <- function(dt, value = "cusval", t = "t", by = NULL) {
   for (ix in split(seq_along(grp), grp)) {
     out[ix] <- vv[ix][match(tt[ix] - 1L, tt[ix])]
   }
+  out
+}
+
+
+#' Finalize an estimator output table for saveRDS.
+#'
+#' Returns a COPY of x with the volatile attributes stripped (run_meta,
+#' timing, failures — wall-clock metadata that made byte-identical data
+#' hash differently across runs; see the lambda-sweep anchor
+#' adjudication) and rows canonically sorted, so the saved file's sha256
+#' certifies content rather than timestamps or parallel completion
+#' order. The input object is NOT modified: summary generation reads
+#' run_meta from the live object and is unaffected by save order.
+#'
+#' @param x data.table (or data.frame) estimator output.
+#' @param sort_cols Candidate canonical key, applied as the intersection
+#'   with names(x) in this order. The production outputs are row-unique
+#'   on the surviving key; absent columns are skipped silently.
+#' @return A finalized copy, ready for saveRDS.
+finalize_saved_output <- function(x,
+                                  sort_cols = c("good", "importer",
+                                                "exporter")) {
+  out <- data.table::copy(x)
+  for (a in c("run_meta", "timing", "failures")) {
+    data.table::setattr(out, a, NULL)
+  }
+  keys <- intersect(sort_cols, names(out))
+  if (length(keys)) data.table::setorderv(out, keys)
   out
 }
 

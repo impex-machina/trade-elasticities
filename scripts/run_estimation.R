@@ -262,7 +262,7 @@ if (should_run("1", opts, paths)) {
     sigma_estimates[, convergence := fifelse(status == "ok", 0L, -99L)]
     sigma_estimates[, good     := as.character(good)]
     sigma_estimates[, importer := as.integer(importer)]
-    saveRDS(sigma_estimates, sigma_file)
+    saveRDS(finalize_saved_output(sigma_estimates), sigma_file)
     cat(sprintf("  LIML output (rich): %s\n", liml_output_path))
     cat(sprintf("  Stage 2 input:      %s\n", sigma_file))
   }
@@ -422,7 +422,7 @@ if (should_run("2a", opts, paths)) {
       }
     }
 
-    saveRDS(regional_results, regional_file)
+    saveRDS(finalize_saved_output(regional_results), regional_file)
   }
 } else {
   regional_results <- readRDS(paths$regional_file)
@@ -514,7 +514,7 @@ if (should_run("2b", opts, paths)) {
 
     country_results <- estimate_all_fixed_sigma(
       config_2b, ncores = ncores, prepared_dt = dt_country)
-    saveRDS(country_results, country_file)
+    saveRDS(finalize_saved_output(country_results), country_file)
   }
 } else {
   # No Stage 2b run requested (e.g. --stage 2a) — done after Stage 2a.

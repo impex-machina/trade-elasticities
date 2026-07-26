@@ -270,7 +270,7 @@ run_stage1_liml <- function(baci_dt,
   }
   
   if (verbose) cat(sprintf("\nWriting output: %s\n", output_path))
-  saveRDS(out_dt, output_path)
+  saveRDS(finalize_saved_output(out_dt), output_path)
   if (verbose) cat("Done.\n")
   invisible(out_dt)
 }
