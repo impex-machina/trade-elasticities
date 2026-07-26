@@ -113,9 +113,12 @@ unlike the x5/x6 flips above it changes no estimate and no code. Note the
 contrast: the analogous check on Eq. (11) closes with its printed error
 term ($+q\varepsilon/(\sigma-1)$) as-is.
 
-Caveat before citing this externally: the sign conventions of $q$ and
-$\tilde\varepsilon$ here follow this repo's text extraction of the printed
-Eqs. (5)–(6); confirm against the typeset PDF before treating the display
-sign as a bona fide erratum. If it holds up, it is a candidate second
-(cosmetic) item for the correspondence with the author, alongside the
-substantive x5/x6 signs.
+Verified 2026-07-26 against the typeset PDF
+(`docs/methodology/soderbery_2018.pdf`, pp. 5 and 7, read from 300 DPI
+renders): Eq. (5) prints $+\tilde\varepsilon_{jt}$, Eq. (6) prints
+$+q_{jt}$, and Eq. (10) ends $+u_{jt}$ with $u_{jt}$ defined with the
+positive sign. With all three as printed, the coefficient-implied error
+derived above stands: the printed sign of $u_{jt}$ is inconsistent with
+the printed coefficients — a bona fide, cosmetic, estimation-irrelevant
+display erratum. Cleared for the second, parenthetical item in the
+correspondence with the author, alongside the substantive x5/x6 signs.
