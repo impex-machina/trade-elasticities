@@ -58,25 +58,24 @@ build_config <- function(opts) {
 
     # --- BW weight lag policy (from CLI) ---
     #
-    # *** The default MUST stay "legacy" until the v0.5 release ships. ***
+    # v0.5.0: the CLI default is "calendar" — the fn-14 lag is the cell
+    # panel's previous CALENDAR year (Soderbery p. 50 fn 14), attached
+    # before cell-level filtering; rows whose t-1 is genuinely unobserved
+    # fall to bw_weight()'s NA -> 1 fallback. "legacy" (the previous
+    # RETAINED row via positional shift — after a filtered-out year, a
+    # stale x_{t-2+}) reproduces published v0.4.x output bit-for-bit and
+    # remains available for reproduction runs and the negative-control
+    # tests.
     #
-    # "legacy" reproduces the published v0.4.x behaviour bit-for-bit: the
-    # fn-14 lag is the previous RETAINED row's customs value (a positional
-    # shift over the post-filter moment table), which after a filtered-out
-    # year silently becomes a stale x_{t-2+}. "calendar" sources the lag
-    # from the cell panel's previous calendar year instead (rows whose t-1
-    # is genuinely unobserved fall to bw_weight()'s NA -> 1 fallback, the
-    # same near-zero-influence path first rows already take).
-    #
-    # BW weights multiply into every weighted moment on both the import
-    # and export sides, so flipping this default CHANGES PUBLISHED
-    # ESTIMATES. It therefore requires the full v0.5 release train: EC2
-    # rerun, A/B via analysis/compare_runs.R against the archived v0.4.1
-    # outputs, HF card changelog + supersession note, manifest rehash, and
-    # HF upload. Until that ships, repo HEAD must keep reproducing the
-    # published v0.4.1 artifacts — that invariant is the reason the flag
-    # exists at all. Both modes are locked by
-    # tests/testthat/test-bw-weight-gaps.R.
+    # ABSENT-KEY RULE: the estimators read the flag with
+    # identical(cfg$bw_lag, "calendar"), so a cfg list WITHOUT the key
+    # runs legacy. That is deliberate — hand-built cfg lists (tests,
+    # validation harnesses, captures) predate the flag and must keep
+    # reproducing published v0.4.x bit-for-bit; only CLI-built configs
+    # carry the new default. The flip shipped with the v0.5.0 release
+    # train (EC2 rerun, compare_runs.R A/B v0.4.1 -> v0.5.0-rc, card
+    # changelog + supersession, manifest rehash, gated HF upload). Both
+    # modes stay locked by tests/testthat/test-bw-weight-gaps.R.
     bw_lag = opts$bw_lag,
 
     # --- Across-exporter weighting (methodological) ---

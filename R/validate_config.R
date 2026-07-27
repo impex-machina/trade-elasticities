@@ -45,8 +45,9 @@ validate_config <- function(cfg) {
   }
 
   # --- BW lag policy ---
-  # Optional: absent means the estimators default to "legacy" (the
-  # published behaviour). When present it must be a recognized mode, so a
+  # Optional: absent means the estimators run "legacy" (the pre-v0.5.0
+  # behaviour, so hand-built cfg lists keep reproducing published
+  # v0.4.x). When present it must be a recognized mode, so a
   # typo cannot silently fall back to legacy on a run that intended the
   # calendar fix. NOT in `required` above: hand-built cfg lists (tests,
   # validation harnesses) predate the flag and stay valid without it.

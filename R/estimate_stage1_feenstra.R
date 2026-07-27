@@ -58,7 +58,7 @@ estimate_feenstra_sigma_cell <- function(imp_dt, focal_importer, cfg) {
 
   # Post-v0.4.1 audit, deferred BW-lag item: same gating as the production
   # sites so the Tier-4 legacy baseline stays comparable in A/B runs. See
-  # build_config.R for the stay-legacy-until-v0.5 rule.
+  # build_config.R for the v0.5.0 default-flip record and absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
   if (bw_lag_calendar) {
     dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",

@@ -332,10 +332,11 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
   # cell-level row drops below (reference join, moment-NA filter) cannot
   # stale it into an x_{t-2+}. Rows whose calendar t-1 is absent from the
-  # panel get NA -> bw_weight()'s weight-1 fallback. Under "legacy" (the
-  # default; reproduces published v0.4.x output bit-for-bit) the
-  # positional shift at the weights block below runs unchanged. See
-  # build_config.R for why the default must stay legacy until v0.5.
+  # panel get NA -> bw_weight()'s weight-1 fallback. Under "legacy"
+  # (reproduces published v0.4.x output bit-for-bit; the CLI default
+  # before v0.5.0, still the absent-key behaviour) the positional shift
+  # at the weights block below runs unchanged. See build_config.R for
+  # the v0.5.0 default-flip record and the absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
   if (bw_lag_calendar) {
     dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",

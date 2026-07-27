@@ -8,9 +8,11 @@
 # post-filter moment table, so after a filtered-out year the "lag" is a
 # stale x_{t-2+}. cfg$bw_lag now selects the policy:
 #
-#   "legacy"   (default; absent flag behaves the same) — the positional
-#              shift, reproducing published v0.4.x output bit-for-bit.
-#   "calendar" — calendar_lag() applied to the pre-filter panel; rows
+#   "legacy"   (absent-flag behaviour; the CLI default before v0.5.0) —
+#              the positional shift, reproducing published v0.4.x
+#              output bit-for-bit.
+#   "calendar" (CLI default since v0.5.0) — calendar_lag() applied to
+#              the pre-filter panel; rows
 #              whose calendar t-1 is genuinely unobserved fall to
 #              bw_weight()'s NA -> 1 fallback.
 #
@@ -204,11 +206,13 @@ test_that("--bw-lag plumbs through parse_cli, build_config, validate_config", {
   dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(unlink(data_dir, recursive = TRUE))
 
-  # Default is legacy — the published behaviour.
+  # CLI default is calendar since v0.5.0 (the shipped behaviour); an
+  # ABSENT cfg key still runs legacy at the estimators — locked below in
+  # the integration block.
   opts_default <- env$parse_cli(args = c("--data", data_dir))
-  expect_identical(opts_default$bw_lag, "legacy")
+  expect_identical(opts_default$bw_lag, "calendar")
   cfg_default <- env$build_config(opts_default)
-  expect_identical(cfg_default$bw_lag, "legacy")
+  expect_identical(cfg_default$bw_lag, "calendar")
 
   # Explicit calendar flows through to cfg.
   opts_cal <- env$parse_cli(args = c("--data", data_dir,
@@ -301,8 +305,11 @@ test_that("bw_lag modes: bit-identical on gapless data, divergent on gaps", {
   g_legacy   <- run_2b(gapped_dt, "legacy")
   g_calendar <- run_2b(gapped_dt, "calendar")
 
-  # The default path IS the legacy path, bit-for-bit, gaps included —
-  # the invariant that keeps repo HEAD reproducing published v0.4.1.
+  # An ABSENT cfg key still runs legacy, bit-for-bit, gaps included:
+  # hand-built cfg lists (this fixture's make_synthetic_cfg, the
+  # validation harnesses) keep reproducing published v0.4.x even after
+  # the v0.5.0 CLI default flip — CLI-built configs carry an explicit
+  # "calendar".
   expect_identical(data_of(g_default), data_of(g_legacy))
 
   # The modes genuinely diverge once a gap exists: the weight change

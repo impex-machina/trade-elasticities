@@ -88,7 +88,7 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     optparse::make_option(
       c("--bw-lag"),
-      type = "character", default = "legacy",
+      type = "character", default = "calendar",
       help = paste("BW weight lag policy: 'legacy' (previous retained row",
                    "via positional shift; reproduces published v0.4.x",
                    "output bit-for-bit) or 'calendar' (previous calendar",

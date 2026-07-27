@@ -100,7 +100,7 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
   # export-side fn-14 weights for BOTH Stage 1/2a (estimate_importer_product)
   # and Stage 2b (estimate_importer_product_fixed_sigma), so gating it here
   # covers every export-side moment. Semantics mirror the import sites: see
-  # build_config.R for the stay-legacy-until-v0.5 rule.
+  # build_config.R for the v0.5.0 default-flip record and absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
 
   # Helpers: lookup (importer, good) -> (sigma, gamma) with fallback.
@@ -277,9 +277,10 @@ estimate_importer_product <- function(imp_dt, focal_importer, all_dt, cfg,
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
   # cell-level row drops below cannot stale it into an x_{t-2+}. Under
-  # "legacy" (the default; reproduces published v0.4.x output
-  # bit-for-bit) the positional shift at the weights block below runs
-  # unchanged. See build_config.R for the stay-legacy-until-v0.5 rule.
+  # "legacy" (reproduces published v0.4.x output bit-for-bit; the CLI
+  # default before v0.5.0, still the absent-key behaviour) the positional
+  # shift at the weights block below runs unchanged. See build_config.R
+  # for the v0.5.0 default-flip record and the absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
   if (bw_lag_calendar) {
     dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",
