@@ -10,7 +10,7 @@ disk <- disk[basename(disk) != ".gitkeep"]  # tracked empty-dir placeholder, nev
 extra <- setdiff(disk, m$local_path)
 if (length(extra)) stop("untracked files under data/derived: ", paste(extra, collapse = ", "))
 old <- m$sha256
-m$sha256 <- vapply(m$local_path, function(p) as.character(openssl::sha256(file(p))), character(1))
+m$sha256 <- vapply(m$local_path, function(p) as.character(openssl::sha256(file(p, 'rb'))), character(1))
 m$size_bytes <- file.size(m$local_path)
 changed <- m$local_path[old != m$sha256]
 cat("hashes changed (", length(changed), "):\n", sep = "")
