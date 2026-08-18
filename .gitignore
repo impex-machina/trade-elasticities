@@ -105,4 +105,5 @@ docs/methodology/build_readme.md
 results/audits/
 results/stage2_dgp_summary_quick.json
 
-results/*_bw_gap_census_series.csv   # per-series census: 183 MB, lives on S3 (v050rc_run_20260818/), not in git
+# per-series BW gap census: 183 MB, lives on S3 (v050rc_run_<date>/), not in git
+results/*_bw_gap_census_series.csv
