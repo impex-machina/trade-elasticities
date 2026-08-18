@@ -20,6 +20,35 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+> **v0.5.0 (2026-08-18).** Broda-Weinstein fn-14 weight lag corrected to the
+> previous **calendar** year of the cell panel: v0.4.x took the previous
+> *retained* row via a positional shift, which silently substituted a stale
+> x_{t-2+} whenever the t-1 row had been filtered out. CLI default is now
+> `--bw-lag calendar`; `--bw-lag legacy` reproduces v0.4.1 bit-for-bit.
+> **Stage 1 sigma is bit-identical to v0.4.1** (280,649 cells; Stage 1
+> carries no BW weights) -- sigma-only consumers are unaffected. **Stage 2b
+> gamma is superseded**: gamma median 0.679 -> 0.678, p95 1.949 -> 1.940,
+> share gamma > 1 23.6% -> 23.4%, opt_tariff median 0.713 -> 0.709, tier
+> composition unchanged (3.3/70.1/0.2/26.4); 95.2% of matched estimates
+> moved but the median |dgamma| is 0.0024 (p90 0.16, p99 1.46) -- broad,
+> small reweighting; membership churn 8,586 out / 8,085 in (0.12%), rows
+> 6,831,219 -> 6,830,718. Prepared-panel gap census (HS4, country scope):
+> 52.8% of bilateral series carry internal holes and 7.15M rows (9.1%)
+> received a stale lag under v0.4.x, touching 91.0% of cells; those rows now
+> take the weight-1 fallback (the same path as series-first rows), and
+> movement is monotone in per-cell stale-row count (Spearman 0.45 on
+> cell-max |dgamma|). Full read with the recorded prediction:
+> `docs/methodology/v041_v050_comparison.md` at GitHub tag `v0.5.0`.
+> **Manifest note:** sha256 values for the binary `.rds` files are now
+> computed in binary mode; the v0.4.0/v0.4.1 manifests recorded text-mode
+> hashes for those four files that do not match standard sha256 tools (the
+> files themselves were always correct; hub-side checksums unaffected).
+> Saved outputs are now canonically sorted with run metadata moved to the
+> summary sidecar, so from this release the manifest hashes certify content.
+> Data revision: `ea1c3ea464ca1ac114bf9b6c518325e8135bdc41`. **v0.4.1
+> remains available pinned at revision `5493c51f`** -- do not mix versions
+> within one analysis.
+>
 > **v0.4.1 (2026-07-25).** Sign correction on Soderbery (2018) Eq. (11):
 > the export-supply moment used x5/x6 sign conventions inconsistent with
 > the paper (derivation and fix: `docs/methodology/eq11_sign_correction.md`
