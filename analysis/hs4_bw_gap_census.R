@@ -68,7 +68,11 @@ raw_cache <- readRDS(raw_cache_file)
 # EXACTLY the production country-scope preparation (run_estimation.R):
 config_country <- config
 config_country$use_regions <- FALSE
-prep <- prepare_data(config_country, raw_cache = raw_cache)
+prep <- prepare_data(config_country, raw_cache = raw_cache)$dt
+# prepare_data() returns list(dt, qlog) -- unpack the panel exactly as
+# run_estimation.R does (dt_country <- prep_country$dt); the := calls below
+# need a live data.table, so setDT() guards against a plain data.frame.
+setDT(prep)
 cat(sprintf("Prepared panel: %s rows\n\n", format(nrow(prep), big.mark = ",")))
 
 # ---- Row-level: calendar t-1 presence within the bilateral series ---------
