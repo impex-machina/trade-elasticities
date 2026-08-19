@@ -124,6 +124,10 @@ stage1_summary <- list(
 #                (zero cells in current data; comment says "shouldn't reach")
 #   adjust == 4: Step 2 sigma exceeded sigma_start_cap, clamped to cap
 #   adjust == 5: Step 2 omega exceeded omega_start_cap, clamped to cap
+#   adjust == 6: boundary HLIML on the omega floor   (v0.6.0, patch 0031;
+#   adjust == 7: boundary HLIML at the sigma cap       final_source ==
+#   adjust == 8: boundary HLIML at the omega cap       "hliml_boundary";
+#                routed only where the closed form AND Step 2 both failed)
 #
 # Codes 4 and 5 are SUB-CASES of Step 2 fallback (cells that fell to Step 2
 # and then produced a value clamped at a cap, not an estimate). The README
@@ -150,6 +154,10 @@ stage1_summary$adjust_x_final_source <- list(
   code_5           = list(hliml = xt(5,  "hliml"),
                           step2_weighted = xt(5,  "step2_weighted"),
                           pre_discard    = xt(5,  NA)),
+  code_6_8_boundary = list(hliml_boundary = sum(!is.na(stage1$adjust) & stage1$adjust %in% c(6L, 7L, 8L) &
+                                                 !is.na(stage1$final_source) & stage1$final_source == "hliml_boundary"),
+                           other          = sum(!is.na(stage1$adjust) & stage1$adjust %in% c(6L, 7L, 8L) &
+                                                 !(!is.na(stage1$final_source) & stage1$final_source == "hliml_boundary"))),
   code_pre_discard = list(hliml = xt(NA, "hliml"),
                           step2_weighted = xt(NA, "step2_weighted"),
                           pre_discard    = xt(NA, NA))
@@ -167,6 +175,10 @@ stage1_summary$routing_summary <- list(
   omega_negative_floor  = sum(stage1$adjust == 3L, na.rm = TRUE),
   clamped_at_sigma_cap  = sum(stage1$adjust == 4L, na.rm = TRUE),
   clamped_at_omega_cap  = sum(stage1$adjust == 5L, na.rm = TRUE),
+  boundary_omega_floor  = sum(stage1$adjust == 6L, na.rm = TRUE),   # v0.6.0 (patch 0031)
+  boundary_sigma_cap    = sum(stage1$adjust == 7L, na.rm = TRUE),
+  boundary_omega_cap    = sum(stage1$adjust == 8L, na.rm = TRUE),
+  boundary_total        = sum(stage1$adjust %in% c(6L, 7L, 8L), na.rm = TRUE),
   pre_discard           = sum(is.na(stage1$adjust)),
   # Derived aggregates (sums over subsets of the seven primaries above):
   step2_total           = sum(stage1$adjust %in% c(1L, 2L, 3L, 4L, 5L), na.rm = TRUE),

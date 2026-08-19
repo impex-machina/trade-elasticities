@@ -33,7 +33,7 @@ test_that("run_stage1_liml() has the expected formals and runs on the default pa
   fm <- names(formals(run_stage1_liml))
   expect_true(all(c("baci_dt", "output_path", "n_cores", "min_year", "min_exporters",
                     "min_periods", "sample_cells", "verbose", "hliml_method") %in% fm))
-  expect_identical(formals(run_stage1_liml)$hliml_method, "bfgs")
+  expect_identical(formals(run_stage1_liml)$hliml_method, "closed")
   # the n_cores default must be a clean call (the 0025 regression put a formal inside it)
   expect_identical(deparse(formals(run_stage1_liml)$n_cores), "parallel::detectCores() - 1")
   out_path <- tempfile(fileext = ".rds")
@@ -44,8 +44,16 @@ test_that("run_stage1_liml() has the expected formals and runs on the default pa
   tab <- readRDS(out_path)
   expect_equal(nrow(tab), 2L)
   expect_true(all(c("importer", "good", "status", "hliml_status", "hliml_method") %in% names(tab)))
-  expect_true(all(tab$hliml_method == "bfgs"))
-  expect_true(all(is.na(tab$sigma_hliml_cf)))
+  expect_true(all(tab$hliml_method == "closed"))
+  expect_true("hliml_boundary_edge" %in% names(tab))
+  # explicit bfgs reproduces the v0.5.x column semantics (NA cf columns)
+  out_b <- tempfile(fileext = ".rds")
+  suppressMessages(run_stage1_liml(.raw_panel(), output_path = out_b, n_cores = 1L,
+                                   min_year = 1995L, min_exporters = 3L, min_periods = 3L,
+                                   verbose = FALSE, hliml_method = "bfgs"))
+  tb <- readRDS(out_b)
+  expect_true(all(tb$hliml_method == "bfgs"))
+  expect_true(all(is.na(tb$sigma_hliml_cf)))
 })
 
 test_that("run_stage1_liml(hliml_method = 'both') writes the closed-form and boundary columns", {

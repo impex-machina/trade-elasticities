@@ -191,6 +191,18 @@ sigma_bias_sign_phrase <- function(t1a) {
   sprintf("negative at %d of %d grid points", n_neg, n)
 }
 
+# v0.6.0 (patch 0031): boundary-HLIML cells (adjust 6/7/8, routed only where
+# the closed form and Step 2 both failed). Silent when the run has none
+# (v0.5.x tables), so the sentence is unchanged for legacy JSONs.
+boundary_phrase <- function(rs, n_cells) {
+  bt <- rs[["boundary_total"]]
+  if (is.null(bt) || !is.finite(bt) || bt == 0) return("")
+  sprintf("; a further %s (%s cells) are constrained boundary HLIML optima -- %s on the ω floor, %s at the σ cap, %s at the ω cap -- routed only where both the closed-form HLIML point and Step 2 were inadmissible (`final_source == \"hliml_boundary\"`, no SE)",
+          format_pct(bt, n_cells), format_int(bt),
+          format_int(rs[["boundary_omega_floor"]]), format_int(rs[["boundary_sigma_cap"]]),
+          format_int(rs[["boundary_omega_cap"]]))
+}
+
 asymmetry_phrase <- function(n_asym) {
   if (n_asym == 0L) {
     return("")  # no parenthetical at all
@@ -224,6 +236,7 @@ render_env$dgp_harness_line <- dgp_harness_line
 render_env$format_num <- format_num
 render_env$asymmetry_phrase <- asymmetry_phrase
 render_env$yield_direction_phrase <- yield_direction_phrase
+render_env$boundary_phrase <- boundary_phrase
 render_env$sigma_bias_sign_phrase <- sigma_bias_sign_phrase
 render_env$manifest_n_files <- manifest_n_files
 

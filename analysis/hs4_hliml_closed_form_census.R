@@ -51,8 +51,9 @@ miss <- setdiff(need, names(d))
 if (length(miss))
   stop("input lacks columns ", paste(miss, collapse = ", "),
        " -- was the run made with --stage1-hliml both?")
-if (!all(d$hliml_method %in% "both", na.rm = TRUE) && "hliml_method" %in% names(d))
-  warning("hliml_method is not 'both' for every row; census semantics assume the BFGS routing")
+if ("hliml_method" %in% names(d) &&
+    !all(d$hliml_method[!is.na(d$hliml_status)] %in% "both"))
+  warning("hliml_method is not 'both' for every Step-3 row; census semantics assume the BFGS routing")
 
 N <- nrow(d)
 reached3 <- d[!is.na(hliml_status)]                 # cells that reached Step 3

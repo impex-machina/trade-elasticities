@@ -1127,11 +1127,12 @@ estimate_cell_liml <- function(cell_df,
                                omega_start_cap = 10,
                                omega_start_floor = 0.001,
                                rho_clamp = c(0.0001, 0.999),
-                               hliml_method = c("bfgs", "closed", "both")) {
-  # hliml_method (v0.6.0-rc, patch 0025):
+                               hliml_method = c("closed", "bfgs", "both")) {
+  # hliml_method (patch 0025; default flipped to "closed" by patch 0031 after
+  # the 2026-08-19 census -- see docs/results/hliml_closed_form_census.md):
   #   "bfgs"   -- production path through v0.5.x: hliml_core() BFGS on the
-  #               wall-penalized (theta0, sigma, omega) objective. Bit-preserving
-  #               default: every downstream field is exactly as before.
+  #               wall-penalized (theta0, sigma, omega) objective. Reproduces
+  #               v0.5.x output bit-for-bit (pass --stage1-hliml bfgs).
   #   "closed" -- HLIML point estimate from hliml_closed_form(); if
   #               inadmissible the cell falls through the same Step-2 cascade a
   #               BFGS failure does today (boundary/hybrid search is a later
@@ -1435,6 +1436,9 @@ estimate_cell_liml <- function(cell_df,
   #   3 = omega < 0, clamped to 0.0001
   #   4 = sigma clamped at the upper cap (omega state in omega_capped)
   #   5 = omega clamped at the upper cap, sigma NOT capped
+  #   6 = boundary HLIML on the omega floor (patch 0031, "closed" mode only)
+  #   7 = boundary HLIML at the sigma cap            (ditto)
+  #   8 = boundary HLIML at the omega cap            (ditto)
   adjust <- 0L
   final_sigma <- sigma_hliml
   final_omega <- omega_hliml
@@ -1513,6 +1517,31 @@ estimate_cell_liml <- function(cell_df,
     omega_capped <- FALSE
   }
 
+  # Boundary (hybrid) routing -- patch 0031, v0.6.0. Only in "closed" mode,
+  # only when BOTH the closed-form HLIML point and the Step-2 cascade left
+  # the cell without any estimate (the shipped all_inversions_failed bucket),
+  # and only for a usable edge (omega_floor / omega_cap / sigma_cap; the
+  # sigma_floor edge stays a failure). Precedence is unchanged otherwise:
+  # interior HLIML > Step-2 cascade > boundary. Census hliml_cf_census_20260819
+  # (docs/results/hliml_closed_form_census.md, Q5): 29,909 of the 66,429
+  # shipped all_inversions_failed cells carry a usable boundary optimum
+  # (median sigma 3.31; 46% on the omega floor, 37% at the sigma cap, 17% at
+  # the omega cap). Adjust codes 6/7/8 are new; cap/floor flags are set so
+  # downstream consumers treat them like the Step-2 cap/floor states.
+  hliml_boundary_edge <- NA_character_
+  if (hliml_method == "closed" && is.na(final_sigma) && is.na(final_omega) &&
+      bd_ok && isTRUE(bd$usable)) {
+    final_sigma <- bd$sigma
+    final_omega <- bd$omega
+    final_rho   <- bd$rho
+    final_sigma_se <- NA_real_; final_omega_se <- NA_real_; final_rho_se <- NA_real_
+    final_source <- "hliml_boundary"
+    hliml_boundary_edge <- bd$edge
+    sigma_capped <- identical(bd$edge, "sigma_cap")
+    omega_capped <- identical(bd$edge, "omega_cap")
+    adjust <- switch(bd$edge, omega_floor = 6L, sigma_cap = 7L, omega_cap = 8L, 9L)
+  }
+
   # Final sanity: if both HLIML and Step 2 fallback failed, mark as failed.
   if (is.na(final_sigma) && is.na(final_omega)) {
     return(list(
@@ -1573,6 +1602,7 @@ estimate_cell_liml <- function(cell_df,
     # interior estimate never lands exactly on the floor.
     omega_floored = isTRUE(!is.na(final_omega) && final_omega <= 1e-4),
     final_source = final_source,
+    hliml_boundary_edge = hliml_boundary_edge,   # patch 0031: NA unless routed on a boundary optimum
     # Test statistics
     fstat_kp = F_kp,
     fstat_het = F_het,        # heteroskedasticity-adjusted F from HLIML

@@ -78,21 +78,22 @@ test_that("'both' mode: BFGS and closed form agree on an interior cell; closed f
   expect_lte(fit$hliml_Q_cf, fit$hliml_Q + 1e-10)
 })
 
-test_that("default path is bit-identical to hliml_method = 'bfgs' and carries NA cf fields", {
+test_that("default is 'closed' (v0.6.0); explicit 'bfgs' is the v0.5.x reproducer with NA cf fields", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell(seed = 7L)
   f0 <- estimate_cell_liml(mom, ref_exporter = 1L)
-  f1 <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "bfgs")
-  expect_identical(f0, f1)
-  expect_identical(f0$hliml_method, "bfgs")
-  expect_true(is.na(f0$sigma_hliml_cf))
-  expect_true(is.na(f0$hliml_Q_cf))
-  expect_true(is.na(f0$hliml_cf_status))
-  # and the routed numbers are untouched by the new fields
-  for (nm in c("sigma", "omega", "rho", "adjust", "final_source", "hliml_status"))
-    expect_identical(f0[[nm]], f1[[nm]])
+  fc <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "closed")
+  fb <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "bfgs")
+  expect_identical(f0, fc)
+  expect_identical(f0$hliml_method, "closed")
+  expect_identical(fb$hliml_method, "bfgs")
+  expect_true(is.na(fb$sigma_hliml_cf)); expect_true(is.na(fb$hliml_Q_cf)); expect_true(is.na(fb$hliml_cf_status))
+  expect_true(is.na(fb$hliml_boundary_edge))
+  # Steps 1-2 are shared, so the Step-2 fields agree across modes
+  expect_identical(fb$sigma_step2, fc$sigma_step2)
+  expect_identical(fb$eta_step2, fc$eta_step2)
 })
 
 test_that("'closed' mode routes on the closed form and returns HNCS SEs", {
@@ -114,7 +115,7 @@ test_that("'closed' mode routes on the closed form and returns HNCS SEs", {
   expect_identical(fc$eta_step2, fb$eta_step2)
 })
 
-test_that("--stage1-hliml parses, defaults to bfgs, and rejects unknown values", {
+test_that("--stage1-hliml parses, defaults to closed, and rejects unknown values", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "parse_cli.R"), local = TRUE)
   source(file.path(root, "R", "build_config.R"), local = TRUE)
@@ -122,7 +123,7 @@ test_that("--stage1-hliml parses, defaults to bfgs, and rejects unknown values",
   dir.create(data_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(unlink(data_dir, recursive = TRUE))
   opts <- parse_cli(args = c("--data", data_dir))
-  expect_equal(opts$stage1_hliml, "bfgs")
+  expect_equal(opts$stage1_hliml, "closed")
   opts <- parse_cli(args = c("--data", data_dir, "--stage1-hliml", "both"))
   expect_equal(opts$stage1_hliml, "both")
   expect_error(parse_cli(args = c("--data", data_dir, "--stage1-hliml", "newton")),
@@ -196,7 +197,7 @@ test_that("boundary search never beats the closed form on an admissible cell and
   expect_true(is.na(fb$sigma_hliml_bd)); expect_true(is.na(fb$hliml_bd_edge))
 })
 
-test_that("boundary search rescues sigma on an all_inversions_failed cell (reported, not routed)", {
+test_that("boundary search rescues sigma on an all_inversions_failed cell (routed in closed mode, reported in both)", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
@@ -205,10 +206,9 @@ test_that("boundary search rescues sigma on an all_inversions_failed cell (repor
   # closed form on the rescaled data inverts to eta1 <= 0, and the constrained
   # optimum sits on the omega floor with sigma near the truth of 3.
   mom <- simulate_one_cell(3, 0.003, J = 15L, T = 25L, seed = 5005L)
-  f0 <- estimate_cell_liml(mom, ref_exporter = 1L)                        # shipped path
+  f0 <- estimate_cell_liml(mom, ref_exporter = 1L)                        # default = closed (routes the boundary point)
   fb <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "both")
-  expect_identical(f0$status, "all_inversions_failed")
-  expect_identical(fb$status, "all_inversions_failed")                    # routing untouched
+  expect_identical(fb$status, "all_inversions_failed")                    # 'both' routes as bfgs: untouched
   expect_identical(fb$hliml_cf_status, "ok")
   expect_false(isTRUE(fb$hliml_cf_admissible))
   expect_identical(fb$hliml_cf_inversion, "eta1_nonpositive")
@@ -217,6 +217,17 @@ test_that("boundary search rescues sigma on an all_inversions_failed cell (repor
   expect_equal(fb$omega_hliml_bd, 1e-4)
   expect_lt(abs(fb$sigma_hliml_bd - 3) / 3, 0.15)
   expect_gte(fb$hliml_Q_bd, fb$hliml_Q_cf - 1e-12)                      # boundary can't beat the unconstrained min
-  # the default path carries none of it
-  expect_true(is.null(f0$sigma_hliml_bd) || is.na(f0$sigma_hliml_bd))
+  # 'bfgs' carries none of it; 'closed' (the default) ROUTES it (patch 0031):
+  fbfgs <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "bfgs")
+  expect_identical(fbfgs$status, "all_inversions_failed")
+  expect_true(is.null(fbfgs$sigma_hliml_bd) || is.na(fbfgs$sigma_hliml_bd))
+  expect_identical(f0$status, "ok")
+  expect_identical(f0$final_source, "hliml_boundary")
+  expect_identical(f0$hliml_boundary_edge, "omega_floor")
+  expect_equal(f0$adjust, 6L)
+  expect_equal(f0$sigma, bd$sigma, tolerance = 1e-10)
+  expect_equal(f0$omega, 1e-4)
+  expect_true(f0$omega_floored)
+  expect_true(is.na(f0$sigma_se))
+  expect_false(f0$sigma_capped); expect_false(f0$omega_capped)
 })

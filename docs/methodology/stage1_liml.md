@@ -44,3 +44,48 @@ in the snapshot.
   `sigma_fallback` global median in Stage 2. This produces the 29%
   `fallback_median` provenance rate observed in the Stage 2 country
   output. See `stage2_country.md` for the implications.
+
+## v0.6.0 addendum: closed-form HLIML, O(n) algebra, boundary routing
+
+*Added 2026-08-19 (patches 0025-0031). The sections above describe the v0.5.x
+BFGS path, which remains available bit-for-bit via `--stage1-hliml bfgs`.*
+
+**Point estimate.** The HLIML objective $Q(\theta) = A'(P-D)A / A'A$ with
+$A = Y - X\theta$ is a Rayleigh quotient in $b = (1, -\theta)$, so its
+unconstrained minimiser is the generalized eigenvector for the smallest
+eigenvalue of $(X_c'X_c)^{-1} X_c'(P-D)X_c$, $X_c = [Y, X]$ -- the same
+$\alpha$ the HNCS sandwich already uses. `hliml_closed_form()` computes it
+deterministically and inverts to $(\sigma, \omega)$; the admissibility caps
+then apply exactly as before. No optimizer, so a cell's HLIML status is a
+property of the data, not of a search path.
+
+**O(n) algebra.** With exporter dummies as instruments, $P$ is block-diagonal
+with entries $1/n_g$, so every $P$-weighted quadratic form in the objective and
+in the HNCS sandwich collapses to within-exporter sums (`hliml_group_moments()`,
+`hncs_sandwich_se_groups()`). The `closed` path never builds an $n \times n$
+matrix. Summation order differs from the dense path, so the dense `bfgs` path
+is kept as the v0.5.x reproducer rather than rewritten.
+
+**Routing (precedence unchanged, one new tail).** Interior closed-form HLIML
+(adjust 0) > Step-2 cascade (adjust 1/4/5, `omega_floored`) > **boundary
+optimum** (new): when both are inadmissible, `hliml_boundary_search()`
+minimises $Q$ along the edges of the admissible box with $\theta_0$ profiled
+out; a usable edge (`omega_floor` -> adjust 6, `sigma_cap` -> 7, `omega_cap`
+-> 8; `sigma_floor` stays a failure) is routed with
+`final_source == "hliml_boundary"`, the matching cap/floor flags, and no SE.
+This is Soderbery (2015)'s hybrid behaviour made explicit and flagged.
+
+**Census on the full universe (2026-08-19, `--stage1-hliml both`, bit-identical
+routing to v0.5.1; `docs/results/hliml_closed_form_census.md`).** Of 150,429
+cells where v0.5.x BFGS did not converge, 63,040 have an admissible closed-form
+HLIML point. Where both paths are admissible (52,293 cells), median
+$|\Delta\sigma| = 0.0001$, 95.1% within 1%, and $Q_{cf} \le Q_{bfgs}$ in
+99.99%. Projected composition under `closed`: `hliml_interior` 51,038 ->
+115,999; `step2_clean` 66,843 -> 24,776; `capped` 23,943 -> 14,598;
+`all_inversions_failed` 66,429 -> 52,880 before the boundary tail, of which
+29,909 carry a usable boundary optimum (median $\sigma$ 3.31; 46% on the
+$\omega$ floor, 37% at the $\sigma$ cap, 17% at the $\omega$ cap). 5,424
+shipped interior cells have an inadmissible global optimum (BFGS had stopped
+at a non-minimising interior point); under `closed` they fall to the Step-2
+cascade. The realised v0.6.0 tables come from the rc run
+(`docs/v060_rc_runbook.md`), not from this projection.

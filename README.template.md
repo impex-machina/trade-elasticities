@@ -238,7 +238,7 @@ Stated forthrightly:
 - **Estimator-provenance composition.** On the full universe, {{format_pct(req(r$stage1$provenance_rates$interior_full_universe, "numerator"), req(r$stage1$provenance_rates$interior_full_universe, "denominator"))}} of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
   to the Step 2 fallback, of which {{format_pct(req(r$stage1$routing_summary, "clamped_total"), req(r$stage1, "n_cells"))}} of the full universe ({{format_int(req(r$stage1$routing_summary, "clamped_total"))}} cells)
-  are clamped at the σ/ω caps and report the cap, not an estimate. {{format_pct(req(r$stage1, "sy_fails"), req(r$stage1, "sy_evaluated"))}} of cells fail the
+  are clamped at the σ/ω caps and report the cap, not an estimate{{boundary_phrase(r$stage1$routing_summary, req(r$stage1, "n_cells"))}}. {{format_pct(req(r$stage1, "sy_fails"), req(r$stage1, "sy_evaluated"))}} of cells fail the
   Stock-Yogo weak-instrument threshold at the strict 10% maximal-size
   critical value this pipeline screens at. At Grant-Soderbery (2024)'s own
   25% rule of thumb, {{format_pct(req(r$stage1, "sy_pass_gs25"), req(r$stage1, "sy_gs25_evaluated"))}} of evaluated cells pass the

@@ -212,6 +212,11 @@ if (should_run("1", opts, paths)) {
   } else {
     cat("\n========== STAGE 1: HLIML (Grant & Soderbery 2024) ==========\n")
     cat("  Estimator: HLIML with Fuller LIML feasibility fallback\n")
+    cat(sprintf("  HLIML method: %s%s\n", opts$stage1_hliml,
+                switch(opts$stage1_hliml,
+                       closed = " (closed-form eigenvector; boundary routing for cells failing both HLIML and Step 2)",
+                       bfgs   = " (v0.5.x wall-penalized BFGS; bit-for-bit reproducer)",
+                       both   = " (census mode: bfgs routing + closed form alongside)", "")))
     cat("  Diagnostics: Kleibergen-Paap F, Sargan J, Stock-Yogo screening\n\n")
     
     # run_stage1_liml expects raw BACI columns: (importer, exporter, good, t, value, quantity)

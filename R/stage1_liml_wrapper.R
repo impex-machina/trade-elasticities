@@ -26,7 +26,7 @@ run_stage1_liml <- function(baci_dt,
                             min_periods = 3,
                             sample_cells = NULL,
                             verbose = TRUE,
-                            hliml_method = "bfgs") {
+                            hliml_method = "closed") {
   # baci_dt: data.table with (importer, exporter, good, t, value, quantity)
   # output_path: where to write _feenstra_sigma.rds
   # n_cores: number of parallel workers (Linux/Mac: mclapply; Windows: PSOCK)
@@ -178,6 +178,7 @@ run_stage1_liml <- function(baci_dt,
       # patch 0025: HLIML estimator provenance + closed form alongside (NA
       # unless hliml_method is "closed" or "both")
       hliml_method = fit$hliml_method %||% hliml_method,
+      hliml_boundary_edge = fit$hliml_boundary_edge %||% NA_character_,
       hliml_Q = fit$hliml_Q %||% NA_real_,
       sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
       omega_hliml_cf = fit$omega_hliml_cf %||% NA_real_,
