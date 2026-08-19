@@ -128,3 +128,52 @@ test_that("--stage1-hliml parses, defaults to bfgs, and rejects unknown values",
   expect_error(parse_cli(args = c("--data", data_dir, "--stage1-hliml", "newton")),
                "stage1-hliml")
 })
+
+# ---- patch 0026: O(n) HNCS sandwich equals the dense sandwich ---------------
+
+test_that("hncs_sandwich_se_groups reproduces the dense HNCS sandwich at the closed-form point", {
+  root <- dirname(locate_source_dir())
+  source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
+  for (seed in c(20260819L, 11L)) {
+    mom <- .cf_cell(seed = seed)
+    Y <- mom$y; X <- cbind(1, mom$x1, mom$x2)
+    ex <- sort(unique(mom$exporter))
+    Z <- sapply(ex, function(e) as.numeric(mom$exporter == e))
+    P <- Z %*% solve(crossprod(Z), t(Z)); Pmd <- P; diag(Pmd) <- 0
+    cf <- hliml_closed_form(Y, X, mom$exporter)
+    e_hat <- as.numeric(Y - X %*% c(cf$theta0, cf$theta1, cf$theta2))
+    dense <- hncs_sandwich_se(Y, X, Z, e_hat = e_hat, P = P, diag_P = diag(P),
+                              P_minus_diag = Pmd, sigma = cf$sigma, omega = cf$omega, rho = cf$rho)
+    grp   <- hncs_sandwich_se_groups(Y, X, mom$exporter, e_hat = e_hat,
+                                     sigma = cf$sigma, omega = cf$omega, rho = cf$rho)
+    expect_identical(dense$status, "ok"); expect_identical(grp$status, "ok")
+    expect_equal(grp$alpha, dense$alpha, tolerance = 1e-9)
+    expect_equal(grp$sigma_se, dense$sigma_se, tolerance = 1e-8)
+    expect_equal(grp$omega_se, dense$omega_se, tolerance = 1e-8)
+    expect_equal(grp$rho_se, dense$rho_se, tolerance = 1e-8)
+    expect_equal(grp$F_het, dense$F_het, tolerance = 1e-9)
+    expect_equal(grp$J_h, dense$J_h, tolerance = 1e-9)
+    expect_equal(unname(grp$v_bar), unname(dense$v_bar), tolerance = 1e-8)
+  }
+})
+
+test_that("'closed' mode never builds P and matches 'both' cf point with finite O(n) SEs", {
+  root <- dirname(locate_source_dir())
+  source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
+  mom <- .cf_cell()
+  # trace hliml_core: it must NOT be called in closed mode
+  calls <- 0L
+  trace_env <- environment(estimate_cell_liml)
+  orig <- get("hliml_core", envir = trace_env)
+  assign("hliml_core", function(...) { calls <<- calls + 1L; orig(...) }, envir = trace_env)
+  on.exit(assign("hliml_core", orig, envir = trace_env), add = TRUE)
+  fc <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "closed")
+  expect_equal(calls, 0L)
+  fb <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "both")
+  expect_gte(calls, 1L)
+  expect_identical(fc$final_source, "hliml")
+  expect_equal(fc$sigma, fb$sigma_hliml_cf, tolerance = 1e-12)
+  expect_true(is.finite(fc$sigma_se)); expect_true(is.finite(fc$fstat_het)); expect_true(is.finite(fc$jstat_h))
+})

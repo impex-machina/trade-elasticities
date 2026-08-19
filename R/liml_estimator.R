@@ -780,6 +780,85 @@ hliml_closed_form <- function(Y, X_ohx, group,
 
 
 # -------------------------------------------------------------------------
+# 4.5c HNCS SANDWICH SEs VIA GROUP SUMS (patch 0026) -- O(n), no P matrix
+#
+# Same estimator as hncs_sandwich_se() below, specialised to the production
+# instrument set (exporter dummies, optionally + constant = reference group):
+# P_ij = 1/n_g for i, j in the same group, so every P-weighted quadratic form
+# collapses to within-group sums:
+#   X'(P - D)X            = sum_g [s_g s_g' - S_g] / n_g        (hliml_group_moments)
+#   (P X_bar)_i           = group mean of X_bar over g(i)
+#   M'(P o P)M            = sum_g m_g m_g' / n_g^2,   m_g = within-group colsum of M
+#   e'(P - D)e            = sum_g [(sum e)^2 - sum e^2] / n_g
+#   (e^2)'((P-D) o (P-D))(e^2) = sum_g [(sum e^2)^2 - sum e^4] / n_g^2
+# Agrees with the dense function to ~1e-10 (tests/testthat/test-stage1-hliml-
+# closed-form.R). Used on the `closed` path only: the `bfgs` path keeps the
+# dense algebra so v0.5.x output stays bit-identical.
+# -------------------------------------------------------------------------
+
+hncs_sandwich_se_groups <- function(Y, X_ohx, group, e_hat, sigma, omega, rho,
+                                    alpha = NULL) {
+  Y <- as.numeric(Y); X_ohx <- as.matrix(X_ohx); e_hat <- as.numeric(e_hat)
+  n <- length(Y); k <- ncol(X_ohx)
+  g <- as.integer(factor(group)); n_g <- tabulate(g); l <- length(n_g)
+  gm <- hliml_group_moments(Y, X_ohx, group)
+  if (is.null(alpha)) {
+    M0 <- tryCatch(solve(gm$XcXc, gm$XcPdXc), error = function(e) NULL)
+    if (is.null(M0)) return(list(status = "hncs_fail_singular_XcXc"))
+    eig <- tryCatch(eigen(M0, only.values = TRUE)$values, error = function(e) NULL)
+    if (is.null(eig)) return(list(status = "hncs_fail_eig"))
+    alpha <- min(Re(eig))
+  }
+  H_bar <- gm$XcPdXc[-1, -1, drop = FALSE] - alpha * gm$XcXc[-1, -1, drop = FALSE]
+  ee <- sum(e_hat^2)
+  if (ee < 1e-16) return(list(status = "hncs_fail_zero_residuals"))
+  eX <- as.numeric(crossprod(e_hat, X_ohx))
+  X_bar <- X_ohx - outer(e_hat, eX / ee)                 # n x k
+  PXb <- (rowsum(X_bar, g, reorder = TRUE) / n_g)[g, , drop = FALSE]   # group means, n x k
+  e2 <- e_hat^2
+  term1 <- crossprod(PXb, e2 * PXb)
+  term2a <- crossprod(X_bar, (e2 / n_g[g]) * PXb)
+  sigma_first <- term1 - term2a - t(term2a)
+  Mm <- e_hat * X_bar                                    # n x k
+  m_g <- rowsum(Mm, g, reorder = TRUE)                   # l x k
+  sigma_second <- crossprod(m_g / n_g)                   # sum_g m_g m_g' / n_g^2
+  sigma_bar <- sigma_first + sigma_second
+  H_bar_inv <- tryCatch(solve(H_bar), error = function(e) NULL)
+  if (is.null(H_bar_inv)) return(list(status = "hncs_fail_singular_Hbar"))
+  v_bar <- H_bar_inv %*% sigma_bar %*% H_bar_inv
+  se_g <- rowsum(e_hat, g, reorder = TRUE); e2_g <- rowsum(e2, g, reorder = TRUE)
+  e4_g <- rowsum(e2^2, g, reorder = TRUE)
+  ePde <- sum((se_g^2 - e2_g) / n_g)
+  ee2 <- sum(e2^2)
+  F_het <- l * ePde / ee2
+  inner <- sum((e2_g^2 - e4_g) / n_g^2) / l
+  J_h <- ePde / sqrt(max(inner, 1e-30)) + l
+  V_sub <- v_bar[2:3, 2:3, drop = FALSE]
+  d_sub <- matrix(c(
+    -(sigma - 1)^3 * (1 - rho),
+    (sigma - 1)^2 * (1 - rho),
+    (1 - 2 * rho) * (sigma - 1)^2 * (1 - rho)^2,
+    2 * rho * (sigma - 1) * (1 - rho)^2
+  ), nrow = 2, byrow = TRUE)
+  delta_mat <- d_sub %*% V_sub %*% t(d_sub)
+  diag(delta_mat) <- pmax(diag(delta_mat), 0)
+  sigma_se <- sqrt(delta_mat[1, 1]); rho_se <- sqrt(delta_mat[2, 2])
+  denom4 <- (sigma * (rho - 1) + 1)^4
+  if (denom4 < 1e-20) {
+    omega_se <- NA_real_
+  } else {
+    omega_var <- (1 / denom4) * (
+      rho^2 * (1 - rho)^2 * delta_mat[1, 1] +
+        (sigma - 1)^2 * delta_mat[2, 2] -
+        2 * (sigma - 1) * rho * (1 - rho) * delta_mat[1, 2])
+    omega_se <- if (omega_var >= 0) sqrt(omega_var) else NA_real_
+  }
+  list(status = "ok", sigma_se = sigma_se, omega_se = omega_se, rho_se = rho_se,
+       F_het = F_het, J_h = J_h, v_bar = v_bar, alpha = alpha)
+}
+
+
+# -------------------------------------------------------------------------
 # 4.6 HNCS SANDWICH STANDARD ERRORS
 #
 # Implements Hausman-Newey-Chao-Swanson sandwich variance estimator
@@ -1176,10 +1255,16 @@ estimate_cell_liml <- function(cell_df,
   if (is.na(omega_w) || omega_w <= 0) omega_w <- 0.1
   if (is.na(sigma_w) || sigma_w <= 1) sigma_w <- 1.5
 
-  hliml_fit <- hliml_core(Y_h, X_h_ohx, Z,
-                          sigma_start = sigma_w,
-                          omega_start = omega_w,
-                          theta0_start = cons_w)
+  # BFGS (dense, n x n) only where its point estimate is needed: "bfgs" routes
+  # on it, "both" reports it alongside the closed form. "closed" (patch 0026)
+  # never builds P: the point comes from the eigenvector and the HNCS SEs from
+  # hncs_sandwich_se_groups(), both O(n).
+  hliml_fit <- if (hliml_method != "closed")
+    hliml_core(Y_h, X_h_ohx, Z,
+               sigma_start = sigma_w,
+               omega_start = omega_w,
+               theta0_start = cons_w)
+  else list(status = "hliml_not_run_closed_mode")
 
   # Closed form (patch 0025). Computed on the same 1/shat-rescaled data the
   # BFGS path uses; `group` is the exporter id of every row (see the header
@@ -1200,28 +1285,13 @@ estimate_cell_liml <- function(cell_df,
     if (cf_ok && isTRUE(cf$admissible)) {
       theta_eq_cf <- c(cf$theta0, cf$theta1, cf$theta2)
       e_hat_cf <- as.numeric(Y_h - X_h_ohx %*% theta_eq_cf)
-      P_pieces <- if (identical(hliml_fit$status, "ok") ||
-                      !is.null(hliml_fit$P)) {
-        list(P = hliml_fit$P, diag_P = hliml_fit$diag_P,
-             P_minus_diag = hliml_fit$P_minus_diag)
-      } else {
-        # BFGS returned early without P (no convergence): rebuild it.
-        ZtZ_chol_cf <- tryCatch(chol(crossprod(Z)), error = function(e) NULL)
-        if (is.null(ZtZ_chol_cf)) NULL else {
-          P_cf <- Z %*% chol2inv(ZtZ_chol_cf) %*% t(Z)
-          Pmd_cf <- P_cf; diag(Pmd_cf) <- 0
-          list(P = P_cf, diag_P = diag(P_cf), P_minus_diag = Pmd_cf)
-        }
-      }
       hliml_fit <- list(status = "ok", sigma = cf$sigma, omega = cf$omega,
                         rho = cf$rho, theta0 = cf$theta0, theta1 = cf$theta1,
                         theta2 = cf$theta2, e_hat = e_hat_cf,
                         obj_value = cf$alpha, convergence = 0L,
                         iterations = NA_integer_,
-                        P = P_pieces$P, diag_P = P_pieces$diag_P,
-                        P_minus_diag = P_pieces$P_minus_diag,
                         n = length(Y_h), l = ncol(Z), k = ncol(X_h_ohx),
-                        source = "closed_form")
+                        source = "closed_form", cf_alpha = cf$alpha)
     } else {
       hliml_fit <- list(status = if (cf_ok) "cf_inadmissible" else cf$status,
                         source = "closed_form")
@@ -1235,8 +1305,17 @@ estimate_cell_liml <- function(cell_df,
   omega_hliml <- if (hliml_status == "ok") hliml_fit$omega else NA_real_
   rho_hliml   <- if (hliml_status == "ok") hliml_fit$rho   else NA_real_
 
-  # Compute HLIML SEs if HLIML converged (and the projection pieces exist)
-  if (hliml_status == "ok" && !is.null(hliml_fit$P)) {
+  # Compute HLIML SEs if HLIML converged: O(n) group-sum sandwich on the
+  # closed-form path (no P), dense sandwich where the BFGS path supplied P.
+  if (hliml_status == "ok" && identical(hliml_fit$source, "closed_form")) {
+    se_h <- tryCatch(
+      hncs_sandwich_se_groups(Y_h, X_h_ohx, cell_df$exporter,
+                              e_hat = hliml_fit$e_hat,
+                              sigma = sigma_hliml, omega = omega_hliml,
+                              rho = rho_hliml, alpha = hliml_fit$cf_alpha),
+      error = function(e) list(status = paste0("hncs_error_", conditionMessage(e)))
+    )
+  } else if (hliml_status == "ok" && !is.null(hliml_fit$P)) {
     se_h <- tryCatch(
       hncs_sandwich_se(Y_h, X_h_ohx, Z,
                        e_hat = hliml_fit$e_hat,
