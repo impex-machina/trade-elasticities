@@ -225,7 +225,7 @@ test_that("boundary search rescues sigma on an all_inversions_failed cell (route
   expect_identical(f0$final_source, "hliml_boundary")
   expect_identical(f0$hliml_boundary_edge, "omega_floor")
   expect_equal(f0$adjust, 6L)
-  expect_equal(f0$sigma, bd$sigma, tolerance = 1e-10)
+  expect_equal(f0$sigma, fb$sigma_hliml_bd, tolerance = 1e-10)   # routed point == the reported bd point
   expect_equal(f0$omega, 1e-4)
   expect_true(f0$omega_floored)
   expect_true(is.na(f0$sigma_se))
