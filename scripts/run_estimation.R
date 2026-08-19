@@ -620,7 +620,12 @@ local({
                       local_p))
       next
     }
-    actual <- as.character(openssl::sha256(file(local_p)))
+    # Binary-mode read (see R/load_outputs.R::verify_checksum and
+    # scripts/rehash_manifest.R): text-mode file() mangles .rds bytes on
+    # Windows and would report spurious "DIFFERS from manifest" warnings.
+    con <- file(local_p, "rb")
+    actual <- tolower(unclass(as.character(openssl::sha256(con))))  # unclass: see R/load_outputs.R
+    close(con)
     if (identical(actual, expected)) {
       message(sprintf("[checksum] %s matches manifest", local_p))
     } else {

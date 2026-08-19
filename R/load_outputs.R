@@ -46,7 +46,20 @@ verify_checksum <- function(path, expected_sha) {
                         "the manifest (Section 10)."),
                  path, expected_sha))
   }
-  actual <- as.character(openssl::sha256(file(path)))
+  # Binary-mode read is REQUIRED: file(path) without "rb" is a text-mode
+  # read on Windows and mangles .rds bytes, so the computed hash does not
+  # match the (binary-mode) manifest values -- the Quick Start would fail
+  # on Windows against the v0.5.0 manifest. Same fix as
+  # scripts/rehash_manifest.R (patch 0018).
+  con <- file(path, "rb")
+  on.exit(close(con), add = TRUE)
+  # openssl::sha256() returns a raw vector classed c("hash", "sha256") and
+  # its as.character() method KEEPS that class, so identical() against
+  # the plain manifest string is FALSE even when the hex digests are
+  # equal (verified with openssl 2.1.1 and the 2.4.0-era source). Strip
+  # the class and compare plain, case-normalized hex strings.
+  actual <- tolower(unclass(as.character(openssl::sha256(con))))
+  expected_sha <- tolower(trimws(expected_sha))
   if (!identical(actual, expected_sha)) {
     stop(sprintf("Checksum mismatch for %s\n  expected: %s\n  actual:   %s",
                  path, expected_sha, actual))
