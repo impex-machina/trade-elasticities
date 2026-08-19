@@ -35,20 +35,24 @@ input universe.
 
 A referee may ask why we do not cite confidence-interval coverage from
 the synthetic-recovery grid as evidence that the standard errors are
-correct. We deliberately do not, because in this design coverage is
-bound by conditional point-estimate bias, not by SE calibration. Under
-weak identification the HLIML-class estimator exhibits substantial
-conditional bias on the harder cells of the grid: median sigma bias
-ranges from +21% at the easiest corner (low sigma, moderate omega) to
--75% at the hardest (sigma = 8 with inelastic supply), and estimation
-succeeds in only 30 to 58 percent of replications, with success
-selecting toward better-behaved samples. An interval centered on a
-point estimate that sits 30-75% from the truth cannot cover at the
-nominal rate regardless of how correctly its width is computed;
-accordingly, observed coverage tracks the bias surface (0.85 where bias
-is small, 0.42 where it is largest, median 0.74) and is reported in the
-appendix as a bias diagnostic, not an SE test. The standard errors are
-instead validated by the two channels that isolate them: the analytic
+correct. We report it, with one caveat about where it is informative. On the
+4x3 (sigma, omega) grid at J = 25 exporters and T = 30 periods (200
+replications per point), the estimator returns an admissible estimate
+in 41 to 96 percent of replications (median 72 percent). Conditional
+on success, the median sigma is within 3 percent of truth at every
+grid point with sigma <= 3 and within 7 percent at sigma in {5, 8}
+for omega <= 1; the exceptions are the high-sigma, high-omega corner
+-- (5, 3) and (8, 3), where the median sigma is biased down by 30 and
+46 percent and omega is pulled toward its floor -- which is also where
+the yield is lowest and where the sigma = 10 admissibility cap binds.
+Coverage tracks that surface: 0.95 to 0.97 for sigma and 0.90 to 0.97
+for omega on the sigma <= 3 rows, 0.67 and 0.76 at (8, 3), median 0.91
+across the grid. Tier 1b at (3, 1) shows the consistency signature
+directly: the yield rises from 72 percent at n = 150 to 99 to 100
+percent at n >= 1,500, and the median sigma bias shrinks from -8.8 to
+-2.3 percent (omega: -19 to -0.6 percent). We therefore read coverage
+as informative about the standard errors on the well-identified region
+and as a bias diagnostic only at the corner. The standard errors are further validated by the two channels that isolate them: the analytic
 Jacobian verification above, and the Pillar 3 Monte Carlo, in which the
 production SE formula's median calibration ratio lies within -1.8% to
 +6.7% of unity in every regime. Both channels validate the formula
@@ -57,14 +61,12 @@ real-data bootstrap that quantifies how far these conditional SEs sit
 from unconditional resampling dispersion, and in which direction, by
 branch.
 
-A within-release A/B supports this reading. The v0.3.0 release corrected
+A within-release A/B isolates the two paths. The v0.3.0 release corrected
 the Stage 1 SE Jacobian and replaced the weak-instrument diagnostic (see
 Section 3) while leaving the point-estimation path untouched; on the
 seeded synthetic grid, all point-path statistics (yields, medians,
 biases) reproduced bit-identically across releases, while only the
-SE- and diagnostic-dependent columns moved. Coverage did not move toward
-the nominal rate under the corrected SEs -- exactly as the bias-bound
-account predicts and a calibration-bound account would not.
+SE- and diagnostic-dependent columns moved.
 
 ## 3. Weak identification: an honest screen
 
@@ -162,8 +164,7 @@ for Step-2 cells in the weak-identification mass the analytic SE is if
 anything conservative. The per-cell bootstrap file is published
 precisely so users can calibrate to their own cell mix rather than
 inherit a global factor. The pre-stated caveats stand: this
-benchmarks dispersion, not bias, and replicate selection parallels the
-selection documented in Pillar 2.
+benchmarks dispersion, not bias, and replicate selection is of the same kind as the yield selection in Pillar 2 -- mild in the well-identified region, material only at the high-sigma corner.
 
 ## 5. Release note for replication
 

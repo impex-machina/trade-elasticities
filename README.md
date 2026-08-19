@@ -227,12 +227,12 @@ Stated forthrightly:
 
 - **σ small-sample bias and selection under the Stage-1 homogeneity
   assumption.** Synthetic recovery (Pillar 2) shows the estimator *returns
-  an estimate* in 32.5%–52.0% of replications across the σ × ω grid
-  (median 35.8%) — a yield rate, not a recovery-within-tolerance rate —
-  and the yield falls as the
+  an estimate* in 40.5%–95.5% of replications across the σ × ω grid
+  (median 71.8%) — a yield rate, not a recovery-within-tolerance rate —
+  and the yield rises as the
   sample grows from 150 to 3,000 observations. Conditional on
   success, the median σ bias across the grid runs from
-  -70.8% to 26.4% (negative at 8 of 12 grid points),
+  -46.2% to 5.6% (negative at 9 of 12 grid points),
   so comparisons to Feenstra-GMM or Broda–Weinstein estimates should not
   assume the upward bias of that tradition.
 - **Estimator-provenance composition.** On the full universe, 18.2% of
