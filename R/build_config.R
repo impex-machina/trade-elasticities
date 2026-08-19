@@ -1,3 +1,5 @@
+`%||%` <- function(a, b) if (is.null(a)) b else a
+
 #' R/build_config.R
 #'
 #' Constructs the cfg list consumed by feen94_het_baci.R from parsed CLI
@@ -77,6 +79,7 @@ build_config <- function(opts) {
     # changelog + supersession, manifest rehash, gated HF upload). Both
     # modes stay locked by tests/testthat/test-bw-weight-gaps.R.
     bw_lag = opts$bw_lag,
+    stage2_gradient = opts$stage2_gradient %||% "numeric",
 
     # --- Across-exporter weighting (methodological) ---
     exporter_weight     = "trade_value",

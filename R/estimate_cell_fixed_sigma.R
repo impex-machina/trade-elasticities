@@ -291,6 +291,49 @@ assess_sigma_robust <- function(sigma_hat, sigma_se, adjust, se_cond, se_prop,
   TRUE
 }
 
+# -----------------------------------------------------------------------------
+# Analytic gradient of het_obj_fixed_sigma() (patch 0028, v0.6.0-rc)
+#
+#   obj(d) = sum_rows w_r r_r(d)^2 + lambda * sum_{i: d_i > 1e-5} (ln d_i - ln g)^2
+#   grad_c = 2 * sum_rows w_r r_r dr_r/dd_c + 2 lambda (ln d_c - ln g)/d_c [d_c > 1e-5]
+#
+# dr/dd comes from the same Rcpp Jacobian the SEs use
+# (het_residuals_and_jacobian_fixed_sigma_rcpp: 0-based sparse triplets,
+# jac_val = d residual / d gamma, weights indexed by row). Verified against
+# numDeriv::grad to ~1e-8 relative in tests/testthat/test-stage2-gradient.R.
+# Opt-in via cfg$stage2_gradient == "analytic" (CLI --stage2-gradient): with
+# a gradient the L-BFGS-B iterates differ from the finite-difference path, so
+# the default stays "numeric" to keep v0.5.x Stage 2b bit-identical.
+# -----------------------------------------------------------------------------
+het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
+                                 exp_sig_V, exp_gam_V, wt_imp, wt_exp,
+                                 ln_gamma_prior, shrinkage_lambda,
+                                 paper_exact_eq11 = FALSE) {
+  K <- length(d)
+  if (sigma <= 1 || any(d <= 0)) return(rep(0, K))   # objective is a flat 1e12 there
+  jac <- tryCatch(
+    het_residuals_and_jacobian_fixed_sigma_rcpp(
+      d = d, sigma = sigma, imp_Y = imp_Y, imp_X = imp_X,
+      exp_Y = exp_Y, exp_X = exp_X, exp_jmap = exp_jmap,
+      exp_sig_V = exp_sig_V, exp_gam_V = exp_gam_V,
+      wt_imp = wt_imp, wt_exp = wt_exp, paper_exact_eq11 = paper_exact_eq11),
+    error = function(e) NULL)
+  if (is.null(jac) || !identical(jac$status, "ok")) return(rep(0, K))
+  rs <- jac$jac_row + 1L; cs <- jac$jac_col + 1L
+  contrib <- 2 * jac$weights[rs] * jac$residuals[rs] * jac$jac_val
+  g <- numeric(K)
+  if (length(contrib)) {
+    agg <- rowsum(contrib, cs)
+    g[as.integer(rownames(agg))] <- agg[, 1]
+  }
+  if (shrinkage_lambda > 0 && !is.na(ln_gamma_prior)) {
+    sel <- d > 1e-5
+    g[sel] <- g[sel] + 2 * shrinkage_lambda * (log(d[sel]) - ln_gamma_prior) / d[sel]
+  }
+  g
+}
+
+
 estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
                                                    all_dt, cfg,
                                                    exporter_dests = NULL,
@@ -327,6 +370,11 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # cfg$paper_exact_eq11 <- TRUE to reproduce the printed-equation
   # (v0.4.0) behaviour for comparison runs.
   pe11 <- isTRUE(cfg$paper_exact_eq11)
+  # patch 0028: analytic gradient for the L-BFGS-B step (opt-in; needs the
+  # Rcpp Jacobian to be loaded in this process/worker).
+  use_grad <- identical(cfg$stage2_gradient, "analytic") &&
+    exists("het_residuals_and_jacobian_fixed_sigma_rcpp", mode = "function")
+  grad_fn <- if (use_grad) het_grad_fixed_sigma else NULL
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
@@ -444,7 +492,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   lower_bounds <- rep(1e-6, J + 1)
 
   result <- tryCatch(
-    optim(par = d_start, fn = het_obj_fixed_sigma, method = "L-BFGS-B",
+    optim(par = d_start, fn = het_obj_fixed_sigma, gr = grad_fn,
+          method = "L-BFGS-B",
           lower = lower_bounds, upper = rep(Inf, J + 1),
           sigma = sigma_val,
           imp_Y = imp_Y_vec, imp_X = imp_X_mat,

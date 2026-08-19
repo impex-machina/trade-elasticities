@@ -109,6 +109,15 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "METHOD"
     ),
     optparse::make_option(
+      c("--stage2-gradient"),
+      type = "character", default = "numeric",
+      help = paste("Stage 2 L-BFGS-B gradient: 'numeric' (optim's finite",
+                   "differences; reproduces v0.5.x Stage 2b bit-for-bit) or",
+                   "'analytic' (exact gradient from the Rcpp Jacobian).",
+                   "Default: %default"),
+      metavar = "MODE"
+    ),
+    optparse::make_option(
       c("--stage"),
       type = "character", default = "all",
       help = paste("Which stage(s) to run: 'all', '1', '2a', '2b'.",
@@ -189,6 +198,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$bw_lag %in% c("legacy", "calendar")) {
     fail(sprintf("--bw-lag must be 'legacy' or 'calendar', got: '%s'",
                  opts$bw_lag))
+  }
+  if (!opts$stage2_gradient %in% c("numeric", "analytic")) {
+    fail(sprintf("--stage2-gradient must be 'numeric' or 'analytic', got: '%s'",
+                 opts$stage2_gradient))
   }
   if (!opts$stage1_hliml %in% c("bfgs", "closed", "both")) {
     fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",

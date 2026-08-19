@@ -54,6 +54,10 @@ validate_config <- function(cfg) {
   if (!is.null(cfg$bw_lag) && !cfg$bw_lag %in% c("legacy", "calendar")) {
     stop("bw_lag must be 'legacy' or 'calendar', got: ", cfg$bw_lag)
   }
+  if (!is.null(cfg$stage2_gradient) &&
+      !cfg$stage2_gradient %in% c("numeric", "analytic")) {
+    stop("stage2_gradient must be 'numeric' or 'analytic', got: ", cfg$stage2_gradient)
+  }
 
   # --- Year range ---
   if (!is.numeric(cfg$minyear) || cfg$minyear < 1900 || cfg$minyear > 2100) {
