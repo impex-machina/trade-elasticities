@@ -106,6 +106,20 @@ setorder(comp, -shipped)
 n_sigma_shipped   <- d[status == "ok", .N]
 n_sigma_projected <- n_sigma_shipped + reached3[status != "ok" & cf_class == "cf_admissible", .N]
 
+# Q5 boundary (hybrid) rescue among closed-form-inadmissible cells (patch 0027) --
+has_bd <- all(c("hliml_bd_edge", "hliml_bd_usable", "sigma_hliml_bd") %in% names(reached3))
+if (has_bd) {
+  inadm <- reached3[cf_class %in% c("cf_inadmissible", "cf_fail")]
+  bd_by_edge <- inadm[, .N, by = .(edge = fifelse(is.na(hliml_bd_edge), "bd_NA", hliml_bd_edge))][order(-N)]
+  bd_rescue <- inadm[hliml_bd_usable %in% TRUE, .N, by = shipped_dest][order(-N)]
+  rescued_aif <- inadm[hliml_bd_usable %in% TRUE & shipped_dest == "all_inversions_failed"]
+  q5 <- list(n_cf_inadmissible = nrow(inadm), by_edge = bd_by_edge, usable_by_shipped_dest = bd_rescue,
+             rescued_all_inversions_failed = nrow(rescued_aif),
+             rescued_aif_sigma_median = if (nrow(rescued_aif)) median(rescued_aif$sigma_hliml_bd) else NA,
+             rescued_aif_share_at_sigma_cap = if (nrow(rescued_aif)) mean(rescued_aif$sigma_hliml_bd >= 10 - 1e-6) else NA,
+             rescued_aif_share_omega_floor = if (nrow(rescued_aif)) mean(rescued_aif$hliml_bd_edge == "omega_floor") else NA)
+} else q5 <- NULL
+
 res <- list(
   input = basename(liml_path), n_cells = N, n_reached_step3 = nrow(reached3),
   n_bfgs_ok = nrow(bfgs_ok), n_cf_admissible = nrow(cf_adm),
@@ -114,6 +128,7 @@ res <- list(
   composition = comp,
   sigma_bearing_cells = list(shipped = n_sigma_shipped, projected = n_sigma_projected,
                              delta = n_sigma_projected - n_sigma_shipped),
+  boundary = q5,
   generated = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
 )
 dir.create(dirname(out_json), showWarnings = FALSE, recursive = TRUE)
@@ -144,7 +159,17 @@ md <- c(
   "## Q4 Projected Stage-1 composition under 'closed' routing", "", fmt_tab(comp), "",
   sprintf("sigma-bearing cells (Stage-2 fallback denominator): shipped %s -> projected %s (%+d)",
           format(n_sigma_shipped, big.mark = ","), format(n_sigma_projected, big.mark = ","),
-          n_sigma_projected - n_sigma_shipped), ""
+          n_sigma_projected - n_sigma_shipped), "",
+  if (!is.null(q5)) c(
+    "## Q5 Boundary (hybrid) search among closed-form-inadmissible cells", "",
+    sprintf("- closed-form-inadmissible cells reaching Step 3: %s", format(q5$n_cf_inadmissible, big.mark = ",")), "",
+    "Best edge:", "", fmt_tab(q5$by_edge), "",
+    "Usable boundary estimate (omega_floor / omega_cap / sigma_cap) by shipped destination:", "",
+    fmt_tab(q5$usable_by_shipped_dest), "",
+    sprintf("- all_inversions_failed cells with a usable boundary estimate: %s (median sigma %.3f; at sigma cap %.1f%%; on the omega floor %.1f%%)",
+            format(q5$rescued_all_inversions_failed, big.mark = ","), q5$rescued_aif_sigma_median,
+            100 * q5$rescued_aif_share_at_sigma_cap, 100 * q5$rescued_aif_share_omega_floor), ""
+  ) else "(no boundary columns in input -- run made before patch 0027)"
 )
 dir.create(dirname(out_md), showWarnings = FALSE, recursive = TRUE)
 writeLines(md, out_md)

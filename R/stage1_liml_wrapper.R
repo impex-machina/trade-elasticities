@@ -125,7 +125,25 @@ run_stage1_liml <- function(baci_dt,
     
     if (!isTRUE(fit$status == "ok"))
       return(list(importer = imp, good = gd, status = fit$status,
-                  n_obs = nrow(prep$moments)))
+                  n_obs = nrow(prep$moments),
+                  # patches 0025/0027: keep the HLIML provenance and the
+                  # closed-form / boundary fields on non-ok rows too (NA when
+                  # the cell never reached Step 3), so the census can see
+                  # all_inversions_failed cells.
+                  hliml_status = fit$hliml_status %||% NA_character_,
+                  hliml_method = fit$hliml_method %||% hliml_method,
+                  sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
+                  omega_hliml_cf = fit$omega_hliml_cf %||% NA_real_,
+                  rho_hliml_cf = fit$rho_hliml_cf %||% NA_real_,
+                  hliml_cf_status = fit$hliml_cf_status %||% NA_character_,
+                  hliml_cf_admissible = fit$hliml_cf_admissible %||% NA,
+                  hliml_cf_inversion = fit$hliml_cf_inversion %||% NA_character_,
+                  hliml_Q_cf = fit$hliml_Q_cf %||% NA_real_,
+                  sigma_hliml_bd = fit$sigma_hliml_bd %||% NA_real_,
+                  omega_hliml_bd = fit$omega_hliml_bd %||% NA_real_,
+                  hliml_bd_edge = fit$hliml_bd_edge %||% NA_character_,
+                  hliml_bd_usable = fit$hliml_bd_usable %||% NA,
+                  hliml_Q_bd = fit$hliml_Q_bd %||% NA_real_))
     
     # Build output row
     list(
@@ -168,6 +186,11 @@ run_stage1_liml <- function(baci_dt,
       hliml_cf_admissible = fit$hliml_cf_admissible %||% NA,
       hliml_cf_inversion = fit$hliml_cf_inversion %||% NA_character_,
       hliml_Q_cf = fit$hliml_Q_cf %||% NA_real_,
+      sigma_hliml_bd = fit$sigma_hliml_bd %||% NA_real_,
+      omega_hliml_bd = fit$omega_hliml_bd %||% NA_real_,
+      hliml_bd_edge = fit$hliml_bd_edge %||% NA_character_,
+      hliml_bd_usable = fit$hliml_bd_usable %||% NA,
+      hliml_Q_bd = fit$hliml_Q_bd %||% NA_real_,
       sigma_step2 = fit$sigma_step2,
       omega_step2 = fit$omega_step2,
       rho_step2 = fit$rho_step2,

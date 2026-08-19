@@ -780,6 +780,80 @@ hliml_closed_form <- function(Y, X_ohx, group,
 
 
 # -------------------------------------------------------------------------
+# 4.5d HLIML BOUNDARY (HYBRID) SEARCH (patch 0027)
+#
+# When the closed-form HLIM point inverts to an inadmissible (sigma, omega)
+# the constrained optimum of Q over the admissible box lies on its boundary
+# (Q has a unique interior minimum in theta-space -- the lambda_min
+# eigenvector -- so there is no second interior local minimum to land on).
+# Soderbery (2015)'s hybrid estimator returns that constrained optimum
+# instead of a failure; the wall-penalised BFGS in hliml_core() cannot reach
+# it (finite differences across the wall) and falls through to Step 2. Here
+# each edge of the box is a 1-D problem: theta0 is profiled out in closed form
+# (for fixed (theta1, theta2), Q is a ratio of quadratics in theta0, a 2 x 2
+# generalized eigenproblem), and optimize() runs along the free parameter.
+# Everything uses the O(n) group-sum moments.
+#
+# Edges: omega_floor (omega = floor, sigma free) -- perfectly elastic export
+# supply, the HLIML analogue of the Step-2 `omega_floored` flag; omega_cap and
+# sigma_cap -- the analogues of adjust codes 5 and 4; sigma_floor (sigma -> 1)
+# -- reported but NOT admissible (a Cobb-Douglas limit is not a usable sigma).
+# The function only REPORTS; routing on boundary estimates is a v0.6.0
+# decision taken from the census (hs4_hliml_closed_form_census.R, Q5).
+# -------------------------------------------------------------------------
+
+hliml_boundary_search <- function(Y, X_ohx, group,
+                                  sigma_cap = 10, omega_cap = 10,
+                                  omega_floor = 1e-4, sigma_floor = 1 + 1e-6,
+                                  gm = NULL) {
+  if (is.null(gm)) gm <- hliml_group_moments(Y, X_ohx, group)
+  A <- gm$XcXc; B <- gm$XcPdXc
+  theta12 <- function(sigma, omega) {
+    d <- (1 + omega) * (sigma - 1)
+    c(omega / d, (omega * (sigma - 2) - 1) / d)
+  }
+  # Q minimised over theta0 for fixed (t1, t2): b = u + theta0 * w
+  profile_Q <- function(t1, t2) {
+    u <- c(1, 0, -t1, -t2); w <- c(0, -1, 0, 0)
+    Bu <- B %*% u; Bw <- B %*% w; Au <- A %*% u; Aw <- A %*% w
+    Bm <- matrix(c(sum(u * Bu), sum(u * Bw), sum(u * Bw), sum(w * Bw)), 2)
+    Am <- matrix(c(sum(u * Au), sum(u * Aw), sum(u * Aw), sum(w * Aw)), 2)
+    e <- tryCatch(eigen(solve(Am, Bm)), error = function(err) NULL)
+    if (is.null(e)) return(list(Q = Inf, theta0 = NA_real_))
+    k <- which.min(Re(e$values)); v <- Re(e$vectors[, k])
+    if (!is.finite(v[1]) || abs(v[1]) < 1e-12) return(list(Q = Inf, theta0 = NA_real_))
+    list(Q = Re(e$values[k]), theta0 = v[2] / v[1])
+  }
+  Q_edge <- function(sigma, omega) {
+    t <- theta12(sigma, omega); pq <- profile_Q(t[1], t[2])
+    if (!is.finite(pq$Q)) 1e300 else pq$Q
+  }
+  s_lo <- sigma_floor; s_hi <- sigma_cap; o_lo <- omega_floor; o_hi <- omega_cap
+  res <- list()
+  safe_opt <- function(f, lo, hi) tryCatch(optimize(f, c(lo, hi), tol = 1e-8),
+                                            error = function(e) list(minimum = NA_real_, objective = Inf))
+  o1 <- safe_opt(function(s) Q_edge(s, o_lo), s_lo, s_hi)
+  res$omega_floor <- list(sigma = o1$minimum, omega = o_lo, Q = o1$objective)
+  o2 <- safe_opt(function(s) Q_edge(s, o_hi), s_lo, s_hi)
+  res$omega_cap   <- list(sigma = o2$minimum, omega = o_hi, Q = o2$objective)
+  o3 <- safe_opt(function(o) Q_edge(s_hi, o), o_lo, o_hi)
+  res$sigma_cap   <- list(sigma = s_hi, omega = o3$minimum, Q = o3$objective)
+  o4 <- safe_opt(function(o) Q_edge(s_lo, o), o_lo, o_hi)
+  res$sigma_floor <- list(sigma = s_lo, omega = o4$minimum, Q = o4$objective)
+  Qs <- vapply(res, function(r) r$Q, numeric(1))
+  if (!any(is.finite(Qs))) return(list(status = "bd_fail_all_edges"))
+  best <- names(Qs)[which.min(Qs)]
+  b <- res[[best]]
+  t <- theta12(b$sigma, b$omega); pq <- profile_Q(t[1], t[2])
+  list(status = "ok", edge = best, sigma = b$sigma, omega = b$omega,
+       rho = b$omega * (b$sigma - 1) / (1 + b$sigma * b$omega),
+       theta0 = pq$theta0, theta1 = t[1], theta2 = t[2], Q = b$Q,
+       usable = best %in% c("omega_floor", "omega_cap", "sigma_cap"),
+       edges = res)
+}
+
+
+# -------------------------------------------------------------------------
 # 4.5c HNCS SANDWICH SEs VIA GROUP SUMS (patch 0026) -- O(n), no P matrix
 #
 # Same estimator as hncs_sandwich_se() below, specialised to the production
@@ -1277,6 +1351,16 @@ estimate_cell_liml <- function(cell_df,
                                                       substr(conditionMessage(e), 1, 40))))
   else NULL
   cf_ok <- !is.null(cf) && identical(cf$status, "ok")
+  # Boundary/hybrid search (patch 0027): only when the closed form exists but
+  # is inadmissible. Reported in *_bd fields; never routed on in this patch.
+  bd <- if (!is.null(cf) && !(cf_ok && isTRUE(cf$admissible)))
+    tryCatch(hliml_boundary_search(Y_h, X_h_ohx, cell_df$exporter,
+                                   sigma_cap = sigma_start_cap,
+                                   omega_cap = omega_start_cap),
+             error = function(e) list(status = paste0("bd_error_",
+                                                      substr(conditionMessage(e), 1, 40))))
+  else NULL
+  bd_ok <- !is.null(bd) && identical(bd$status, "ok")
 
   if (hliml_method == "closed") {
     # Route on the closed form. Re-use hliml_core()'s dense projection pieces
@@ -1440,7 +1524,24 @@ estimate_cell_liml <- function(cell_df,
       eta_step2 = eta2,
       hliml_status = hliml_status,
       kappa = fit2$kappa,
-      lambda_min = fit2$lambda_min
+      lambda_min = fit2$lambda_min,
+      # patches 0025/0027: the closed form and boundary search are carried on
+      # this return path too -- these are the cells the census most needs them
+      # for (a cell can fail both shipped inversions and still have an
+      # admissible or boundary HLIML point).
+      hliml_method = hliml_method,
+      sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
+      omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,
+      rho_hliml_cf   = if (cf_ok) cf$rho   else NA_real_,
+      hliml_cf_status = if (is.null(cf)) NA_character_ else cf$status,
+      hliml_cf_admissible = if (cf_ok) cf$admissible else NA,
+      hliml_cf_inversion = if (cf_ok) cf$inversion_status else NA_character_,
+      hliml_Q_cf = if (cf_ok) cf$alpha else NA_real_,
+      sigma_hliml_bd = if (bd_ok) bd$sigma else NA_real_,
+      omega_hliml_bd = if (bd_ok) bd$omega else NA_real_,
+      hliml_bd_edge  = if (bd_ok) bd$edge else if (is.null(bd)) NA_character_ else bd$status,
+      hliml_bd_usable = if (bd_ok) bd$usable else NA,
+      hliml_Q_bd = if (bd_ok) bd$Q else NA_real_
     ))
   }
 
@@ -1539,6 +1640,13 @@ estimate_cell_liml <- function(cell_df,
     hliml_cf_admissible = if (cf_ok) cf$admissible else NA,
     hliml_cf_inversion = if (cf_ok) cf$inversion_status else NA_character_,
     hliml_Q_cf = if (cf_ok) cf$alpha else NA_real_,
+    # patch 0027: constrained (boundary) optimum when the closed form is
+    # inadmissible -- reported, not routed.
+    sigma_hliml_bd = if (bd_ok) bd$sigma else NA_real_,
+    omega_hliml_bd = if (bd_ok) bd$omega else NA_real_,
+    hliml_bd_edge  = if (bd_ok) bd$edge else if (is.null(bd)) NA_character_ else bd$status,
+    hliml_bd_usable = if (bd_ok) bd$usable else NA,
+    hliml_Q_bd = if (bd_ok) bd$Q else NA_real_,
     eta_step1 = eta1,
     eta_step2 = eta2,
     sigma_start = sigma_start,

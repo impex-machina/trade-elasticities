@@ -177,3 +177,46 @@ test_that("'closed' mode never builds P and matches 'both' cf point with finite 
   expect_equal(fc$sigma, fb$sigma_hliml_cf, tolerance = 1e-12)
   expect_true(is.finite(fc$sigma_se)); expect_true(is.finite(fc$fstat_het)); expect_true(is.finite(fc$jstat_h))
 })
+
+# ---- patch 0027: boundary (hybrid) search -----------------------------------
+
+test_that("boundary search never beats the closed form on an admissible cell and is reported only when needed", {
+  root <- dirname(locate_source_dir())
+  source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
+  mom <- .cf_cell()
+  Y <- mom$y; X <- cbind(1, mom$x1, mom$x2)
+  cf <- hliml_closed_form(Y, X, mom$exporter)
+  bd <- hliml_boundary_search(Y, X, mom$exporter)
+  expect_identical(bd$status, "ok")
+  expect_gte(bd$Q, cf$alpha - 1e-12)
+  for (e in bd$edges) expect_gte(e$Q, cf$alpha - 1e-12)
+  fb <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "both")
+  expect_true(fb$hliml_cf_admissible)
+  expect_true(is.na(fb$sigma_hliml_bd)); expect_true(is.na(fb$hliml_bd_edge))
+})
+
+test_that("boundary search rescues sigma on an all_inversions_failed cell (reported, not routed)", {
+  root <- dirname(locate_source_dir())
+  source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
+  source(file.path(root, "validation", "validate_liml.R"), local = TRUE)
+  # seed 5005: both shipped inversions fail (status all_inversions_failed), the
+  # closed form on the rescaled data inverts to eta1 <= 0, and the constrained
+  # optimum sits on the omega floor with sigma near the truth of 3.
+  mom <- simulate_one_cell(3, 0.003, J = 15L, T = 25L, seed = 5005L)
+  f0 <- estimate_cell_liml(mom, ref_exporter = 1L)                        # shipped path
+  fb <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "both")
+  expect_identical(f0$status, "all_inversions_failed")
+  expect_identical(fb$status, "all_inversions_failed")                    # routing untouched
+  expect_identical(fb$hliml_cf_status, "ok")
+  expect_false(isTRUE(fb$hliml_cf_admissible))
+  expect_identical(fb$hliml_cf_inversion, "eta1_nonpositive")
+  expect_identical(fb$hliml_bd_edge, "omega_floor")
+  expect_true(fb$hliml_bd_usable)
+  expect_equal(fb$omega_hliml_bd, 1e-4)
+  expect_lt(abs(fb$sigma_hliml_bd - 3) / 3, 0.15)
+  expect_gte(fb$hliml_Q_bd, fb$hliml_Q_cf - 1e-12)                      # boundary can't beat the unconstrained min
+  # the default path carries none of it
+  expect_true(is.null(f0$sigma_hliml_bd) || is.na(f0$sigma_hliml_bd))
+})
