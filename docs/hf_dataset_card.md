@@ -20,6 +20,20 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+> **v0.5.1 (VALIDATION-ONLY, 2026-08-18).** Corrects the Pillar-2 synthetic-recovery
+> harness: `simulate_one_cell()` built the y/x1/x2 moment columns time-major while
+> its exporter/t labels were exporter-major, so every labeled exporter was a
+> mixture of all true exporters and the estimator was benchmarked on a no-signal
+> design. **Stage 1 sigma and Stage 2b gamma are bit-identical to v0.5.0**
+> (production moment construction is row-wise and was never affected); only the
+> two validation CSVs change. Corrected Tier 1a (J=25, T=30, 200 reps): yield
+> 41-96% (median 72%); sigma median bias within +/-3% for sigma <= 3, largest at the
+> (8, 3) corner (-46%); median coverage 91%. Tier 1b (3, 1): yield RISES with n
+> (72% at n=150 to 99% at n=3000), sigma bias -8.8% -> -2.3%. The earlier
+> "yield falls with n / fragility of the LIML class" reading is withdrawn.
+> Data revision: `PASTE_40_HEX_OID_HERE`. v0.5.0 remains pinned at
+> `ea1c3ea464ca1ac114bf9b6c518325e8135bdc41`.
+>
 > **v0.5.0 (2026-08-18).** Broda-Weinstein fn-14 weight lag corrected to the
 > previous **calendar** year of the cell panel: v0.4.x took the previous
 > *retained* row via a positional shift, which silently substituted a stale
