@@ -1,0 +1,134 @@
+{
+  "input": "baci_hs92_v202601_elast_country_hs4_feenstra_sigma_liml.rds",
+  "n_cells": 280649,
+  "n_reached_step3": 208253,
+  "n_bfgs_ok": 57824,
+  "n_cf_admissible": 115440,
+  "crosstab": [
+    {
+      "bfgs_class": "bfgs_noconv",
+      "cf_class": "cf_admissible",
+      "N": 63040
+    },
+    {
+      "bfgs_class": "bfgs_noconv",
+      "cf_class": "cf_fail",
+      "N": 1
+    },
+    {
+      "bfgs_class": "bfgs_noconv",
+      "cf_class": "cf_inadmissible",
+      "N": 87388
+    },
+    {
+      "bfgs_class": "bfgs_ok",
+      "cf_class": "cf_admissible",
+      "N": 52400
+    },
+    {
+      "bfgs_class": "bfgs_ok",
+      "cf_class": "cf_inadmissible",
+      "N": 5424
+    }
+  ],
+  "reroute_in_by_shipped_dest": [
+    {
+      "shipped_dest": "step2_clean",
+      "N": 41783
+    },
+    {
+      "shipped_dest": "all_inversions_failed",
+      "N": 13442
+    },
+    {
+      "shipped_dest": "capped",
+      "N": 7815
+    }
+  ],
+  "reroute_out_by_cf_class": [
+    {
+      "cf_class": "cf_inadmissible",
+      "N": 5424
+    }
+  ],
+  "agreement": {
+    "n_both": 52293,
+    "median_abs_delta_sigma": 0.00011018,
+    "share_within_1pct": 0.95112157,
+    "share_within_10pct": 0.97529306,
+    "share_Qcf_le_Qbfgs": 0.99994263,
+    "median_sigma_bfgs": 1.93194761,
+    "median_sigma_cf": 1.91383288
+  },
+  "composition": [
+    {
+      "dest": "step2_clean",
+      "shipped": 66843,
+      "projected": 24776
+    },
+    {
+      "dest": "all_inversions_failed",
+      "shipped": 66429,
+      "projected": 52880
+    },
+    {
+      "dest": "hliml_interior",
+      "shipped": 51038,
+      "projected": 115999
+    },
+    {
+      "dest": "capped",
+      "shipped": 23943,
+      "projected": 14598
+    }
+  ],
+  "sigma_bearing_cells": {
+    "shipped": 141824,
+    "projected": 155373,
+    "delta": 13549
+  },
+  "boundary": {
+    "n_cf_inadmissible": 92813,
+    "by_edge": [
+      {
+        "edge": "sigma_floor",
+        "N": 39225
+      },
+      {
+        "edge": "omega_floor",
+        "N": 23047
+      },
+      {
+        "edge": "sigma_cap",
+        "N": 15399
+      },
+      {
+        "edge": "omega_cap",
+        "N": 15142
+      }
+    ],
+    "usable_by_shipped_dest": [
+      {
+        "shipped_dest": "all_inversions_failed",
+        "N": 29909
+      },
+      {
+        "shipped_dest": "step2_clean",
+        "N": 14931
+      },
+      {
+        "shipped_dest": "capped",
+        "N": 8415
+      },
+      {
+        "shipped_dest": "hliml_interior",
+        "N": 333
+      }
+    ],
+    "rescued_all_inversions_failed": 29909,
+    "rescued_aif_sigma_median": 3.30600695,
+    "rescued_aif_share_at_sigma_cap": 0.36881875,
+    "rescued_aif_share_omega_floor": 0.46293758
+  },
+  "generated": "2026-08-19 14:42:11 EDT"
+}
