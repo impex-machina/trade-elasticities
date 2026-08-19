@@ -176,6 +176,21 @@ dgp_harness_line <- function(dgp) {
 # Currently 1. Prose has to change shape on 0 and >1; the helper encapsulates
 # all three branches so the template stays readable.
 
+# Pillar-2 direction phrases (v0.5.1): the README used to hard-code
+# "yield declining as sample size grows" and "predominantly downward". Both
+# were artifacts of the pre-0020 harness (row/label misalignment); the wording
+# is now derived from the JSON so the sentence cannot contradict the numbers.
+yield_direction_phrase <- function(t1b) {
+  lo <- req(t1b, "success_rate_at_smallest_n")
+  hi <- req(t1b, "success_rate_at_largest_n")
+  if (hi > lo + 0.02) "rises" else if (hi < lo - 0.02) "falls" else "is flat"
+}
+sigma_bias_sign_phrase <- function(t1a) {
+  b <- sapply(t1a, function(x) x$sigma_bias)
+  n_neg <- sum(b < 0); n <- length(b)
+  sprintf("negative at %d of %d grid points", n_neg, n)
+}
+
 asymmetry_phrase <- function(n_asym) {
   if (n_asym == 0L) {
     return("")  # no parenthetical at all
@@ -208,6 +223,8 @@ render_env$format_prop_pct <- format_prop_pct
 render_env$dgp_harness_line <- dgp_harness_line
 render_env$format_num <- format_num
 render_env$asymmetry_phrase <- asymmetry_phrase
+render_env$yield_direction_phrase <- yield_direction_phrase
+render_env$sigma_bias_sign_phrase <- sigma_bias_sign_phrase
 render_env$manifest_n_files <- manifest_n_files
 
 rendered <- tryCatch(

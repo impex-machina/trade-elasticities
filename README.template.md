@@ -227,15 +227,14 @@ Stated forthrightly:
 
 - **σ small-sample bias and selection under the Stage-1 homogeneity
   assumption.** Synthetic recovery (Pillar 2) shows the estimator *returns
-  an estimate* in only {{format_prop_pct(req(r$pillar2$tier1a_summary, "min_success_rate"))}}–{{format_prop_pct(req(r$pillar2$tier1a_summary, "max_success_rate"))}} of replications across the σ × ω grid
+  an estimate* in {{format_prop_pct(req(r$pillar2$tier1a_summary, "min_success_rate"))}}–{{format_prop_pct(req(r$pillar2$tier1a_summary, "max_success_rate"))}} of replications across the σ × ω grid
   (median {{format_prop_pct(req(r$pillar2$tier1a_summary, "median_success_rate"))}}) — a yield rate, not a recovery-within-tolerance rate —
-  with the yield declining as sample size grows: a selection signature
-  where harder cells converge only with more data. Conditional on
+  and the yield {{yield_direction_phrase(r$pillar2$tier1b_summary)}} as the
+  sample grows from {{format_int(req(r$pillar2$tier1b_summary, "n_obs_smallest"))}} to {{format_int(req(r$pillar2$tier1b_summary, "n_obs_largest"))}} observations. Conditional on
   success, the median σ bias across the grid runs from
-  {{format_prop_pct(min(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} to {{format_prop_pct(max(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} and is predominantly *downward*
-  across the tested grid, so comparisons to Feenstra-GMM or
-  Broda–Weinstein estimates should not assume the upward bias of that
-  tradition.
+  {{format_prop_pct(min(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} to {{format_prop_pct(max(sapply(r$pillar2$tier1a, function(x) x$sigma_bias)))}} ({{sigma_bias_sign_phrase(r$pillar2$tier1a)}}),
+  so comparisons to Feenstra-GMM or Broda–Weinstein estimates should not
+  assume the upward bias of that tradition.
 - **Estimator-provenance composition.** On the full universe, {{format_pct(req(r$stage1$provenance_rates$interior_full_universe, "numerator"), req(r$stage1$provenance_rates$interior_full_universe, "denominator"))}} of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
   to the Step 2 fallback, of which {{format_pct(req(r$stage1$routing_summary, "clamped_total"), req(r$stage1, "n_cells"))}} of the full universe ({{format_int(req(r$stage1$routing_summary, "clamped_total"))}} cells)
