@@ -20,13 +20,13 @@
 
 run_stage1_liml <- function(baci_dt,
                             output_path,
-                            n_cores = parallel::detectCores(,
-                            hliml_method = "bfgs") - 1,
+                            n_cores = parallel::detectCores() - 1,
                             min_year = 1995,
                             min_exporters = 4,
                             min_periods = 3,
                             sample_cells = NULL,
-                            verbose = TRUE) {
+                            verbose = TRUE,
+                            hliml_method = "bfgs") {
   # baci_dt: data.table with (importer, exporter, good, t, value, quantity)
   # output_path: where to write _feenstra_sigma.rds
   # n_cores: number of parallel workers (Linux/Mac: mclapply; Windows: PSOCK)
