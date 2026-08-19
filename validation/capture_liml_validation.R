@@ -71,6 +71,16 @@ df_to_md <- function(df, digits = 3) {
 
 # Headline numbers for the summary paragraph
 worst_bias <- max(abs(c(tier1a$sigma_bias, tier1a$omega_bias)), na.rm = TRUE)
+# Which parameter / grid point carries the worst absolute median bias
+# (v0.5.1): named explicitly so the summary paragraph cannot read as if a
+# worst-case omega bias were a sigma bias.
+.b_all    <- c(tier1a$sigma_bias, tier1a$omega_bias)
+.par_all  <- rep(c("sigma", "omega"), each = nrow(tier1a))
+.cell_all <- rep(sprintf("sigma = %g, omega = %g", tier1a$sigma_true,
+                         tier1a$omega_true), 2)
+.wi <- which.max(abs(.b_all))
+worst_par  <- .par_all[.wi]
+worst_cell <- .cell_all[.wi]
 med_cov    <- median(c(tier1a$sigma_cov, tier1a$omega_cov), na.rm = TRUE)
 min_success <- min(tier1a$success_rate, na.rm = TRUE)
 med_success <- median(tier1a$success_rate, na.rm = TRUE)
@@ -108,8 +118,9 @@ md <- c(
          sprintf("%+.0f%% to %+.0f%%",
                  100 * min(tier1a$sigma_bias, na.rm = TRUE),
                  100 * max(tier1a$sigma_bias, na.rm = TRUE)),
-         " (worst absolute ", sprintf("%.0f%%", 100 * worst_bias),
-         "); the hardest cells are at the high-sigma/high-omega corner. ",
+         "; the worst absolute median bias on either parameter is ",
+         sprintf("%.0f%% (%s, at %s)", 100 * worst_bias, worst_par, worst_cell),
+         ". ",
          "(3) **CI coverage**: ",
          sprintf("%.0f%%", 100 * med_cov),
          " median against nominal 95%. Tier 1b shows that success rate ",
