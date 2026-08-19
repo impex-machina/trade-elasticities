@@ -20,8 +20,19 @@
        exp_jmap = exp_jmap, sV = sV, gV = gV, wt_exp = wt_exp, d = d, sigma = 3.4)
 }
 
-test_that("analytic Stage-2 gradient matches numDeriv on the Rcpp objective (with and without prior, both Eq.11 signs)", {
-  skip_if_not_installed("Rcpp"); skip_if_not_installed("numDeriv")
+# Central-difference gradient with a relative step (no numDeriv dependency:
+# it is not in renv.lock, so a skip_if_not_installed() would silently skip
+# this -- the one test that certifies the gradient -- on the box and in CI).
+.num_grad <- function(f, x, h_rel = 1e-6) {
+  vapply(seq_along(x), function(i) {
+    h <- h_rel * max(1, abs(x[i]))
+    xp <- x; xm <- x; xp[i] <- xp[i] + h; xm[i] <- xm[i] - h
+    (f(xp) - f(xm)) / (2 * h)
+  }, numeric(1))
+}
+
+test_that("analytic Stage-2 gradient matches central differences on the Rcpp objective (with and without prior, both Eq.11 signs)", {
+  skip_if_not_installed("Rcpp")
   cpp_dir <- locate_cpp_dir()
   root <- dirname(locate_source_dir())
   env <- new.env()
@@ -41,7 +52,7 @@ test_that("analytic Stage-2 gradient matches numDeriv on the Rcpp objective (wit
     g_an <- env$het_grad_fixed_sigma(fx$d, fx$sigma, fx$imp_Y, fx$imp_X, fx$exp_Y, fx$exp_X,
                                      fx$exp_jmap, fx$sV, fx$gV, fx$wt_imp, fx$wt_exp,
                                      prior, lam, pe)
-    g_num <- numDeriv::grad(f, fx$d)
+    g_num <- .num_grad(f, fx$d)
     expect_equal(g_an, g_num, tolerance = 1e-6,
                  info = sprintf("paper_exact_eq11=%s lambda=%s", pe, lam))
     expect_false(all(g_an == 0))
