@@ -94,13 +94,13 @@ simulate_one_cell <- function(sigma_true, omega_true,
     exporter = rep(non_ref, each = T),
     t        = rep(seq_len(T), times = J - 1L)
   )
-  out$y  <- as.vector(t(sapply(non_ref,
-                               function(j) (d_ln_p[j, ] - d_ln_p[ref_j, ])^2)))
-  out$x1 <- as.vector(t(sapply(non_ref,
-                               function(j) (d_ln_s[j, ] - d_ln_s[ref_j, ])^2)))
-  out$x2 <- as.vector(t(sapply(non_ref,
+  out$y  <- as.vector(sapply(non_ref,
+                               function(j) (d_ln_p[j, ] - d_ln_p[ref_j, ])^2))
+  out$x1 <- as.vector(sapply(non_ref,
+                               function(j) (d_ln_s[j, ] - d_ln_s[ref_j, ])^2))
+  out$x2 <- as.vector(sapply(non_ref,
                                function(j) (d_ln_p[j, ] - d_ln_p[ref_j, ]) *
-                                 (d_ln_s[j, ] - d_ln_s[ref_j, ]))))
+                                 (d_ln_s[j, ] - d_ln_s[ref_j, ])))
   out
 }
 
