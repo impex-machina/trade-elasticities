@@ -718,6 +718,68 @@ hliml_core <- function(Y, X_ohx, Z, sigma_start, omega_start, theta0_start = 0,
 
 
 # -------------------------------------------------------------------------
+# 4.5b HLIML CLOSED FORM (v0.6.0-rc, patch 0025)
+#
+# The HLIML objective Q(theta) = A'(P - diag P)A / A'A with A = Y - X theta is
+# a Rayleigh quotient in b = (1, -theta): with Xc = [Y, X],
+#     Q = b' Xc'(P - D) Xc b / b' Xc'Xc b,
+# so its unconstrained minimiser is the generalized eigenvector for the
+# smallest eigenvalue of (Xc'Xc)^{-1} Xc'(P - D)Xc -- exactly the `alpha`
+# hncs_sandwich_se() already computes (Hausman-Newey-Woutersen-Chao-Swanson
+# 2012, HLIM). theta_hat = -b[-1] / b[1], then invert_structural(). No
+# optimizer, deterministic, and (Q at theta_hat) == alpha to machine
+# precision. G&S's Mata Newton-Raphson is effectively unconstrained (see
+# docs/methodology/stata_port_deviations.md, A5), so this is closer to their
+# estimator than the wall-penalized BFGS in hliml_core(), which can wander
+# along the flat omega ridge from a poor start and cannot represent boundary
+# optima. Whether a cell's HLIML point is admissible is then a property of
+# the data, not of the optimizer's path.
+#
+# With Z = group (exporter) dummies, P is block-diagonal with entries 1/n_g,
+# so Xc'(P - D)Xc = sum_g [ s_g s_g' - S_g ] / n_g (s_g = within-group column
+# sums, S_g = within-group crossproduct): O(n), no n x n matrix. If the
+# reference exporter's rows are present (Z = [dummies, 1]) the projection is
+# still a pure group projection with the reference as its own group, so
+# `group` = the exporter id of every row handles both layouts.
+# -------------------------------------------------------------------------
+
+hliml_group_moments <- function(Y, X_ohx, group) {
+  Xc <- cbind(as.numeric(Y), as.matrix(X_ohx))
+  g  <- as.integer(factor(group))
+  n_g <- tabulate(g)
+  S  <- rowsum(Xc, g, reorder = TRUE)            # G x k, rows = s_g'
+  between <- crossprod(S / sqrt(n_g))            # sum_g s_g s_g' / n_g
+  within  <- crossprod(Xc / sqrt(n_g[g]))        # sum_g S_g / n_g
+  list(XcXc = unname(crossprod(Xc)), XcPdXc = unname(between - within), n_g = n_g)
+}
+
+hliml_closed_form <- function(Y, X_ohx, group,
+                              sigma_cap = 10, omega_cap = 10) {
+  gm <- hliml_group_moments(Y, X_ohx, group)
+  M <- tryCatch(solve(gm$XcXc, gm$XcPdXc), error = function(e) NULL)
+  if (is.null(M)) return(list(status = "cf_fail_singular_XcXc"))
+  eig <- tryCatch(eigen(M), error = function(e) NULL)
+  if (is.null(eig)) return(list(status = "cf_fail_eig"))
+  vals <- Re(eig$values)
+  k <- which.min(vals)
+  b <- Re(eig$vectors[, k])
+  alpha <- vals[k]
+  if (!is.finite(b[1]) || abs(b[1]) < 1e-12)
+    return(list(status = "cf_fail_degenerate_b1", alpha = alpha))
+  theta <- -b[-1] / b[1]                         # (theta0, theta1, theta2)
+  inv <- invert_structural(theta[2], theta[3])
+  admissible <- !is.na(inv$sigma) && inv$sigma > 1 && inv$sigma < sigma_cap &&
+    !is.na(inv$omega) && inv$omega > 0 && inv$omega < omega_cap
+  list(status = "ok",
+       theta0 = theta[1], theta1 = theta[2], theta2 = theta[3],
+       alpha = alpha,
+       sigma = inv$sigma, omega = inv$omega, rho = inv$rho,
+       inversion_status = inv$status,
+       admissible = isTRUE(admissible))
+}
+
+
+# -------------------------------------------------------------------------
 # 4.6 HNCS SANDWICH STANDARD ERRORS
 #
 # Implements Hausman-Newey-Chao-Swanson sandwich variance estimator
@@ -911,7 +973,21 @@ estimate_cell_liml <- function(cell_df,
                                sigma_start_cap = 10,
                                omega_start_cap = 10,
                                omega_start_floor = 0.001,
-                               rho_clamp = c(0.0001, 0.999)) {
+                               rho_clamp = c(0.0001, 0.999),
+                               hliml_method = c("bfgs", "closed", "both")) {
+  # hliml_method (v0.6.0-rc, patch 0025):
+  #   "bfgs"   -- production path through v0.5.x: hliml_core() BFGS on the
+  #               wall-penalized (theta0, sigma, omega) objective. Bit-preserving
+  #               default: every downstream field is exactly as before.
+  #   "closed" -- HLIML point estimate from hliml_closed_form(); if
+  #               inadmissible the cell falls through the same Step-2 cascade a
+  #               BFGS failure does today (boundary/hybrid search is a later
+  #               patch). HNCS SEs are computed at the closed-form point.
+  #   "both"   -- census mode: route exactly as "bfgs" but ALSO compute the
+  #               closed form and return it in *_cf fields with the two
+  #               objective values, so an A/B run can tabulate re-routing
+  #               without changing any shipped number.
+  hliml_method <- match.arg(hliml_method)
 
   # Drop missing
   cell_df <- cell_df[complete.cases(cell_df[, c("y", "x1", "x2", "exporter")]), ]
@@ -1105,6 +1181,53 @@ estimate_cell_liml <- function(cell_df,
                           omega_start = omega_w,
                           theta0_start = cons_w)
 
+  # Closed form (patch 0025). Computed on the same 1/shat-rescaled data the
+  # BFGS path uses; `group` is the exporter id of every row (see the header
+  # of hliml_closed_form for why that covers the any_ref layout too).
+  cf <- if (hliml_method != "bfgs")
+    tryCatch(hliml_closed_form(Y_h, X_h_ohx, cell_df$exporter,
+                               sigma_cap = sigma_start_cap,
+                               omega_cap = omega_start_cap),
+             error = function(e) list(status = paste0("cf_error_",
+                                                      substr(conditionMessage(e), 1, 40))))
+  else NULL
+  cf_ok <- !is.null(cf) && identical(cf$status, "ok")
+
+  if (hliml_method == "closed") {
+    # Route on the closed form. Re-use hliml_core()'s dense projection pieces
+    # for the HNCS SEs (available whenever Z'Z was invertible); the point
+    # estimate itself never comes from BFGS in this mode.
+    if (cf_ok && isTRUE(cf$admissible)) {
+      theta_eq_cf <- c(cf$theta0, cf$theta1, cf$theta2)
+      e_hat_cf <- as.numeric(Y_h - X_h_ohx %*% theta_eq_cf)
+      P_pieces <- if (identical(hliml_fit$status, "ok") ||
+                      !is.null(hliml_fit$P)) {
+        list(P = hliml_fit$P, diag_P = hliml_fit$diag_P,
+             P_minus_diag = hliml_fit$P_minus_diag)
+      } else {
+        # BFGS returned early without P (no convergence): rebuild it.
+        ZtZ_chol_cf <- tryCatch(chol(crossprod(Z)), error = function(e) NULL)
+        if (is.null(ZtZ_chol_cf)) NULL else {
+          P_cf <- Z %*% chol2inv(ZtZ_chol_cf) %*% t(Z)
+          Pmd_cf <- P_cf; diag(Pmd_cf) <- 0
+          list(P = P_cf, diag_P = diag(P_cf), P_minus_diag = Pmd_cf)
+        }
+      }
+      hliml_fit <- list(status = "ok", sigma = cf$sigma, omega = cf$omega,
+                        rho = cf$rho, theta0 = cf$theta0, theta1 = cf$theta1,
+                        theta2 = cf$theta2, e_hat = e_hat_cf,
+                        obj_value = cf$alpha, convergence = 0L,
+                        iterations = NA_integer_,
+                        P = P_pieces$P, diag_P = P_pieces$diag_P,
+                        P_minus_diag = P_pieces$P_minus_diag,
+                        n = length(Y_h), l = ncol(Z), k = ncol(X_h_ohx),
+                        source = "closed_form")
+    } else {
+      hliml_fit <- list(status = if (cf_ok) "cf_inadmissible" else cf$status,
+                        source = "closed_form")
+    }
+  }
+
   # Decide which estimate to report based on feasibility-adjustment logic
   # (GS_Estimation.do lines 200-214)
   hliml_status <- hliml_fit$status
@@ -1112,8 +1235,8 @@ estimate_cell_liml <- function(cell_df,
   omega_hliml <- if (hliml_status == "ok") hliml_fit$omega else NA_real_
   rho_hliml   <- if (hliml_status == "ok") hliml_fit$rho   else NA_real_
 
-  # Compute HLIML SEs if HLIML converged
-  if (hliml_status == "ok") {
+  # Compute HLIML SEs if HLIML converged (and the projection pieces exist)
+  if (hliml_status == "ok" && !is.null(hliml_fit$P)) {
     se_h <- tryCatch(
       hncs_sandwich_se(Y_h, X_h_ohx, Z,
                        e_hat = hliml_fit$e_hat,
@@ -1126,7 +1249,8 @@ estimate_cell_liml <- function(cell_df,
       error = function(e) list(status = paste0("hncs_error_", conditionMessage(e)))
     )
   } else {
-    se_h <- list(status = "hliml_failed_no_se")
+    se_h <- list(status = if (hliml_status == "ok") "hliml_no_projection_no_se"
+                          else "hliml_failed_no_se")
   }
   sigma_hliml_se <- if (isTRUE(se_h$status == "ok")) se_h$sigma_se else NA_real_
   omega_hliml_se <- if (isTRUE(se_h$status == "ok")) se_h$omega_se else NA_real_
@@ -1325,6 +1449,17 @@ estimate_cell_liml <- function(cell_df,
     hliml_status = hliml_status,
     hliml_convergence = if (hliml_status == "ok") hliml_fit$convergence else NA,
     hliml_iterations = if (hliml_status == "ok") hliml_fit$iterations else NA,
+    # patch 0025: which HLIML estimator produced the point, plus the closed
+    # form alongside it (NA in the default "bfgs" mode).
+    hliml_method = hliml_method,
+    hliml_Q = if (hliml_status == "ok") as.numeric(hliml_fit$obj_value) else NA_real_,
+    sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
+    omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,
+    rho_hliml_cf   = if (cf_ok) cf$rho   else NA_real_,
+    hliml_cf_status = if (is.null(cf)) NA_character_ else cf$status,
+    hliml_cf_admissible = if (cf_ok) cf$admissible else NA,
+    hliml_cf_inversion = if (cf_ok) cf$inversion_status else NA_character_,
+    hliml_Q_cf = if (cf_ok) cf$alpha else NA_real_,
     eta_step1 = eta1,
     eta_step2 = eta2,
     sigma_start = sigma_start,

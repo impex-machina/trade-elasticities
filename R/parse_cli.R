@@ -97,6 +97,18 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "MODE"
     ),
     optparse::make_option(
+      c("--stage1-hliml"),
+      type = "character", default = "bfgs",
+      help = paste("Stage 1 HLIML estimator: 'bfgs' (wall-penalized BFGS in",
+                   "(theta0, sigma, omega); reproduces v0.5.x output",
+                   "bit-for-bit), 'closed' (HLIM eigenvector closed form;",
+                   "inadmissible cells fall through the Step-2 cascade), or",
+                   "'both' (route as bfgs, also report the closed form in",
+                   "*_cf columns -- census mode for the v0.6.0 A/B).",
+                   "Default: %default"),
+      metavar = "METHOD"
+    ),
+    optparse::make_option(
       c("--stage"),
       type = "character", default = "all",
       help = paste("Which stage(s) to run: 'all', '1', '2a', '2b'.",
@@ -177,6 +189,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$bw_lag %in% c("legacy", "calendar")) {
     fail(sprintf("--bw-lag must be 'legacy' or 'calendar', got: '%s'",
                  opts$bw_lag))
+  }
+  if (!opts$stage1_hliml %in% c("bfgs", "closed", "both")) {
+    fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",
+                 opts$stage1_hliml))
   }
 
   # --- Year range ---

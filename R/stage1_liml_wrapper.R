@@ -20,7 +20,8 @@
 
 run_stage1_liml <- function(baci_dt,
                             output_path,
-                            n_cores = parallel::detectCores() - 1,
+                            n_cores = parallel::detectCores(,
+                            hliml_method = "bfgs") - 1,
                             min_year = 1995,
                             min_exporters = 4,
                             min_periods = 3,
@@ -116,7 +117,8 @@ run_stage1_liml <- function(baci_dt,
                   n_obs = nrow(cell_data)))
     
     fit <- tryCatch(
-      estimate_cell_liml(prep$moments, ref_exporter = prep$ref_exporter),
+      estimate_cell_liml(prep$moments, ref_exporter = prep$ref_exporter,
+                         hliml_method = hliml_method),
       error = function(e) list(status = sprintf("est_error_%s",
                                                 substr(conditionMessage(e), 1, 40)))
     )
@@ -155,6 +157,17 @@ run_stage1_liml <- function(baci_dt,
       adjust = fit$adjust,
       final_source = fit$final_source,
       hliml_status = fit$hliml_status,
+      # patch 0025: HLIML estimator provenance + closed form alongside (NA
+      # unless hliml_method is "closed" or "both")
+      hliml_method = fit$hliml_method %||% hliml_method,
+      hliml_Q = fit$hliml_Q %||% NA_real_,
+      sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
+      omega_hliml_cf = fit$omega_hliml_cf %||% NA_real_,
+      rho_hliml_cf = fit$rho_hliml_cf %||% NA_real_,
+      hliml_cf_status = fit$hliml_cf_status %||% NA_character_,
+      hliml_cf_admissible = fit$hliml_cf_admissible %||% NA,
+      hliml_cf_inversion = fit$hliml_cf_inversion %||% NA_character_,
+      hliml_Q_cf = fit$hliml_Q_cf %||% NA_real_,
       sigma_step2 = fit$sigma_step2,
       omega_step2 = fit$omega_step2,
       rho_step2 = fit$rho_step2,
@@ -194,7 +207,8 @@ run_stage1_liml <- function(baci_dt,
     parallel::clusterExport(cl, "src_path", envir = environment())
     parallel::clusterEvalQ(cl, source(src_path))
     parallel::clusterExport(cl,
-                            c("min_year", "min_exporters", "min_periods", "process_one_cell"),
+                            c("min_year", "min_exporters", "min_periods", "process_one_cell",
+                              "hliml_method", "%||%"),
                             envir = environment())
     results <- parallel::clusterMap(cl, process_one_cell,
                                     idx = idx_vec,

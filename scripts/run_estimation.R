@@ -235,6 +235,7 @@ if (should_run("1", opts, paths)) {
       min_year      = config_country$minyear,
       min_exporters = config_country$min_exporters,
       min_periods   = config_country$min_periods,
+      hliml_method  = opts$stage1_hliml,
       verbose       = TRUE
     )
     
