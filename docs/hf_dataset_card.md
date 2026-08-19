@@ -31,7 +31,7 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
 > (8, 3) corner (-46%); median coverage 91%. Tier 1b (3, 1): yield RISES with n
 > (72% at n=150 to 99% at n=3000), sigma bias -8.8% -> -2.3%. The earlier
 > "yield falls with n / fragility of the LIML class" reading is withdrawn.
-> Data revision: `PASTE_40_HEX_OID_HERE`. v0.5.0 remains pinned at
+> Data revision: `3b796a6db8a6fa1caabb37acb1e51480a3cbcaf4`. v0.5.0 remains pinned at
 > `ea1c3ea464ca1ac114bf9b6c518325e8135bdc41`.
 >
 > **v0.5.0 (2026-08-18).** Broda-Weinstein fn-14 weight lag corrected to the
