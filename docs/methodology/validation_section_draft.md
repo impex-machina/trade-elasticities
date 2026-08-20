@@ -168,13 +168,7 @@ benchmarks dispersion, not bias, and replicate selection is of the same kind as 
 
 ## 5. Release note for replication
 
-Estimates cited in this paper are the v0.5.1 release (GitHub tag
-v0.5.1; HF data revision 3b796a6db8a6fa1caabb37acb1e51480a3cbcaf4).
-v0.5.1 is validation-only: Stage 1 sigma and Stage 2b gamma are
-bit-identical to v0.5.0 (HF revision
-ea1c3ea464ca1ac114bf9b6c518325e8135bdc41); it corrects the Pillar-2
-synthetic-recovery harness described in Section 2 and re-captures its
-tables. Relative to v0.4.1, v0.5.0 corrected the Broda-Weinstein weight
+Estimates cited in this paper are the v0.6.0 release (GitHub tag v0.6.0; HF data revision 4d0987e22977a6482eeefd8d9a3d5452d907e505). v0.6.0 replaces the Stage 1 BFGS search with the closed-form HLIML estimator with boundary-search routing: usable Stage 1 cells rise from 50.5% to 66.0% of the 280,649 attempted, and sigma moves for the first time across releases (median 2.878 -> 2.705); gamma median 0.678 -> 0.657, optimal-tariff median 0.709 -> 0.674, rows 6,860,437, tier composition unchanged. A Stage 2 analytic gradient was evaluated and rejected 22:1 under the current optimizer cascade (docs/methodology/v060_stage2_gradient_ab.md), and shipped Stage 1 cap flags were corrected post-hoc for boundary corner cells (sigma_capped +1,934, omega_capped +3,328). Full delta accounting: docs/methodology/v051_v060rc_comparison.md. Relative to v0.5.0, v0.5.1 is validation-only: Stage 1 sigma and Stage 2b gamma are bit-identical to v0.5.0 (HF revision ea1c3ea464ca1ac114bf9b6c518325e8135bdc41); it corrects the Pillar-2 synthetic-recovery harness described in Section 2 and re-captures its tables. Relative to v0.4.1, v0.5.0 corrected the Broda-Weinstein weight
 lag to the previous calendar year of the cell panel (v0.4.x used the
 previous retained row, a stale x_{t-2+} after any filtered-out year);
 sigma is unchanged and gamma moves broadly but slightly (median 0.679
@@ -187,10 +181,9 @@ downward (gamma median 0.238 -> 0.680; implied median export-supply
 elasticity 4.2 -> 1.47), corrected the Stage 1 SE Jacobian (sigma_se
 +38% at the median; rho_se -66%), added a consecutive-year guard to
 Stage 1 moment construction (-5.2% estimated cells), and replaced the
-weak-IV statistic as described above; sigma itself has been essentially
-unchanged throughout (median 2.878). The full delta accounting is in
+weak-IV statistic as described above; sigma itself was essentially unchanged from v0.2.0 through v0.5.1 (median 2.878), until the v0.6.0 estimator change. The full delta accounting is in
 docs/methodology/v0*_comparison.md; every earlier release remains
-available pinned at its HF revision (v0.5.0 ea1c3ea4..., v0.4.1
+available pinned at its HF revision (v0.5.1 3b796a6db8a6fa1caabb37acb1e51480a3cbcaf4, v0.5.0 ea1c3ea4..., v0.4.1
 5493c51f, v0.4.0 a76f2d7, v0.3.0
 ec59b57894cab18b2d0295c96334a96b7dd8a2cd, v0.2.0 7e598f6cb98e) and
 versions should not be mixed within one analysis.

@@ -20,6 +20,30 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+> **v0.6.0 (2026-08-19).** Stage 1 moves from the BFGS search to the
+> closed-form HLIML estimator with hybrid boundary-search routing
+> (patches 0025-0037): usable Stage 1 cells rise **50.5% -> 66.0%**
+> (141,824 -> 185,144 of 280,649; HLIML interior 62.4% of ok, Step 2
+> fallback 21.4%, boundary optima 16.2% with structurally unavailable
+> SEs, adjust codes 6/7/8), and **sigma moves for the first time across
+> releases**: median 2.878 -> 2.705 (IQR 1.63-5.71). Standard errors on
+> closed-form cells use an O(n) group-sum HNCS sandwich (100% finite).
+> **Stage 2b gamma is superseded**: gamma median 0.657, opt_tariff
+> median 0.674, rows 6,860,437, tier composition unchanged
+> (3.3/70.1/0.2/26.4). A Stage 2 analytic gradient was evaluated against
+> the numeric default and REJECTED 22:1 under the current optimizer
+> cascade (docs/methodology/v060_stage2_gradient_ab.md); numeric remains
+> the default. Shipped Stage 1 cap flags corrected post-hoc for boundary
+> corner cells (sigma_capped +1,934, omega_capped +3,328;
+> scripts/patch_stage1_boundary_flags.R). Disclosure: saved Stage 2b row
+> membership depends on global 0.5% tail-trim quantile bands; 2.2-2.9%
+> of cells lack their own reference-exporter row in every release to
+> date (ibid., Section 5). Re-pull anything consuming sigma OR gamma.
+> Data revision: `4d0987e22977a6482eeefd8d9a3d5452d907e505`. **v0.5.1
+> remains available pinned at revision
+> `3b796a6db8a6fa1caabb37acb1e51480a3cbcaf4`** -- do not mix versions
+> within one analysis.
+
 > **v0.5.1 (VALIDATION-ONLY, 2026-08-18).** Corrects the Pillar-2 synthetic-recovery
 > harness: `simulate_one_cell()` built the y/x1/x2 moment columns time-major while
 > its exporter/t labels were exporter-major, so every labeled exporter was a
