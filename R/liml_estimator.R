@@ -800,12 +800,32 @@ hliml_closed_form <- function(Y, X_ohx, group,
 # -- reported but NOT admissible (a Cobb-Douglas limit is not a usable sigma).
 # The function only REPORTS; routing on boundary estimates is a v0.6.0
 # decision taken from the census (hs4_hliml_closed_form_census.R, Q5).
+#
+# Patch 0038 (2026-08-20 fresh-eyes audit). The original implementation ran
+# a single blind optimize() along each edge. optimize() assumes a unimodal
+# objective, but the 1-D edge profiles of Q are routinely MULTIMODAL: in a
+# 918-cell synthetic census of inadmissible cells the shipped search
+# returned a strictly worse boundary point in 13.1% of cells, almost always
+# on a DIFFERENT edge than the true constrained optimum (median |d sigma|
+# 0.42 among mis-picks, p90 the full box width). Each edge minimisation is
+# now a deterministic log-spaced scan of `n_scan` points followed by an
+# optimize() polish inside the interval bracketing the grid argmin — same
+# profiled-theta0 machinery, still O(n) via the group sums.
+#
+# Patch 0038 also closes a usability leak the mis-picks exposed: on the two
+# omega edges sigma is the FREE parameter, so the edge optimum can sit at
+# the sigma floor (the sigma -> 1 Cobb-Douglas pole) while carrying a usable
+# edge LABEL, and 1e-6 above the pole survives the downstream
+# `sigma > 1` cleanliness filter. `usable` is therefore now value-based as
+# well as label-based — a best point with sigma <= sigma_floor + 1e-3 is
+# reported but flagged unusable — mirroring the value-based cap flags
+# introduced by patch 0033.
 # -------------------------------------------------------------------------
 
 hliml_boundary_search <- function(Y, X_ohx, group,
                                   sigma_cap = 10, omega_cap = 10,
                                   omega_floor = 1e-4, sigma_floor = 1 + 1e-6,
-                                  gm = NULL) {
+                                  gm = NULL, n_scan = 128L) {
   if (is.null(gm)) gm <- hliml_group_moments(Y, X_ohx, group)
   A <- gm$XcXc; B <- gm$XcPdXc
   theta12 <- function(sigma, omega) {
@@ -830,15 +850,31 @@ hliml_boundary_search <- function(Y, X_ohx, group,
   }
   s_lo <- sigma_floor; s_hi <- sigma_cap; o_lo <- omega_floor; o_hi <- omega_cap
   res <- list()
-  safe_opt <- function(f, lo, hi) tryCatch(optimize(f, c(lo, hi), tol = 1e-8),
-                                            error = function(e) list(minimum = NA_real_, objective = Inf))
-  o1 <- safe_opt(function(s) Q_edge(s, o_lo), s_lo, s_hi)
+  # (patch 0038) Deterministic edge minimiser. A blind optimize() over the
+  # full edge assumes unimodality the profiles do not have; scan n_scan
+  # log-spaced points (log spacing matches the multiplicative geometry of
+  # both parameters), then polish with optimize() inside the interval
+  # bracketing the grid argmin. Falls back to the grid point if the polish
+  # errors or fails to improve. No RNG anywhere: bit-reproducible.
+  edge_min <- function(f, lo, hi) {
+    xs <- exp(seq(log(lo), log(hi), length.out = max(8L, as.integer(n_scan))))
+    qs <- vapply(xs, f, numeric(1))
+    if (!any(is.finite(qs))) return(list(minimum = NA_real_, objective = Inf))
+    i <- which.min(qs)
+    blo <- xs[max(1L, i - 1L)]
+    bhi <- xs[min(length(xs), i + 1L)]
+    pol <- tryCatch(optimize(f, c(blo, bhi), tol = 1e-8),
+                    error = function(e) list(minimum = xs[i], objective = qs[i]))
+    if (is.finite(pol$objective) && pol$objective <= qs[i]) pol
+    else list(minimum = xs[i], objective = qs[i])
+  }
+  o1 <- edge_min(function(s) Q_edge(s, o_lo), s_lo, s_hi)
   res$omega_floor <- list(sigma = o1$minimum, omega = o_lo, Q = o1$objective)
-  o2 <- safe_opt(function(s) Q_edge(s, o_hi), s_lo, s_hi)
+  o2 <- edge_min(function(s) Q_edge(s, o_hi), s_lo, s_hi)
   res$omega_cap   <- list(sigma = o2$minimum, omega = o_hi, Q = o2$objective)
-  o3 <- safe_opt(function(o) Q_edge(s_hi, o), o_lo, o_hi)
+  o3 <- edge_min(function(o) Q_edge(s_hi, o), o_lo, o_hi)
   res$sigma_cap   <- list(sigma = s_hi, omega = o3$minimum, Q = o3$objective)
-  o4 <- safe_opt(function(o) Q_edge(s_lo, o), o_lo, o_hi)
+  o4 <- edge_min(function(o) Q_edge(s_lo, o), o_lo, o_hi)
   res$sigma_floor <- list(sigma = s_lo, omega = o4$minimum, Q = o4$objective)
   Qs <- vapply(res, function(r) r$Q, numeric(1))
   if (!any(is.finite(Qs))) return(list(status = "bd_fail_all_edges"))
@@ -848,7 +884,12 @@ hliml_boundary_search <- function(Y, X_ohx, group,
   list(status = "ok", edge = best, sigma = b$sigma, omega = b$omega,
        rho = b$omega * (b$sigma - 1) / (1 + b$sigma * b$omega),
        theta0 = pq$theta0, theta1 = t[1], theta2 = t[2], Q = b$Q,
-       usable = best %in% c("omega_floor", "omega_cap", "sigma_cap"),
+       # (patch 0038) label-based AND value-based: a best point sitting at
+       # the sigma -> 1 pole is not a usable sigma even when it arrives via
+       # an omega edge whose label is usable. Tolerance 1e-3 matches the
+       # value-based cap flags in boundary_flags() (patch 0033).
+       usable = best %in% c("omega_floor", "omega_cap", "sigma_cap") &&
+                is.finite(b$sigma) && b$sigma > sigma_floor + 1e-3,
        edges = res)
 }
 
