@@ -84,3 +84,32 @@ cells N -> M; sigma median X -> Y; gamma median; gradient decision);
 tag v0.6.0; `hf_upload_release.py` dry -> execute; card sync with the new oid
 in the verify list. Keep `--stage1-hliml bfgs` documented as the v0.5.x
 reproducer.
+
+## OBSERVED ? v0.6.0 rc + release (2026-08-19/20)
+
+- tmux server died mid-Stage-2b and took the job (never `exit` a tmux window;
+  Ctrl-b d). Stage 1 + 2a survived on disk; 2b relaunched alone in `tmux new
+  -s rc2`. Second lesson: capture long output to a file and read with sed/less
+  instead of fighting scrollback.
+- Both 2b legs (numeric default; analytic into out_grad with copied Stage-1/2a
+  and shared cache) uploaded to s3 v060rc_run_20260819/ (24 objects, 3.7 GiB;
+  no cache under stage2b_analytic/); instance terminated after the S3 gate.
+- Gradient A/B adjudicated: analytic REJECTED 22:1 under the current cascade;
+  numeric retained. Full evidence: docs/methodology/v060_stage2_gradient_ab.md.
+- The A/B's row-membership reconciliation surfaced the silent symmetric tail
+  trim (global 0.5% quantile bands; 2.2-2.9% of cells lack their own ref row in
+  every shipped artifact). Six hypotheses were falsified before the trim was
+  found by exhaustive read of the save path; see the A/B doc for the incident
+  narrative and the fingerprint-first protocol now required for any A/B.
+- Patches 0033-0037: 0033 value-based boundary cap flags + boundary tail in
+  the Stage-1 summary + scripts/patch_stage1_boundary_flags.R; 0034 header
+  echoes every estimator flag and the 2b trim announces count and bands; 0035
+  A/B evidence doc; 0036 test-sourcing fix (suite convention is per-file
+  sourcing via locate_source_dir(); the 0033 test assumed a global load);
+  0037 routing-reconciliation fix (0031 extended routing_summary's fields but
+  not the stopifnot; the first v0.6.0 data through master.R tripped it, short
+  by exactly the 30,056-cell boundary tail ? the loud-fail working as designed).
+- Shipped Stage-1 rds corrected post-hoc via patch_stage1_boundary_flags.R
+  (sigma_capped +1,934: 949 omega_floor-edge and 985 omega_cap-edge corners at
+  the sigma cap; omega_capped +3,328 omega-corners on the sigma_cap edge),
+  then re-hashed. Precedent: patch_stage1_diagnostics.R (G3).

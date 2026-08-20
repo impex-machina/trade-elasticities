@@ -2,59 +2,67 @@
   "n_cells": 280649,
   "n_products": 1240,
   "n_importers": 234,
-  "sy_fails": 133095,
-  "sy_evaluated": 141815,
-  "sy_pass_gs25": 58464,
-  "sy_gs25_evaluated": 141815,
-  "sargan_passes": 78432,
-  "sargan_evaluated": 139380,
-  "gs_both_passes": 12717,
-  "gs_both_evaluated": 56859,
+  "sy_fails": 173509,
+  "sy_evaluated": 185119,
+  "sy_pass_gs25": 70979,
+  "sy_gs25_evaluated": 185119,
+  "sargan_passes": 105226,
+  "sargan_evaluated": 180790,
+  "gs_both_passes": 26239,
+  "gs_both_evaluated": 115431,
   "adjust_x_final_source": {
     "code_0": {
-      "hliml": 51038,
+      "hliml": 115440,
       "step2_weighted": 0,
       "pre_discard": 0
     },
     "code_1": {
       "hliml": 0,
-      "step2_weighted": 66843,
+      "step2_weighted": 25029,
       "pre_discard": 0
     },
     "code_4": {
       "hliml": 0,
-      "step2_weighted": 19104,
+      "step2_weighted": 12989,
       "pre_discard": 0
     },
     "code_5": {
       "hliml": 0,
-      "step2_weighted": 4839,
+      "step2_weighted": 1630,
       "pre_discard": 0
+    },
+    "code_6_8_boundary": {
+      "hliml_boundary": 30056,
+      "other": 0
     },
     "code_pre_discard": {
       "hliml": 0,
       "step2_weighted": 0,
-      "pre_discard": 138825
+      "pre_discard": 95505
     }
   },
   "routing_summary": {
-    "hliml_interior": 51038,
-    "step2_clean": 66843,
+    "hliml_interior": 115440,
+    "step2_clean": 25029,
     "step2_omega_only": 0,
     "omega_negative_floor": 0,
-    "clamped_at_sigma_cap": 19104,
-    "clamped_at_omega_cap": 4839,
-    "pre_discard": 138825,
-    "step2_total": 90786,
-    "clamped_total": 23943
+    "clamped_at_sigma_cap": 12989,
+    "clamped_at_omega_cap": 1630,
+    "boundary_omega_floor": 13893,
+    "boundary_sigma_cap": 9152,
+    "boundary_omega_cap": 7011,
+    "boundary_total": 30056,
+    "pre_discard": 95505,
+    "step2_total": 39648,
+    "clamped_total": 14619
   },
   "omega_floor": {
-    "n_floor": 44125,
+    "n_floor": 67122,
     "denominator": 280649
   },
   "status_breakdown": {
-    "ok": 141824,
-    "all_inversions_failed": 66429,
+    "ok": 185144,
+    "all_inversions_failed": 23109,
     "fail_too_few_exporters": 4944,
     "step1_fail_singular_QWW": 1658,
     "step2_fail_singular_QWW_fellback_to_step1": 645,
@@ -63,15 +71,15 @@
   },
   "provenance_rates": {
     "interior_full_universe": {
-      "numerator": 51038,
+      "numerator": 115440,
       "denominator": 280649
     },
     "interior_conditional_on_ok": {
-      "numerator": 51038,
-      "denominator": 141824
+      "numerator": 115440,
+      "denominator": 185144
     },
     "step2_full_universe": {
-      "numerator": 90786,
+      "numerator": 39648,
       "denominator": 280649
     }
   }
