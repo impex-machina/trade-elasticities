@@ -14,7 +14,47 @@
 #' Exported functions:
 #'   (see file for the Stage 1 orchestration entry points)  — Stage 1 HLIML driver
 #'
-#' Depends on: liml_estimator.R; parallel (base)
+#' Depends on: liml_estimator.R; utils_general.R (boundary_flags on
+#'   workers); parallel (base)
+
+
+#' Provision a PSOCK worker with the Stage 1 estimation environment.
+#'
+#' (patch 0039, 2026-08-20 fresh-eyes audit.) The Windows PSOCK branch of
+#' run_stage1_liml() originally sourced ONLY liml_estimator.R on workers.
+#' estimate_cell_liml()'s boundary-routing site (default hliml_method =
+#' "closed") calls boundary_flags(), which lives in utils_general.R — so on
+#' Windows with n_cores > 1 every boundary-routable cell silently became an
+#' est_error status row ("could not find function boundary_flags" swallowed
+#' by the per-cell tryCatch). The Linux fork path inherits master memory and
+#' never hit it, which is why the EC2 production runs were unaffected.
+#' (estimate_stage1_feenstra.R's export list gained boundary_flags in patch
+#' 0033; this wrapper was missed.)
+#'
+#' The bootstrap now lives in one named helper so the worker environment is
+#' testable on any OS: test-stage1-worker-env.R calls this exact function on
+#' a real PSOCK cluster and drives a seeded boundary-routed cell through it.
+#' Keep every worker-side source() HERE, not inline in the branch, so the
+#' test and the production path can never drift apart.
+#'
+#' @param cl A cluster from parallel::makePSOCKcluster().
+#' @param r_dir Directory containing liml_estimator.R and utils_general.R
+#'   (the wrapper passes .R_dir).
+stage1_psock_bootstrap <- function(cl, r_dir) {
+  parallel::clusterEvalQ(cl, {
+    suppressPackageStartupMessages(library(data.table))
+    data.table::setDTthreads(1)
+  })
+  boot_paths <- c(
+    normalizePath(file.path(r_dir, "liml_estimator.R"), mustWork = TRUE),
+    # boundary_flags() + %||% and friends; required by the boundary-routing
+    # site inside estimate_cell_liml() under hliml_method = "closed".
+    normalizePath(file.path(r_dir, "utils_general.R"), mustWork = TRUE)
+  )
+  parallel::clusterExport(cl, "boot_paths", envir = environment())
+  parallel::clusterEvalQ(cl, for (p in boot_paths) source(p))
+  invisible(cl)
+}
 
 
 
@@ -221,15 +261,10 @@ run_stage1_liml <- function(baci_dt,
     dir.create(dirname(worker_log), showWarnings = FALSE, recursive = TRUE)
     cl <- parallel::makePSOCKcluster(n_cores, outfile = worker_log)
     on.exit(parallel::stopCluster(cl), add = TRUE)
-    parallel::clusterEvalQ(cl, {
-      suppressPackageStartupMessages(library(data.table))
-      data.table::setDTthreads(1)
-    })
-    # Source liml_estimator.R on each worker. Use absolute path if
-    # the workers might have a different working directory than master.
-    src_path <- normalizePath(file.path(.R_dir, "liml_estimator.R"), mustWork = TRUE)
-    parallel::clusterExport(cl, "src_path", envir = environment())
-    parallel::clusterEvalQ(cl, source(src_path))
+    # (patch 0039) Worker environment provisioning lives in
+    # stage1_psock_bootstrap() so test-stage1-worker-env.R exercises the
+    # exact production bootstrap. Do not source files inline here.
+    stage1_psock_bootstrap(cl, .R_dir)
     parallel::clusterExport(cl,
                             c("min_year", "min_exporters", "min_periods", "process_one_cell",
                               "hliml_method", "%||%"),
