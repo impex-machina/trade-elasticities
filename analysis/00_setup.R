@@ -164,7 +164,7 @@ stage1_summary$adjust_x_final_source <- list(
 )
 rm(xt)
 
-# routing_summary: labeled aggregates over the adjust codes. The seven
+# routing_summary: labeled aggregates over the adjust codes. The ten
 # primary fields are mutually exclusive and sum to nrow(stage1); step2_total
 # and clamped_total are derived aggregates over subsets of those primaries.
 # Field semantics are pinned in the comment block above; here we just count.
@@ -184,13 +184,14 @@ stage1_summary$routing_summary <- list(
   step2_total           = sum(stage1$adjust %in% c(1L, 2L, 3L, 4L, 5L), na.rm = TRUE),
   clamped_total         = sum(stage1$adjust %in% c(4L, 5L), na.rm = TRUE)
 )
-# Reconciliation: the seven primary (mutually-exclusive) categories must
+# Reconciliation: the ten primary (mutually-exclusive) categories must
 # sum to nrow(stage1). Loud-fails if a future estimator run adds a new
 # adjust code not covered here.
 stopifnot(
   with(stage1_summary$routing_summary,
        hliml_interior + step2_clean + step2_omega_only +
        omega_negative_floor + clamped_at_sigma_cap + clamped_at_omega_cap +
+       boundary_omega_floor + boundary_sigma_cap + boundary_omega_cap +
        pre_discard) == nrow(stage1)
 )
 
