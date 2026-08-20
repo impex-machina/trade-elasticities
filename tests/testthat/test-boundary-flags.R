@@ -2,6 +2,11 @@
 # Corners: hliml_boundary_search() optimizes 1-D ALONG an edge, so the free
 # parameter can land within optimize() tolerance of its own cap. The flags
 # must record the value state (route stays in hliml_boundary_edge).
+#
+# Convention (helper-paths.R): test files source their own R/ dependencies;
+# there is no global harness load. boundary_flags lives in utils_general.R,
+# which is dependency-free at top level (see R/dependencies.R).
+source(file.path(locate_source_dir(), "utils_general.R"))
 
 test_that("pure edges flag only their own wall", {
   b <- boundary_flags("sigma_cap", 10, 0.42, 10, 10)
