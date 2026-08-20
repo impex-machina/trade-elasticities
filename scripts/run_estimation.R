@@ -100,7 +100,10 @@ cat(sprintf("  Years:            %d -- %s\n",
 cat(sprintf("  Aggregation:      %s\n", opts$agg_level))
 cat(sprintf("  Cores:            %d\n", opts$ncores))
 cat(sprintf("  Shrinkage lambda: %g\n", opts$shrinkage_lambda))
-cat(sprintf("  Stage:            %s\n\n", opts$stage))
+cat(sprintf("  Stage:            %s\n", opts$stage))
+cat(sprintf("  BW lag mode:      %s\n", opts$bw_lag))
+cat(sprintf("  Stage-1 HLIML:    %s\n", opts$stage1_hliml))
+cat(sprintf("  Stage-2 gradient: %s\n\n", opts$stage2_gradient))
 
 
 # ---- 3. Source library ----------------------------------------------------

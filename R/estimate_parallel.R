@@ -625,6 +625,10 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     output <- output[sigma >= sig_lo & sigma <= sig_hi &
                      gamma >= gam_lo & gamma <= gam_hi]
     n_trim_total <- n_b - nrow(output)
+    cat(sprintf("  Trimmed: %s rows (%.1f%% each tail)\n",
+                format(n_trim_total, big.mark = ","), 100 * trim_pct))
+    cat(sprintf("    Sigma kept: [%.2f, %.2f]  Gamma kept: [%.3f, %.3f]\n",
+                sig_lo, sig_hi, gam_lo, gam_hi))
   }
 
   # Ensure tier column exists
