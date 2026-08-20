@@ -128,6 +128,11 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
     clusterExport(cl, varlist = c("cfg", "tmp_dir"), envir = environment())
 
     # Load het_obj on each worker: try Rcpp, fall back to R
+    # (patch 0040 caution) This inline bootstrap compiles by bare filename
+    # and has been dead since the .cpp files moved to src/; the joint
+    # estimator is outside the production three-stage flow, so it is left
+    # as-is. Route through stage2_psock_provision() before any parallel
+    # Windows use — see the header above stage2_worker_fns.
     clusterEvalQ(cl, {
       library(data.table)
       .loaded_rcpp <- FALSE
@@ -377,6 +382,94 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
 #' updates). Retained for interactive use / iterative robustness checks.
 
 
+# ---------------------------------------------------------------------------
+# (patch 0040, 2026-08-20 fresh-eyes audit) Stage 2 PSOCK worker environment.
+#
+# The Windows branch of estimate_all_fixed_sigma() had two provisioning
+# defects, both unexercised in production (EC2 runs use the Linux fork
+# path; the e2e test runs ncores = 1):
+#
+#   1. worker_fns never contained compute_penalized_gn_se() or
+#      het_grad_fixed_sigma(), so Windows-parallel Stage 2 lost the SE
+#      pipeline (and the opt-in analytic gradient) on every worker.
+#   2. The clusterEvalQ block compiled the Rcpp objectives by BARE
+#      filename ("het_obj_fixed_sigma_rcpp.cpp"), which stopped existing
+#      at the working directory when the .cpp files moved to src/ in the
+#      2026-05 refactor. Workers therefore fell back to the exported
+#      master copies of het_obj / het_obj_fixed_sigma — but when those are
+#      the compiled Rcpp versions, their external pointers do not survive
+#      PSOCK serialization and every call on the worker dies with
+#      "NULL value passed as symbol address". The Jacobian .cpp was never
+#      compiled on workers at all, so gamma_se could not have been
+#      populated even otherwise.
+#
+# The list of worker functions is now a top-level constant and the whole
+# worker bootstrap lives in stage2_psock_provision(), which reuses
+# load_rcpp_objectives() (R/load_rcpp.R) with an explicit cpp_dir — the
+# same loader the master uses — so workers compile their own local copies
+# of all three .cpp files (valid pointers) with the same fallback ladder.
+# test-stage2-worker-env.R drives this exact helper on a real PSOCK
+# cluster, which runs on every OS. Keep the export list and the worker
+# bootstrap HERE, not inline in the branch, so the test and the production
+# path cannot drift apart.
+#
+# The parallel joint estimator estimate_all() above retains the old inline
+# bootstrap: it shares defect 2 but is not part of the three-stage
+# production flow (run_estimation.R never calls it). Route it through
+# stage2_psock_provision() before any parallel Windows use.
+# ---------------------------------------------------------------------------
+
+stage2_worker_fns <- c("estimate_product_fixed_sigma",
+                       "estimate_importer_product_fixed_sigma",
+                       "classify_exporter_tiers",
+                       "compute_exporter_dest_counts",
+                       "compute_exporter_lookup",
+                       "compute_exporter_weights",
+                       "choose_reference", "bw_weight", "calendar_lag",
+                       "optimal_tariff",
+                       "assign_regions", "build_region_map",
+                       "build_export_moments", "cell_failure",
+                       "compute_dgamma_dsigma", "assess_sigma_robust",
+                       "het_obj_fixed_sigma",
+                       # (patch 0040) previously missing: the SE pipeline
+                       # and the opt-in analytic gradient.
+                       "compute_penalized_gn_se", "het_grad_fixed_sigma")
+
+#' Provision PSOCK workers for fixed-sigma Stage 2 estimation.
+#'
+#' @param cl Cluster from parallel::makeCluster()/makePSOCKcluster().
+#' @param cpp_dir Directory containing the three .cpp objective files
+#'   (the driver resolves it exactly as the master-side loader does:
+#'   .resolve_cpp_dir() when the feen94_het_baci.R wrapper defined it).
+#' @param worker_fns Names to export; resolved through `env`.
+#' @param env Environment the exported names (and cfg/tmp_dir, if present
+#'   there) are looked up from; the driver passes its own frame.
+stage2_psock_provision <- function(cl, cpp_dir,
+                                   worker_fns = stage2_worker_fns,
+                                   env = parent.frame()) {
+  clusterExport(cl, varlist = worker_fns, envir = env)
+  # Ship the loader and the cpp location; workers compile their own local
+  # objectives (Rcpp external pointers cannot cross PSOCK serialization).
+  ship <- new.env(parent = emptyenv())
+  ship$load_rcpp_objectives <- load_rcpp_objectives
+  ship$.s2_cpp_dir <- cpp_dir
+  clusterExport(cl, varlist = c("load_rcpp_objectives", ".s2_cpp_dir"),
+                envir = ship)
+  clusterEvalQ(cl, {
+    suppressPackageStartupMessages(library(data.table))
+    data.table::setDTthreads(1)
+    # Same module-level flags load_rcpp.R defines at source time; the
+    # loader rebinds them via <<-, which resolves to the worker global
+    # environment where clusterEvalQ evaluates.
+    .het_obj_rcpp_loaded    <- FALSE
+    .het_obj_fs_rcpp_loaded <- FALSE
+    .het_jac_rcpp_loaded    <- FALSE
+    load_rcpp_objectives(.s2_cpp_dir)
+  })
+  invisible(cl)
+}
+
+
 estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
 
   if (is.null(ncores)) ncores <- max(1L, detectCores() - 2L)
@@ -397,19 +490,9 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   n_products <- length(products)
   dt_by_product <- split(dt, by = "good", keep.by = TRUE)
 
-  # Functions needed by workers
-  worker_fns <- c("estimate_product_fixed_sigma",
-                   "estimate_importer_product_fixed_sigma",
-                   "classify_exporter_tiers",
-                   "compute_exporter_dest_counts",
-                   "compute_exporter_lookup",
-                   "compute_exporter_weights",
-                   "choose_reference", "bw_weight", "calendar_lag",
-                   "optimal_tariff",
-                   "assign_regions", "build_region_map",
-                   "build_export_moments", "cell_failure",
-                   "compute_dgamma_dsigma", "assess_sigma_robust",
-                   "het_obj_fixed_sigma")
+  # Functions needed by workers — single source of truth shared with
+  # test-stage2-worker-env.R (patch 0040).
+  worker_fns <- stage2_worker_fns
 
   is_windows <- .Platform$OS.type == "windows"
   t_start <- Sys.time()
@@ -455,44 +538,20 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     on.exit({ tryCatch(stopCluster(cl), error = function(e) NULL)
               unlink(tmp_dir, recursive = TRUE) }, add = TRUE)
 
-    # Export all worker functions + config
-    clusterExport(cl, varlist = c(worker_fns, "cfg", "tmp_dir"),
-                  envir = environment())
-
-    # Also export het_obj (needed by R fallback wrapper) and the Rcpp originals
-    if (exists("het_obj", envir = .GlobalEnv)) {
-      clusterExport(cl, varlist = "het_obj", envir = .GlobalEnv)
+    # (patch 0040) Export cfg/tmp_dir, then provision the worker
+    # environment (function exports + worker-local Rcpp compilation via
+    # load_rcpp_objectives) through the shared, tested helper. The old
+    # inline bootstrap compiled the .cpp files by bare filename — dead
+    # since the 2026-05 src/ refactor — and fell back to master-exported
+    # Rcpp functions whose external pointers do not survive PSOCK
+    # serialization. See the header above stage2_worker_fns.
+    clusterExport(cl, varlist = c("cfg", "tmp_dir"), envir = environment())
+    cpp_dir <- if (exists(".resolve_cpp_dir", mode = "function")) {
+      .resolve_cpp_dir()
+    } else {
+      normalizePath(file.path(getwd(), "src"), mustWork = FALSE)
     }
-
-    # Load data.table + try Rcpp on workers
-    clusterEvalQ(cl, {
-      library(data.table)
-      # Try fixed-sigma Rcpp first
-      .loaded_fs <- FALSE
-      tryCatch({
-        if (requireNamespace("Rcpp", quietly = TRUE)) {
-          if (file.exists("het_obj_fixed_sigma_rcpp.cpp")) {
-            Rcpp::sourceCpp("het_obj_fixed_sigma_rcpp.cpp")
-            het_obj_fixed_sigma <- het_obj_fixed_sigma_rcpp
-            .loaded_fs <- TRUE
-          }
-        }
-      }, error = function(e) NULL)
-      # If Rcpp failed, het_obj_fixed_sigma (the R wrapper) was already
-      # exported via clusterExport above — workers will use it.
-      # But the R wrapper needs het_obj, which also needs to be available:
-      if (!.loaded_fs && !exists("het_obj")) {
-        tryCatch({
-          if (requireNamespace("Rcpp", quietly = TRUE) &&
-              file.exists("het_obj_rcpp.cpp")) {
-            Rcpp::sourceCpp("het_obj_rcpp.cpp")
-            het_obj <- het_obj_rcpp
-          } else {
-            source("het_obj.R")
-          }
-        }, error = function(e) source("het_obj.R"))
-      }
-    })
+    stage2_psock_provision(cl, cpp_dir, env = environment())
 
     batch_size <- ncores * 2L
     n_batches <- ceiling(n_products / batch_size)
