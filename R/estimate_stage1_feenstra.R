@@ -200,6 +200,7 @@ estimate_all_feenstra_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) 
 
     clusterExport(cl, varlist = c("estimate_product_feenstra",
       "estimate_feenstra_sigma_cell", "choose_reference", "bw_weight",
+      "boundary_flags",
       "calendar_lag", "feenstra_sigma_obj", "compute_exporter_weights",
       "cell_failure", "cfg", "tmp_dir"),
       envir = environment())

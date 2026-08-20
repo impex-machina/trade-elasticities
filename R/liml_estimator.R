@@ -1537,8 +1537,10 @@ estimate_cell_liml <- function(cell_df,
     final_sigma_se <- NA_real_; final_omega_se <- NA_real_; final_rho_se <- NA_real_
     final_source <- "hliml_boundary"
     hliml_boundary_edge <- bd$edge
-    sigma_capped <- identical(bd$edge, "sigma_cap")
-    omega_capped <- identical(bd$edge, "omega_cap")
+    bf <- boundary_flags(bd$edge, bd$sigma, bd$omega,
+                         sigma_start_cap, omega_start_cap)
+    sigma_capped <- bf$sigma_capped
+    omega_capped <- bf$omega_capped
     adjust <- switch(bd$edge, omega_floor = 6L, sigma_cap = 7L, omega_cap = 8L, 9L)
   }
 

@@ -130,3 +130,31 @@ optimal_tariff <- function(gamma, sigma, trade_values = NULL) {
   den <- sum(w / (1 + g * sigma))
   if (den == 0) NA_real_ else num / den
 }
+
+
+# ---------------------------------------------------------------------------
+# boundary_flags(): value-based cap flags for boundary-search optima.
+#
+# Patch 0031 set sigma_capped / omega_capped from the boundary EDGE label
+# alone. hliml_boundary_search() runs a 1-D optimize() ALONG each edge, so
+# the free parameter can itself land at (within optimize() tolerance of) its
+# own cap -- a corner solution. In the v0.6.0-rc run, 1,934 of 30,056
+# boundary cells sat at sigma >= 9.999 without sigma_capped (949 on the
+# omega_floor edge, 985 on the omega_cap edge). Downstream consumers filter
+# on the flags, so the flags must record the VALUE state; the ROUTE is
+# recorded separately in hliml_boundary_edge.
+#
+# tol = 1e-3 matches the at-cap census definition (sigma >= cap - 1e-3);
+# optimize() endpoints land within its convergence tolerance of the cap,
+# never exactly on it, so exact equality would undercount corners.
+# scripts/patch_stage1_boundary_flags.R sources THIS function to correct
+# already-shipped artifacts, so pipeline and patch share one definition.
+boundary_flags <- function(edge, sigma, omega, sigma_cap, omega_cap,
+                           tol = 1e-3) {
+  list(
+    sigma_capped = isTRUE(identical(edge, "sigma_cap") ||
+                            (!is.na(sigma) && sigma >= sigma_cap - tol)),
+    omega_capped = isTRUE(identical(edge, "omega_cap") ||
+                            (!is.na(omega) && omega >= omega_cap - tol))
+  )
+}

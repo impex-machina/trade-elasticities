@@ -283,6 +283,7 @@ run_stage1_liml <- function(baci_dt,
     n_ok     <- sum(out_dt$status == "ok", na.rm = TRUE)
     n_hliml  <- sum(out_dt$final_source == "hliml", na.rm = TRUE)
     n_step2  <- sum(out_dt$final_source == "step2_weighted", na.rm = TRUE)
+    n_bd     <- sum(out_dt$final_source == "hliml_boundary", na.rm = TRUE)
     cat(sprintf("\n--- Stage 1 LIML summary ---\n"))
     cat(sprintf("  Total cells:        %d\n", n_total))
     cat(sprintf("  Successful (ok):    %d (%.1f%%)\n",
@@ -291,6 +292,8 @@ run_stage1_liml <- function(baci_dt,
                 n_hliml, if (n_ok>0) 100 * n_hliml / n_ok else 0))
     cat(sprintf("    Step 2 fallback:  %d (%.1f%% of ok)\n",
                 n_step2, if (n_ok>0) 100 * n_step2 / n_ok else 0))
+    cat(sprintf("    Boundary optima:  %d (%.1f%% of ok)\n",
+                n_bd, if (n_ok>0) 100 * n_bd / n_ok else 0))
     if (n_ok > 0) {
       cat(sprintf("  Sigma quartiles:    %s\n",
                   paste(sprintf("%.2f", quantile(out_dt$sigma, c(.25,.5,.75),
