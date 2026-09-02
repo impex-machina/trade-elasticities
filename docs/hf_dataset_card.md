@@ -20,6 +20,41 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+> **v0.7.0 (2026-09-02).** Corrects the treatment of a negative algebraic
+> omega in the Feenstra inversion. When rho exceeds (sigma-1)/sigma the
+> inversion has no positive omega -- the point is the continuation of the
+> admissible interval *past omega = +Inf* -- and Grant & Soderbery's Stata
+> code clamps it to the 1e-4 floor, the opposite end of the supply axis,
+> reporting near-perfectly-elastic supply. Through v0.6.1 this pipeline did
+> the same: **36,914 interior-HLIML cells (13.2% of the universe, 32% of the
+> interior bucket) were such points shipped with omega = 1e-4**, plus 13,482
+> Step-2 cells. From v0.7.0 (`--stage1-negative-omega reject`; `floor`
+> reproduces v0.6.1 bit-for-bit) such points are inadmissible at every
+> inversion and take the constrained boundary optimum, which lands at the
+> omega **cap** in 82% of re-routed cells; the omega floor is now the genuine
+> omega -> 0 population. Stage 1: interior 115,440 -> **78,526**, boundary
+> 27,297 -> **55,240** (floor 15,578 / sigma-cap 7,259 / omega-cap 32,403),
+> Step 2 39,648 -> 47,479 (13,494 of them sigma-with-omega-undetermined,
+> `omega` NA), omega-floored 64,699 -> **15,582**, clean cells 182,385 ->
+> 181,245. 138,542 unchanged-route cells are identical to v0.6.1 to zero.
+> **Sigma median 2.727 -> 2.462**: the constrained optimum sits 13-16% below
+> the unconstrained closed-form sigma on ~34k re-routed cells. New column
+> `boundary_corner` flags **2,503** floor-edge optima reached from a
+> beyond-Inf point (sigma p10/median/p90 1.017 / 1.121 / 1.723, flat
+> objective) -- filter them for supply-side uses. **Stage 2b gamma is
+> superseded**: gamma median 0.628 -> **0.650**, opt_tariff 0.657 ->
+> **0.649**, rows 6,829,023 -> 6,814,229, convergence 69.2% -> 68.9%, tier
+> composition unchanged (3.3/70.0/0.2/26.4). Country structural ratios
+> (v0.7.0): gamma/(1+gamma) 0.394, 1/(sigma-1) 0.684,
+> gamma/((1+gamma)(sigma-1)) 0.234 (Soderbery 2018: 0.408 / 0.532 / 0.217).
+> **Cost:** boundary optima carry no SE and their share of clean cells
+> doubled, so sigma-SE coverage falls 77.9% -> 63.6%, gamma-SE `ok` 62.4%
+> -> 54.7%, and `sigma_robust` passes 10.7% of rows (from 14.6%); an SE for
+> edge optima is the first v0.7.x item. Pillar-2 validation CSVs are carried
+> from v0.6.1 (re-capture under the new default pending). Re-pull anything
+> consuming sigma OR omega OR gamma. Data revision: `feabe6f7fbc8f98bdb596e11e81aa70bac188faa`. **v0.6.1 remains
+> available pinned at revision `96e1589e4b5bd0bde0b3f2643b673ee09ff9f680`**
+> -- do not mix versions within one analysis.
 > **v0.6.1 (2026-09-01).** Corrects the HLIML boundary search (the routing
 > introduced in v0.6.0 for cells where neither the closed-form interior
 > estimator nor the Step-2 fallback yields an admissible point). The v0.6.0
