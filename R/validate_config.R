@@ -58,6 +58,11 @@ validate_config <- function(cfg) {
       !cfg$stage2_gradient %in% c("numeric", "analytic")) {
     stop("stage2_gradient must be 'numeric' or 'analytic', got: ", cfg$stage2_gradient)
   }
+  if (!is.null(cfg$stage1_cf_admissibility) &&
+      !cfg$stage1_cf_admissibility %in% c("legacy", "strict")) {
+    stop("stage1_cf_admissibility must be 'legacy' or 'strict', got: ",
+         cfg$stage1_cf_admissibility)
+  }
 
   # --- Year range ---
   if (!is.numeric(cfg$minyear) || cfg$minyear < 1900 || cfg$minyear > 2100) {

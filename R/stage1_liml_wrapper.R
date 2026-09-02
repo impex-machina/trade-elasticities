@@ -66,7 +66,10 @@ run_stage1_liml <- function(baci_dt,
                             min_periods = 3,
                             sample_cells = NULL,
                             verbose = TRUE,
-                            hliml_method = "closed") {
+                            hliml_method = "closed",
+                            cf_admissibility = "legacy") {
+  # cf_admissibility (patch 0043): "legacy" | "strict"; see
+  # estimate_cell_liml(). Default legacy is bit-preserving.
   # baci_dt: data.table with (importer, exporter, good, t, value, quantity)
   # output_path: where to write _feenstra_sigma.rds
   # n_cores: number of parallel workers (Linux/Mac: mclapply; Windows: PSOCK)
@@ -158,7 +161,8 @@ run_stage1_liml <- function(baci_dt,
     
     fit <- tryCatch(
       estimate_cell_liml(prep$moments, ref_exporter = prep$ref_exporter,
-                         hliml_method = hliml_method),
+                         hliml_method = hliml_method,
+                         cf_admissibility = cf_admissibility),
       error = function(e) list(status = sprintf("est_error_%s",
                                                 substr(conditionMessage(e), 1, 40)))
     )
@@ -172,6 +176,7 @@ run_stage1_liml <- function(baci_dt,
                   # all_inversions_failed cells.
                   hliml_status = fit$hliml_status %||% NA_character_,
                   hliml_method = fit$hliml_method %||% hliml_method,
+                  hliml_cf_admissibility = fit$hliml_cf_admissibility %||% cf_admissibility,
                   sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
                   omega_hliml_cf = fit$omega_hliml_cf %||% NA_real_,
                   rho_hliml_cf = fit$rho_hliml_cf %||% NA_real_,
@@ -218,6 +223,7 @@ run_stage1_liml <- function(baci_dt,
       # patch 0025: HLIML estimator provenance + closed form alongside (NA
       # unless hliml_method is "closed" or "both")
       hliml_method = fit$hliml_method %||% hliml_method,
+      hliml_cf_admissibility = fit$hliml_cf_admissibility %||% cf_admissibility,  # patch 0043
       hliml_boundary_edge = fit$hliml_boundary_edge %||% NA_character_,
       hliml_Q = fit$hliml_Q %||% NA_real_,
       sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
@@ -267,7 +273,7 @@ run_stage1_liml <- function(baci_dt,
     stage1_psock_bootstrap(cl, .R_dir)
     parallel::clusterExport(cl,
                             c("min_year", "min_exporters", "min_periods", "process_one_cell",
-                              "hliml_method", "%||%"),
+                              "hliml_method", "cf_admissibility", "%||%"),
                             envir = environment())
     results <- parallel::clusterMap(cl, process_one_cell,
                                     idx = idx_vec,

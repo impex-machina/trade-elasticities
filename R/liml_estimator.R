@@ -754,7 +754,22 @@ hliml_group_moments <- function(Y, X_ohx, group) {
 }
 
 hliml_closed_form <- function(Y, X_ohx, group,
-                              sigma_cap = 10, omega_cap = 10) {
+                              sigma_cap = 10, omega_cap = 10,
+                              strict = FALSE) {
+  # strict (patch 0043, 2026-09-01 fresh-eyes audit): when TRUE, a point
+  # whose inversion CLAMPED omega -- invert_structural() reports status
+  # "constraint_violated" when rho > (sigma-1)/sigma, i.e. the algebraic
+  # omega is negative -- is NOT admissible. Geometrically a negative omega is
+  # the continuation of the admissible interval PAST omega = +Inf (theta1 > 0,
+  # theta2 > 1 - theta1): rho = omega(sigma-1)/(1+sigma*omega) rises
+  # monotonically to (sigma-1)/sigma as omega -> Inf, so rho beyond that
+  # limit has no positive omega and the nearest admissible point is the
+  # omega CAP, not the 1e-4 floor the clamp assigns. The legacy (Stata-
+  # faithful, v0.6.x-shipped) behaviour floors omega and lets the point
+  # through as an interior HLIML estimate (adjust 0, omega_floored = TRUE);
+  # under strict the cell falls through the Step-2 cascade and then to
+  # hliml_boundary_search(), which on the synthetic DGP picks the omega_cap
+  # edge in ~96% of such cells. Default FALSE is bit-preserving.
   gm <- hliml_group_moments(Y, X_ohx, group)
   M <- tryCatch(solve(gm$XcXc, gm$XcPdXc), error = function(e) NULL)
   if (is.null(M)) return(list(status = "cf_fail_singular_XcXc"))
@@ -770,6 +785,7 @@ hliml_closed_form <- function(Y, X_ohx, group,
   inv <- invert_structural(theta[2], theta[3])
   admissible <- !is.na(inv$sigma) && inv$sigma > 1 && inv$sigma < sigma_cap &&
     !is.na(inv$omega) && inv$omega > 0 && inv$omega < omega_cap
+  if (isTRUE(strict) && !identical(inv$status, "ok")) admissible <- FALSE
   list(status = "ok",
        theta0 = theta[1], theta1 = theta[2], theta2 = theta[3],
        alpha = alpha,
@@ -1168,7 +1184,15 @@ estimate_cell_liml <- function(cell_df,
                                omega_start_cap = 10,
                                omega_start_floor = 0.001,
                                rho_clamp = c(0.0001, 0.999),
-                               hliml_method = c("closed", "bfgs", "both")) {
+                               hliml_method = c("closed", "bfgs", "both"),
+                               cf_admissibility = c("legacy", "strict")) {
+  # cf_admissibility (patch 0043): "legacy" (default, bit-preserving) accepts
+  # a closed-form point whose omega was clamped up from a negative value;
+  # "strict" treats invert_structural()'s "constraint_violated" as
+  # inadmissible so the cell takes the Step-2 -> boundary cascade instead.
+  # See hliml_closed_form() for the geometry. Only meaningful when the
+  # closed form is computed (hliml_method "closed" or "both").
+  cf_admissibility <- match.arg(cf_admissibility)
   # hliml_method (patch 0025; default flipped to "closed" by patch 0031 after
   # the 2026-08-19 census -- see docs/results/hliml_closed_form_census.md):
   #   "bfgs"   -- production path through v0.5.x: hliml_core() BFGS on the
@@ -1388,7 +1412,8 @@ estimate_cell_liml <- function(cell_df,
   cf <- if (hliml_method != "bfgs")
     tryCatch(hliml_closed_form(Y_h, X_h_ohx, cell_df$exporter,
                                sigma_cap = sigma_start_cap,
-                               omega_cap = omega_start_cap),
+                               omega_cap = omega_start_cap,
+                               strict = (cf_admissibility == "strict")),
              error = function(e) list(status = paste0("cf_error_",
                                                       substr(conditionMessage(e), 1, 40))))
   else NULL
@@ -1602,6 +1627,7 @@ estimate_cell_liml <- function(cell_df,
       # for (a cell can fail both shipped inversions and still have an
       # admissible or boundary HLIML point).
       hliml_method = hliml_method,
+      hliml_cf_admissibility = cf_admissibility,
       sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
       omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,
       rho_hliml_cf   = if (cf_ok) cf$rho   else NA_real_,
@@ -1705,6 +1731,7 @@ estimate_cell_liml <- function(cell_df,
     # patch 0025: which HLIML estimator produced the point, plus the closed
     # form alongside it (NA in the default "bfgs" mode).
     hliml_method = hliml_method,
+    hliml_cf_admissibility = cf_admissibility,   # patch 0043
     hliml_Q = if (hliml_status == "ok") as.numeric(hliml_fit$obj_value) else NA_real_,
     sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
     omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,

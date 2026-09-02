@@ -109,6 +109,18 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "METHOD"
     ),
     optparse::make_option(
+      c("--stage1-cf-admissibility"),
+      type = "character", default = "legacy",
+      help = paste("Closed-form HLIML admissibility rule (only with",
+                   "--stage1-hliml closed/both): 'legacy' (a point whose",
+                   "inversion clamped a negative omega up to the 1e-4 floor",
+                   "is accepted as an interior HLIML estimate -- reproduces",
+                   "v0.6.x bit-for-bit) or 'strict' (such points are",
+                   "inadmissible and take the Step-2 -> boundary cascade;",
+                   "see hliml_closed_form()). Default: %default"),
+      metavar = "RULE"
+    ),
+    optparse::make_option(
       c("--stage2-gradient"),
       type = "character", default = "numeric",
       help = paste("Stage 2 L-BFGS-B gradient: 'numeric' (optim's finite",
@@ -206,6 +218,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage1_hliml %in% c("bfgs", "closed", "both")) {
     fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",
                  opts$stage1_hliml))
+  }
+  if (!opts$stage1_cf_admissibility %in% c("legacy", "strict")) {
+    fail(sprintf("--stage1-cf-admissibility must be 'legacy' or 'strict', got: '%s'",
+                 opts$stage1_cf_admissibility))
   }
 
   # --- Year range ---
