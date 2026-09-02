@@ -470,6 +470,65 @@ stage2_psock_provision <- function(cl, cpp_dir,
 }
 
 
+# ---------------------------------------------------------------------------
+# (patch 0044, 2026-09-01 fresh-eyes audit) Checkpoint config stamp.
+#
+# estimate_all_fixed_sigma() resumes from <prefix>_fs_checkpoint.rds (written
+# to the CWD) without checking what produced it. A run that crashed mid-Stage
+# 2 and was relaunched with a different lambda / bw_lag / stage2_gradient /
+# prior table would silently splice batches estimated under the OLD config
+# into the new output. Every checkpoint now carries a digest of the
+# estimation-relevant cfg fields plus the prepared-panel shape; a resume whose
+# stamp differs stops with an explicit message. Timing, thread counts and
+# file paths are excluded so a legitimate resume on another box still works.
+# A checkpoint written before this patch has no stamp: resume proceeds with a
+# warning rather than a stop, so an in-flight run is not stranded.
+# ---------------------------------------------------------------------------
+.fs_cfg_stamp <- function(cfg, dt) {
+  keys <- c("shrinkage_lambda", "bw_lag", "stage2_gradient", "paper_exact_eq11",
+            "tail_trim_pct", "exporter_weight", "weight_period_floor",
+            "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
+            "min_exporters", "min_destinations", "min_periods",
+            "sigma_fallback", "sigma_V_default", "gamma_V_default",
+            "sigma_start", "gamma_start", "agg_level", "minyear", "maxyear",
+            "use_regions")
+  tabs <- c("sigma_lookup", "shrinkage_priors", "sigma_V_lookup",
+            "gamma_V_lookup", "sigma_se_lookup", "sigma_adjust_lookup",
+            "regional_starts")
+  tab_fp <- function(x) {
+    if (is.data.frame(x)) {
+      num <- vapply(x, function(col) if (is.numeric(col))
+        sum(as.numeric(col), na.rm = TRUE) else 0, numeric(1))
+      list(dim = dim(x), names = names(x), colsums = unname(num))
+    } else x
+  }
+  parts <- list(
+    scalars = cfg[intersect(keys, names(cfg))],
+    tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),
+    panel   = list(n = nrow(dt), products = length(unique(dt$good)))
+  )
+  as.character(openssl::md5(serialize(parts, NULL, version = 2L)))
+}
+
+.fs_checkpoint_resume_guard <- function(ckpt, stamp, checkpoint_file) {
+  if (is.null(ckpt$cfg_stamp)) {
+    warning(sprintf(paste0("[checkpoint] %s predates the config stamp (patch 0044); ",
+                           "resuming without verification -- delete it first if ",
+                           "the estimation config changed."), checkpoint_file),
+            call. = FALSE)
+    return(invisible(TRUE))
+  }
+  if (!identical(ckpt$cfg_stamp, stamp)) {
+    stop(sprintf(paste0("[checkpoint] %s was written under a different estimation ",
+                        "config (lambda / bw_lag / gradient / priors / lookups / ",
+                        "panel); refusing to resume. Delete the file to start ",
+                        "Stage 2 afresh, or rerun with the original config."),
+                 checkpoint_file), call. = FALSE)
+  }
+  invisible(TRUE)
+}
+
+
 estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
 
   if (is.null(ncores)) ncores <- max(1L, detectCores() - 2L)
@@ -489,6 +548,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   products <- unique(dt$good)
   n_products <- length(products)
   dt_by_product <- split(dt, by = "good", keep.by = TRUE)
+  cfg_stamp <- .fs_cfg_stamp(cfg, dt)   # patch 0044: checkpoint resume guard
 
   # Functions needed by workers — single source of truth shared with
   # test-stage2-worker-env.R (patch 0040).
@@ -503,6 +563,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     start_idx <- 1L
     if (file.exists(checkpoint_file)) {
       ckpt <- readRDS(checkpoint_file)
+      .fs_checkpoint_resume_guard(ckpt, cfg_stamp, checkpoint_file)
       results_list <- ckpt$results
       start_idx <- ckpt$next_idx
       cat(sprintf("  Resuming from checkpoint: %d/%d products done\n",
@@ -522,11 +583,13 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
         }
         results_list[[idx]] <- estimate_product_fixed_sigma(g, dt_by_product[[g]], cfg)
         if (idx %% 50 == 0L) {
-          saveRDS(list(results = results_list, next_idx = idx + 1L), checkpoint_file)
+          saveRDS(list(results = results_list, next_idx = idx + 1L,
+                       cfg_stamp = cfg_stamp), checkpoint_file)
         }
       }
     }
-    saveRDS(list(results = results_list, next_idx = n_products + 1L), checkpoint_file)
+    saveRDS(list(results = results_list, next_idx = n_products + 1L,
+                 cfg_stamp = cfg_stamp), checkpoint_file)
   } else if (is_windows) {
     tmp_dir <- file.path(tempdir(), "het_fixed_sigma")
     dir.create(tmp_dir, showWarnings = FALSE, recursive = TRUE)
@@ -561,6 +624,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     start_batch <- 1L
     if (file.exists(checkpoint_file)) {
       ckpt <- readRDS(checkpoint_file)
+      .fs_checkpoint_resume_guard(ckpt, cfg_stamp, checkpoint_file)
       results_list <- ckpt$results
       start_batch <- ckpt$next_batch
       cat(sprintf("  Resuming from checkpoint: %d/%d batches done\n",
@@ -583,8 +647,8 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
       results_list <- c(results_list, batch_res)
 
       # Checkpoint after every batch
-      saveRDS(list(results = results_list, next_batch = b + 1L),
-              checkpoint_file)
+      saveRDS(list(results = results_list, next_batch = b + 1L,
+                   cfg_stamp = cfg_stamp), checkpoint_file)
 
       el <- as.numeric(difftime(Sys.time(), t_start, units = "mins"))
       cat(sprintf("  Batch %d/%d: products %d-%d (%.0f%%) | %.1f min\n",
@@ -609,6 +673,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     start_batch <- 1L
     if (file.exists(checkpoint_file)) {
       ckpt <- readRDS(checkpoint_file)
+      .fs_checkpoint_resume_guard(ckpt, cfg_stamp, checkpoint_file)
       results_list <- ckpt$results
       start_batch <- ckpt$next_batch
       cat(sprintf("  Resuming from checkpoint: %d/%d batches done\n",
@@ -629,8 +694,8 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
         mc.cores = ncores)
       results_list <- c(results_list, batch_res)
 
-      saveRDS(list(results = results_list, next_batch = b + 1L),
-              checkpoint_file)
+      saveRDS(list(results = results_list, next_batch = b + 1L,
+                   cfg_stamp = cfg_stamp), checkpoint_file)
 
       el <- as.numeric(difftime(Sys.time(), t_start, units = "mins"))
       cat(sprintf("  Batch %d/%d: products %d-%d (%.0f%%) | %.1f min\n",
