@@ -94,7 +94,7 @@ is ordinary, so the σ-robust screen does not catch them. Decision: flag
 (`boundary_corner`, provenance-defined: floor-edge optimum reached from a
 `constraint_violated` closed form — note this counts by *closed-form*
 status, so it is not identical to the 4,108 transition-defined cells above;
-`scripts/patch_stage1_boundary_corner.R` prints the exact count), do not re-route — a σ threshold would be
+`scripts/patch_stage1_boundary_corner.R` prints the exact count: **2,503**, sigma p10/median/p90 1.017 / 1.121 / 1.723), do not re-route — a σ threshold would be
 an invented number, and 380 cells of the same species already ship in
 v0.6.1. Users doing supply-side work should filter on it.
 
