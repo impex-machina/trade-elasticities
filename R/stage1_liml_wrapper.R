@@ -67,7 +67,10 @@ run_stage1_liml <- function(baci_dt,
                             sample_cells = NULL,
                             verbose = TRUE,
                             hliml_method = "closed",
-                            cf_admissibility = "legacy") {
+                            cf_admissibility = "legacy",
+                            negative_omega = "floor") {
+  # negative_omega (patch 0046): "floor" | "reject"; see invert_structural()
+  # and estimate_cell_liml(). Default floor is bit-preserving.
   # cf_admissibility (patch 0043): "legacy" | "strict"; see
   # estimate_cell_liml(). Default legacy is bit-preserving.
   # baci_dt: data.table with (importer, exporter, good, t, value, quantity)
@@ -162,7 +165,8 @@ run_stage1_liml <- function(baci_dt,
     fit <- tryCatch(
       estimate_cell_liml(prep$moments, ref_exporter = prep$ref_exporter,
                          hliml_method = hliml_method,
-                         cf_admissibility = cf_admissibility),
+                         cf_admissibility = cf_admissibility,
+                         negative_omega = negative_omega),
       error = function(e) list(status = sprintf("est_error_%s",
                                                 substr(conditionMessage(e), 1, 40)))
     )
@@ -177,6 +181,7 @@ run_stage1_liml <- function(baci_dt,
                   hliml_status = fit$hliml_status %||% NA_character_,
                   hliml_method = fit$hliml_method %||% hliml_method,
                   hliml_cf_admissibility = fit$hliml_cf_admissibility %||% cf_admissibility,
+                  hliml_negative_omega = fit$hliml_negative_omega %||% negative_omega,
                   sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
                   omega_hliml_cf = fit$omega_hliml_cf %||% NA_real_,
                   rho_hliml_cf = fit$rho_hliml_cf %||% NA_real_,
@@ -224,6 +229,7 @@ run_stage1_liml <- function(baci_dt,
       # unless hliml_method is "closed" or "both")
       hliml_method = fit$hliml_method %||% hliml_method,
       hliml_cf_admissibility = fit$hliml_cf_admissibility %||% cf_admissibility,  # patch 0043
+      hliml_negative_omega = fit$hliml_negative_omega %||% negative_omega,        # patch 0046
       hliml_boundary_edge = fit$hliml_boundary_edge %||% NA_character_,
       hliml_Q = fit$hliml_Q %||% NA_real_,
       sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
@@ -241,6 +247,11 @@ run_stage1_liml <- function(baci_dt,
       sigma_step2 = fit$sigma_step2,
       omega_step2 = fit$omega_step2,
       rho_step2 = fit$rho_step2,
+      # patch 0046: the Step-2 inversion's own status (invert_structural on
+      # eta_step2) -- distinguishes a beyond-Inf Step-2 point from a genuine
+      # sub-floor omega; the estimator has always returned it, the wrapper
+      # never carried it.
+      step2_inversion_status = fit$inversion_status %||% NA_character_,
       sigma_hliml = fit$sigma_hliml,
       omega_hliml = fit$omega_hliml,
       rho_hliml = fit$rho_hliml,
@@ -273,7 +284,7 @@ run_stage1_liml <- function(baci_dt,
     stage1_psock_bootstrap(cl, .R_dir)
     parallel::clusterExport(cl,
                             c("min_year", "min_exporters", "min_periods", "process_one_cell",
-                              "hliml_method", "cf_admissibility", "%||%"),
+                              "hliml_method", "cf_admissibility", "negative_omega", "%||%"),
                             envir = environment())
     results <- parallel::clusterMap(cl, process_one_cell,
                                     idx = idx_vec,

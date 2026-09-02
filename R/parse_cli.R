@@ -121,6 +121,18 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "RULE"
     ),
     optparse::make_option(
+      c("--stage1-negative-omega"),
+      type = "character", default = "floor",
+      help = paste("Treatment of a NEGATIVE algebraic omega in the Feenstra",
+                   "inversion (rho beyond (sigma-1)/sigma: the continuation of",
+                   "the admissible interval past omega = +Inf): 'floor' (clamp",
+                   "to 1e-4 as GS_Estimation.do does -- reproduces v0.6.x",
+                   "bit-for-bit) or 'reject' (omega = NA at every inversion;",
+                   "the closed form is inadmissible, Step 2 carries no omega,",
+                   "and the boundary search takes the cell). Default: %default"),
+      metavar = "RULE"
+    ),
+    optparse::make_option(
       c("--stage2-gradient"),
       type = "character", default = "numeric",
       help = paste("Stage 2 L-BFGS-B gradient: 'numeric' (optim's finite",
@@ -218,6 +230,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage1_hliml %in% c("bfgs", "closed", "both")) {
     fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",
                  opts$stage1_hliml))
+  }
+  if (!opts$stage1_negative_omega %in% c("floor", "reject")) {
+    fail(sprintf("--stage1-negative-omega must be 'floor' or 'reject', got: '%s'",
+                 opts$stage1_negative_omega))
   }
   if (!opts$stage1_cf_admissibility %in% c("legacy", "strict")) {
     fail(sprintf("--stage1-cf-admissibility must be 'legacy' or 'strict', got: '%s'",

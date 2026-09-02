@@ -301,7 +301,22 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
 invert_structural <- function(eta_1, eta_2,
                               rho_floor = 1e-4, rho_ceil = 0.999,
                               sigma_ceil = 1000, omega_floor = 1e-4,
-                              omega_ceil = 1000) {
+                              omega_ceil = 1000,
+                              negative_omega = c("floor", "reject")) {
+  # negative_omega (patch 0046, 2026-09-01 fresh-eyes audit). A NEGATIVE
+  # algebraic omega (denominator sigma - 1 - sigma*rho < 0, i.e. rho beyond
+  # (sigma-1)/sigma) is the continuation of the admissible interval past
+  # omega = +Inf: rho = omega(sigma-1)/(1+sigma*omega) increases to
+  # (sigma-1)/sigma as omega -> Inf, so no positive omega reproduces such a
+  # rho. "floor" (default; Stata GS_Estimation.do:39-style, bit-preserving)
+  # clamps it up to omega_floor -- the OPPOSITE end of the supply-elasticity
+  # axis -- and reports status "constraint_violated". "reject" returns
+  # omega = NA with the same status so the caller's cascade treats the
+  # point as inadmissible and can fall to the constrained boundary optimum.
+  # Production census 2026-09-01 (docs/results/cf_inversion_census.md):
+  # 36,914 shipped interior-HLIML cells and a large share of the 16,312
+  # floored Step-2 cells are this case.
+  negative_omega <- match.arg(negative_omega)
 
   if (!is.finite(eta_1) || !is.finite(eta_2))
     return(list(sigma = NA, rho = NA, omega = NA, status = "non_finite_eta"))
@@ -339,6 +354,9 @@ invert_structural <- function(eta_1, eta_2,
   if (!is.finite(omega))
     return(list(sigma = sigma, rho = rho, omega = NA,
                 status = "non_finite_omega"))
+  if (omega < 0 && negative_omega == "reject")
+    return(list(sigma = sigma, rho = rho, omega = NA_real_,
+                status = "constraint_violated"))
   if (omega < omega_floor) omega <- omega_floor
   if (omega > omega_ceil) omega <- omega_ceil
 
@@ -755,7 +773,12 @@ hliml_group_moments <- function(Y, X_ohx, group) {
 
 hliml_closed_form <- function(Y, X_ohx, group,
                               sigma_cap = 10, omega_cap = 10,
-                              strict = FALSE) {
+                              strict = FALSE,
+                              negative_omega = c("floor", "reject")) {
+  # negative_omega (patch 0046): forwarded to invert_structural(); under
+  # "reject" a beyond-omega=Inf point returns omega = NA and fails the
+  # admissibility test by itself (strict is then redundant but harmless).
+  negative_omega <- match.arg(negative_omega)
   # strict (patch 0043, 2026-09-01 fresh-eyes audit): when TRUE, a point
   # whose inversion CLAMPED omega -- invert_structural() reports status
   # "constraint_violated" when rho > (sigma-1)/sigma, i.e. the algebraic
@@ -782,7 +805,7 @@ hliml_closed_form <- function(Y, X_ohx, group,
   if (!is.finite(b[1]) || abs(b[1]) < 1e-12)
     return(list(status = "cf_fail_degenerate_b1", alpha = alpha))
   theta <- -b[-1] / b[1]                         # (theta0, theta1, theta2)
-  inv <- invert_structural(theta[2], theta[3])
+  inv <- invert_structural(theta[2], theta[3], negative_omega = negative_omega)
   admissible <- !is.na(inv$sigma) && inv$sigma > 1 && inv$sigma < sigma_cap &&
     !is.na(inv$omega) && inv$omega > 0 && inv$omega < omega_cap
   if (isTRUE(strict) && !identical(inv$status, "ok")) admissible <- FALSE
@@ -1185,7 +1208,17 @@ estimate_cell_liml <- function(cell_df,
                                omega_start_floor = 0.001,
                                rho_clamp = c(0.0001, 0.999),
                                hliml_method = c("closed", "bfgs", "both"),
-                               cf_admissibility = c("legacy", "strict")) {
+                               cf_admissibility = c("legacy", "strict"),
+                               negative_omega = c("floor", "reject")) {
+  # negative_omega (patch 0046): "floor" (default, bit-preserving) or
+  # "reject". Under "reject" every inversion in this function (Step-1
+  # starts, Step 2, closed form) returns omega = NA for a beyond-Inf point;
+  # the closed form is then inadmissible, the Step-2 cascade carries no
+  # omega, and the boundary search takes the cell EVEN IF Step 2 supplied a
+  # sigma (a constrained (sigma, omega) HLIML optimum outranks a sigma with
+  # no omega; the Step-2 sigma stays available in sigma_step2). Precedence
+  # for cells Step 2 fully identifies is unchanged.
+  negative_omega <- match.arg(negative_omega)
   # cf_admissibility (patch 0043): "legacy" (default, bit-preserving) accepts
   # a closed-form point whose omega was clamped up from a negative value;
   # "strict" treats invert_structural()'s "constraint_violated" as
@@ -1271,7 +1304,7 @@ estimate_cell_liml <- function(cell_df,
 
   eta1 <- fit1$eta  # (eta_x1, eta_x2, const)
   # In the new ordering, eta1[1] = coef on x1, eta1[2] = coef on x2, eta1[3] = const
-  inv1 <- invert_structural(eta1[1], eta1[2])
+  inv1 <- invert_structural(eta1[1], eta1[2], negative_omega = negative_omega)
 
   # Step 1 is primarily a residual generator + source of starting values for
   # Step 2. If its structural inversion fails (e.g., eta1 < 0), we still
@@ -1323,7 +1356,7 @@ estimate_cell_liml <- function(cell_df,
 
   eta2 <- fit2$eta
   # eta2[1] = coef on x1, eta2[2] = coef on x2, eta2[3] = const
-  inv2 <- invert_structural(eta2[1], eta2[2])
+  inv2 <- invert_structural(eta2[1], eta2[2], negative_omega = negative_omega)
 
   # Step 2 inversion failure is non-fatal: HLIML doesn't depend on Step 2's
   # structural inversion (it parameterizes directly in sigma/omega space and
@@ -1413,7 +1446,8 @@ estimate_cell_liml <- function(cell_df,
     tryCatch(hliml_closed_form(Y_h, X_h_ohx, cell_df$exporter,
                                sigma_cap = sigma_start_cap,
                                omega_cap = omega_start_cap,
-                               strict = (cf_admissibility == "strict")),
+                               strict = (cf_admissibility == "strict"),
+                               negative_omega = negative_omega),
              error = function(e) list(status = paste0("cf_error_",
                                                       substr(conditionMessage(e), 1, 40))))
   else NULL
@@ -1595,8 +1629,13 @@ estimate_cell_liml <- function(cell_df,
   # the omega cap). Adjust codes 6/7/8 are new; cap/floor flags are set so
   # downstream consumers treat them like the Step-2 cap/floor states.
   hliml_boundary_edge <- NA_character_
-  if (hliml_method == "closed" && is.na(final_sigma) && is.na(final_omega) &&
-      bd_ok && isTRUE(bd$usable)) {
+  # patch 0046: under negative_omega = "reject" the boundary optimum also
+  # outranks a Step-2 sigma that arrived WITHOUT an omega (the beyond-Inf
+  # case at Step 2); under "floor" the v0.6.x condition is unchanged.
+  route_bd <- hliml_method == "closed" && bd_ok && isTRUE(bd$usable) &&
+    is.na(final_omega) &&
+    (is.na(final_sigma) || negative_omega == "reject")
+  if (route_bd) {
     final_sigma <- bd$sigma
     final_omega <- bd$omega
     final_rho   <- bd$rho
@@ -1628,6 +1667,7 @@ estimate_cell_liml <- function(cell_df,
       # admissible or boundary HLIML point).
       hliml_method = hliml_method,
       hliml_cf_admissibility = cf_admissibility,
+      hliml_negative_omega = negative_omega,
       sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
       omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,
       rho_hliml_cf   = if (cf_ok) cf$rho   else NA_real_,
@@ -1732,6 +1772,7 @@ estimate_cell_liml <- function(cell_df,
     # form alongside it (NA in the default "bfgs" mode).
     hliml_method = hliml_method,
     hliml_cf_admissibility = cf_admissibility,   # patch 0043
+    hliml_negative_omega = negative_omega,       # patch 0046
     hliml_Q = if (hliml_status == "ok") as.numeric(hliml_fit$obj_value) else NA_real_,
     sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
     omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,

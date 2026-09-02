@@ -31,6 +31,13 @@
 #       dominated by hliml_cf_inversion == "eta1_nonpositive" (the omega -> 0
 #       continuation), not "constraint_violated".
 #   Q5  Where Step 2 would take over: |sigma_step2 - sigma| on those cells.
+#   Q6  (patch 0046) The Step-2 floored cells split by inversion_status (the
+#       Step-2 inversion's own status), and the projection under
+#       --stage1-negative-omega reject: beyond-Inf is inadmissible at every
+#       inversion, so a constraint_violated closed-form cell goes to Step 2
+#       ONLY when Step 2 has an interior omega, and otherwise to the boundary
+#       search (which also outranks a Step-2 sigma that arrived without an
+#       omega); the shipped Step-2 constraint_violated cells re-route too.
 # =============================================================================
 suppressPackageStartupMessages({ library(data.table); library(jsonlite) })
 
@@ -101,8 +108,39 @@ q5 <- if (any(cv$s2_ok)) {
        p90 = unname(quantile(x, .9)), share_gt_10pct = mean(x > 0.1))
 } else NULL
 
+# Q6 (patch 0046) -------------------------------------------------------------
+# The Step-2 inversion status is carried by the wrapper from patch 0046 on
+# (step2_inversion_status). Tables shipped before it lack the column; there
+# the beyond-Inf Step-2 case is proxied by omega_step2 <= 1e-4 (the synthetic
+# DGP found 1 genuine sub-floor omega in 393 floored cells, so the proxy
+# overstates by O(0.3%)).
+has_s2inv <- "step2_inversion_status" %in% names(d)
+d[, s2_inv := if (has_s2inv) fifelse(is.na(step2_inversion_status), "NA", step2_inversion_status)
+              else fifelse(is.na(omega_step2), "NA",
+                   fifelse(omega_step2 <= 1e-4, "constraint_violated (proxy: omega_step2 <= 1e-4)", "ok"))]
+s2 <- d[status == "ok" & final_source == "step2_weighted"]
+q6_split <- s2[, .N, by = .(inv2 = s2_inv, floored = omega_floored %in% TRUE)][order(-N)]
+# cells whose Step-2 inversion is beyond-Inf: under reject they carry no omega
+s2_cv <- s2[s2_inv %like% "constraint_violated"]
+# projection under reject for the constraint_violated interior-HLIML set
+cv <- d[status == "ok" & final_source == "hliml" & cf_inv == "constraint_violated"]
+cv[, s2_ok := !is.na(sigma_step2) & sigma_step2 > 1 & sigma_step2 < 10 &
+              !is.na(omega_step2) & omega_step2 > 1e-4 & omega_step2 <= 10]
+cv[, s2_capped := !s2_ok & ((!is.na(sigma_step2) & sigma_step2 >= 10) |
+                            (!is.na(omega_step2) & omega_step2 > 10))]
+cv[, proj_reject := fifelse(s2_inv == "ok" & s2_ok, "step2_interior_omega",
+                    fifelse(s2_inv == "ok" & s2_capped, "step2_capped",
+                            "boundary_search (edge needs raw data; DGP ~96% omega_cap)"))]
+q6_proj <- cv[, .N, by = proj_reject][order(-N)]
+q6 <- list(step2_by_inversion_status = q6_split,
+           n_step2_constraint_violated = nrow(s2_cv),
+           n_step2_cv_floored = s2_cv[omega_floored %in% TRUE, .N],
+           reject_projection_for_cv_interior = q6_proj,
+           n_boundary_total_projected = d[status == "ok" & final_source == "hliml_boundary", .N] +
+             cv[proj_reject %like% "boundary", .N] + nrow(s2_cv))
+
 res <- list(input = basename(s1_path), n_cells = N, n_ok = n_ok, n_hliml_interior = n_hliml,
-            q1 = q1, q2 = q2, q3 = q3, q4 = q4, q5 = q5,
+            q1 = q1, q2 = q2, q3 = q3, q4 = q4, q5 = q5, q6 = q6,
             generated = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"))
 dir.create(dirname(out_json), showWarnings = FALSE, recursive = TRUE)
 write_json(res, out_json, auto_unbox = TRUE, pretty = TRUE, digits = 8, na = "null")
@@ -136,7 +174,16 @@ md <- c(
   "## Q5 sigma movement where Step 2 takes over", "",
   if (!is.null(q5)) sprintf("- n = %s; median |dsigma|/sigma = %.3f (p75 %.3f, p90 %.3f); > 10%%: %s",
                             format(q5$n, big.mark = ","), q5$median_rel_dsigma, q5$p75, q5$p90,
-                            pct(q5$share_gt_10pct)) else "- (no step2_clean re-routes)", ""
+                            pct(q5$share_gt_10pct)) else "- (no step2_clean re-routes)", "",
+  "## Q6 (patch 0046) Step-2 cells by their own inversion status; projection under --stage1-negative-omega reject", "",
+  fmt_tab(q6_split), "",
+  if (!has_s2inv) "(step2_inversion_status absent -- pre-0046 table; beyond-Inf at Step 2 proxied by omega_step2 <= 1e-4)", "",
+  sprintf("- shipped Step-2 cells whose Step-2 inversion is constraint_violated: %s (floored: %s) -- these re-route to the boundary search under reject as well",
+          format(q6$n_step2_constraint_violated, big.mark = ","), format(q6$n_step2_cv_floored, big.mark = ",")), "",
+  "Projected destination of the constraint_violated interior-HLIML set under reject:", "", fmt_tab(q6_proj), "",
+  sprintf("- boundary bucket under reject: shipped %s -> projected ~%s (%s of the universe)",
+          format(d[status == "ok" & final_source == "hliml_boundary", .N], big.mark = ","),
+          format(q6$n_boundary_total_projected, big.mark = ","), pct(q6$n_boundary_total_projected / N)), ""
 )
 dir.create(dirname(out_md), showWarnings = FALSE, recursive = TRUE)
 writeLines(md, out_md)
