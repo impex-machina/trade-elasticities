@@ -197,7 +197,11 @@ sigma_bias_sign_phrase <- function(t1a) {
 boundary_phrase <- function(rs, n_cells) {
   bt <- rs[["boundary_total"]]
   if (is.null(bt) || !is.finite(bt) || bt == 0) return("")
-  sprintf("; a further %s (%s cells) are constrained boundary HLIML optima -- %s on the ω floor, %s at the σ cap, %s at the ω cap -- routed only where both the closed-form HLIML point and Step 2 were inadmissible (`final_source == \"hliml_boundary\"`, no SE)",
+  # \u03c9 / \u03c3 = omega / sigma, written as Unicode escapes so this file
+  # stays ASCII-clean (see asymmetry_phrase); the literal Greek letters used
+  # here before patch 0045 rendered as raw bytes under a non-UTF-8 locale and
+  # broke the README lock check there.
+  sprintf("; a further %s (%s cells) are constrained boundary HLIML optima -- %s on the \u03c9 floor, %s at the \u03c3 cap, %s at the \u03c9 cap -- routed only where both the closed-form HLIML point and Step 2 were inadmissible (`final_source == \"hliml_boundary\"`, no SE)",
           format_pct(bt, n_cells), format_int(bt),
           format_int(rs[["boundary_omega_floor"]]), format_int(rs[["boundary_sigma_cap"]]),
           format_int(rs[["boundary_omega_cap"]]))
