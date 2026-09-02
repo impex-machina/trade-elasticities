@@ -232,7 +232,14 @@ stage1_summary$negative_omega <- list(
   n_sigma_without_omega = sum(stage1$status == "ok" & stage1$final_source == "step2_weighted" &
                               is.na(stage1$omega)),
   # floor-edge optima reached from a beyond-Inf point (the opposite corner)
-  n_boundary_corner = if (has_col("boundary_corner")) sum(stage1$boundary_corner %in% TRUE) else 0L,
+  # the column exists from patch 0047; on a table estimated before it the
+  # flag reconstructs exactly from its provenance definition (same rule as
+  # scripts/patch_stage1_boundary_corner.R and the estimator)
+  n_boundary_corner = if (has_col("boundary_corner")) sum(stage1$boundary_corner %in% TRUE)
+    else if (has_col("hliml_boundary_edge") && has_col("hliml_cf_inversion"))
+      sum(stage1$final_source %in% "hliml_boundary" & stage1$hliml_boundary_edge %in% "omega_floor" &
+          stage1$hliml_cf_inversion %in% "constraint_violated")
+    else 0L,
   denominator = nrow(stage1)
 )
 

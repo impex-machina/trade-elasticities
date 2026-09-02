@@ -92,30 +92,46 @@ these cells the data barely distinguish "ω → ∞" from "ω → 0, σ ≈ 1.2"
 are weakly identified in the structural sense although their first-stage F
 is ordinary, so the σ-robust screen does not catch them. Decision: flag
 (`boundary_corner`, provenance-defined: floor-edge optimum reached from a
-`constraint_violated` closed form), do not re-route — a σ threshold would be
+`constraint_violated` closed form — note this counts by *closed-form*
+status, so it is not identical to the 4,108 transition-defined cells above;
+`scripts/patch_stage1_boundary_corner.R` prints the exact count), do not re-route — a σ threshold would be
 an invented number, and 380 cells of the same species already ship in
 v0.6.1. Users doing supply-side work should filter on it.
 
-## 4. Stage 2
+## 4. Stage 2 and the SE-coverage cost (from `compare_runs.R`, `v061_v070rc_compare_runs.md`)
 
 | | v0.6.1 | v0.7.0-rc |
 |---|---|---|
 | 2a priors (products / median γ) | 1,240 / — | 1,240 / 0.642 |
-| 2a estimates / γ / tariff | 424,0xx / — / — | 424,008 / 0.649 / 0.727 |
 | 2b rows | 6,829,023 | 6,814,229 (−14,794 = the 1,140 lost cells' rows) |
-| 2b σ median | 2.727 | 2.462 |
-| 2b γ median (q25–q75) | 0.628 (0.43–0.91) | 0.650 |
-| 2b opt_tariff median | — | 0.649 |
-| convergence (code 0) | — | 68.9% |
+| 2b σ median (p25–p75) | 2.727 (1.65–5.72) | 2.462 (1.58–4.90) |
+| 2b γ median (p25–p75; p95) | 0.628 (0.43–0.92; 1.80) | 0.650 (0.38–0.94; 1.84) |
+| share γ > 1 | 19.8% | 21.4% |
+| implied export-supply elasticity, median 1/γ | 1.592 | 1.538 |
+| opt_tariff median | 0.657 | 0.649 |
 | tiers 0 / 1 / 2 / 3 | 3.3 / 70.1 / 0.2 / 26.4 | 3.3 / 70.0 / 0.2 / 26.4 |
-| trim | — | 77,779 rows, γ band [0, 15.98] |
+| **σ SE finite (ok cells)** | **77.9%** | **63.6%** |
+| **γ SE status `ok`** | **62.4%** | **54.7%** |
+| γ SE status `boundary` | 3.8% | 11.3% |
+| **`sigma_robust` TRUE (all rows / non-NA)** | **14.6% / 19.9%** | **10.7% / 14.6%** |
+| σ-without-ω cells (Step 2, ω NA; incl. 12 `omega_div_zero`) | 0 | 13,494 |
 
 The 28k cells now at ω = 10 do **not** enter the 2a priors —
 `feenstra_gamma_clean` excludes `omega_capped` as well as `omega_floored`
 (F2, v0.4.0). The prior median rose because ~8.5k Step-2 re-routes with
-large *interior* ω now qualify. γ moved +3.5%; tiers are identical, as they
-must be (tiers depend on data, not σ). Fill the v0.6.1 dashes from
-`compare_runs.R` at release.
+large *interior* ω now qualify. γ moved +3.5% at the median with slightly
+wider dispersion; tiers are identical, as they must be.
+
+**The cost.** Constrained boundary optima carry no SE, and the boundary
+share of ok cells doubled (15.0% → 30.5%). Consequently 14 pp fewer ok
+cells have a σ SE, the `boundary` γ-SE status triples, and the σ-robust
+screen — which needs a finite σ SE — passes 10.7% of rows instead of 14.6%.
+None of this is a point-estimate regression: the same cells shipped a σ SE
+in v0.6.1 only because they were mislabelled as interior. But it is the
+headline downside of v0.7.0, and it sets the first v0.7.x item: a σ SE for
+edge optima (a one-parameter delta method on the free edge coordinate, with
+the fixed coordinate treated as known), which would restore SE coverage for
+most of the 55,240 boundary cells.
 
 ## 5. Adjudication
 
