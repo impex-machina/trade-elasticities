@@ -1,37 +1,37 @@
 {
-  "n_cells": 6829023,
+  "n_cells": 6814229,
   "n_importers": 233,
   "n_exporters": 233,
-  "n_sigma": 231345,
-  "sigma_median": 2.72721154125892,
-  "sigma_q25": 1.71911581939878,
-  "sigma_q75": 5.23094588428798,
-  "gamma_median": 0.627978675585999,
-  "gamma_q25": 0.430746890226243,
-  "gamma_q75": 0.914885574114419,
+  "n_sigma": 231387,
+  "sigma_median": 2.46202946292066,
+  "sigma_q25": 1.61516304140744,
+  "sigma_q75": 4.07295467956136,
+  "gamma_median": 0.650386630230156,
+  "gamma_q25": 0.384463217055187,
+  "gamma_q75": 0.939487814038194,
   "sigma_provenance": {
-    "fallback_value": 2.72721154125892,
-    "n_fallback": 743372,
-    "n_cap": 630203,
-    "denominator": 6829023
+    "fallback_value": 2.46202946292066,
+    "n_fallback": 769129,
+    "n_cap": 539683,
+    "denominator": 6814229
   },
   "gamma_floor": {
     "n_floor": 0,
-    "denominator": 6829023
+    "denominator": 6814229
   },
   "se_status": {
-    "ok": 4261609,
-    "tier3_prior": 1757485,
-    "other": 809929,
-    "total": 6829023
+    "ok": 3724788,
+    "tier3_prior": 1757768,
+    "other": 1331673,
+    "total": 6814229
   },
   "sigma_robust": {
-    "robust": 998748,
-    "not_robust": 4009053,
-    "tier3_na": 1821222,
-    "n_estimated": 5007801,
-    "total": 6829023
+    "robust": 729681,
+    "not_robust": 4263018,
+    "tier3_na": 1821530,
+    "n_estimated": 4992699,
+    "total": 6814229
   },
-  "elast_median": 1.5924107599145,
+  "elast_median": 1.53754698131806,
   "n_importers_asymmetry_vs_stage1": 1
 }

@@ -2,67 +2,76 @@
   "n_cells": 280649,
   "n_products": 1240,
   "n_importers": 234,
-  "sy_fails": 170976,
-  "sy_evaluated": 182363,
-  "sy_pass_gs25": 70246,
-  "sy_gs25_evaluated": 182363,
-  "sargan_passes": 103525,
-  "sargan_evaluated": 178227,
-  "gs_both_passes": 26239,
-  "gs_both_evaluated": 115431,
+  "sy_fails": 169887,
+  "sy_evaluated": 181224,
+  "sy_pass_gs25": 69944,
+  "sy_gs25_evaluated": 181224,
+  "sargan_passes": 102978,
+  "sargan_evaluated": 177140,
+  "gs_both_passes": 18417,
+  "gs_both_evaluated": 78522,
   "adjust_x_final_source": {
     "code_0": {
-      "hliml": 115440,
+      "hliml": 78526,
       "step2_weighted": 0,
       "pre_discard": 0
     },
     "code_1": {
       "hliml": 0,
-      "step2_weighted": 25029,
+      "step2_weighted": 33307,
       "pre_discard": 0
     },
     "code_4": {
       "hliml": 0,
-      "step2_weighted": 12989,
+      "step2_weighted": 10809,
       "pre_discard": 0
     },
     "code_5": {
       "hliml": 0,
-      "step2_weighted": 1630,
+      "step2_weighted": 3363,
       "pre_discard": 0
     },
     "code_6_8_boundary": {
-      "hliml_boundary": 27297,
+      "hliml_boundary": 55240,
       "other": 0
     },
     "code_pre_discard": {
       "hliml": 0,
       "step2_weighted": 0,
-      "pre_discard": 98264
+      "pre_discard": 99404
     }
   },
   "routing_summary": {
-    "hliml_interior": 115440,
-    "step2_clean": 25029,
+    "hliml_interior": 78526,
+    "step2_clean": 33307,
     "step2_omega_only": 0,
     "omega_negative_floor": 0,
-    "clamped_at_sigma_cap": 12989,
-    "clamped_at_omega_cap": 1630,
-    "boundary_omega_floor": 11470,
-    "boundary_sigma_cap": 6438,
-    "boundary_omega_cap": 9389,
-    "boundary_total": 27297,
-    "pre_discard": 98264,
-    "step2_total": 39648,
-    "clamped_total": 14619
+    "clamped_at_sigma_cap": 10809,
+    "clamped_at_omega_cap": 3363,
+    "boundary_omega_floor": 15578,
+    "boundary_sigma_cap": 7259,
+    "boundary_omega_cap": 32403,
+    "boundary_total": 55240,
+    "pre_discard": 99404,
+    "step2_total": 47479,
+    "clamped_total": 14172
   },
   "omega_floor": {
-    "n_floor": 64699,
+    "n_floor": 15582,
+    "denominator": 280649,
+    "n_floor_boundary_edge": 15578,
+    "n_floor_other": 4
+  },
+  "negative_omega": {
+    "rule": "reject",
+    "n_cf_beyond_inf_interior": 0,
+    "n_sigma_without_omega": 13494,
+    "n_boundary_corner": 2503,
     "denominator": 280649
   },
   "status_breakdown": {
-    "ok": 182385,
-    "all_inversions_failed": 25868,
+    "ok": 181245,
+    "all_inversions_failed": 27008,
     "fail_too_few_exporters": 4944,
     "step1_fail_singular_QWW": 1658,
     "step2_fail_singular_QWW_fellback_to_step1": 645,
@@ -71,15 +80,15 @@
   },
   "provenance_rates": {
     "interior_full_universe": {
-      "numerator": 115440,
+      "numerator": 78526,
       "denominator": 280649
     },
     "interior_conditional_on_ok": {
-      "numerator": 115440,
-      "denominator": 182385
+      "numerator": 78526,
+      "denominator": 181245
     },
     "step2_full_universe": {
-      "numerator": 39648,
+      "numerator": 47479,
       "denominator": 280649
     }
   }

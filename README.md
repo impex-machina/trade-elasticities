@@ -27,10 +27,10 @@ pipeline:
   Stage 2a regional priors, and penalized Gauss-Newton standard errors.
 
 Outputs cover 1,240 HS4 products across 233 importers and 233 exporters,
-producing 6,829,023 (importer, exporter, HS4) cell-level γ estimates with
+producing 6,814,229 (importer, exporter, HS4) cell-level γ estimates with
 standard errors. Stage 1 attempts σ estimation on 280,649 (importer, HS4)
 cells across 234 importers, returning an estimate for
-182,385 of them (one importer present at Stage 1 has no country-pair γ at Stage 2b after the minimum-destinations filter).
+181,245 of them (one importer present at Stage 1 has no country-pair γ at Stage 2b after the minimum-destinations filter).
 
 The accompanying paper is in preparation; this repo will be the reference
 replication artifact when it is submitted.
@@ -97,7 +97,7 @@ read the first rows:
 
 ```r
 s2b <- readRDS("data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds")
-nrow(s2b)            # 6829023
+nrow(s2b)            # 6814229
 head(s2b[, c("exporter", "importer", "good", "sigma",
              "gamma", "gamma_se", "gamma_se_status", "tier")], 5)
 ```
@@ -108,12 +108,12 @@ Columns:
 |---|---|
 | `importer`, `exporter` | Numeric country codes (BACI/COMTRADE convention). |
 | `good` | **HS4 product code, stored as a character string with leading zeros** (e.g. `"0302"`, not `302`). Read it as character; coercing to integer drops the leading zero and silently mismatches chapters 01–09. |
-| `sigma` | Import-demand (substitution) elasticity for the product, fixed from Stage 1 and constant within a product. For 10.9% of rows this is a global-median fallback (σ ≈ 2.727) rather than a cell-specific estimate, and a further 9.2% sit at the cap value of 10 (see Known limitations). |
-| `gamma` | **Inverse export-supply elasticity** for the (importer, exporter, product) cell — the headline estimate, Soderbery's γ. Lower-bounded near 0 by the optimizer and **unbounded above** (extreme values are handled by the Stage 2a plateau fallback and the 0.5%-per-tail trim; see Known limitations). γ is the *inverse* of an elasticity: the implied export-supply elasticity is 1 / γ (median ≈ 1.592). Small γ means near-perfectly-elastic supply; large γ means strong importer market power. Most cells are shrunk toward a good-level prior (see Known limitations). |
+| `sigma` | Import-demand (substitution) elasticity for the product, fixed from Stage 1 and constant within a product. For 11.3% of rows this is a global-median fallback (σ ≈ 2.462) rather than a cell-specific estimate, and a further 7.9% sit at the cap value of 10 (see Known limitations). |
+| `gamma` | **Inverse export-supply elasticity** for the (importer, exporter, product) cell — the headline estimate, Soderbery's γ. Lower-bounded near 0 by the optimizer and **unbounded above** (extreme values are handled by the Stage 2a plateau fallback and the 0.5%-per-tail trim; see Known limitations). γ is the *inverse* of an elasticity: the implied export-supply elasticity is 1 / γ (median ≈ 1.538). Small γ means near-perfectly-elastic supply; large γ means strong importer market power. Most cells are shrunk toward a good-level prior (see Known limitations). |
 | `gamma_se` | Penalized Gauss-Newton standard error for `gamma`. |
 | `gamma_se_status` | `"ok"` when the SE is usable; other values flag degenerate cases. |
 | `gamma_se_total` | Standard error for `gamma` with Stage-1 σ uncertainty propagated in by the delta method: `sqrt(gamma_se² + (∂γ/∂σ · sigma_se)²)`. Populated only where `sigma_robust` is `TRUE`; `NA` otherwise (all Tier-3 cells, and any cell where σ-uncertainty could not be propagated stably). Where present, this is the wider, σ-aware SE; where `NA`, `gamma_se` (conditional on σ) is the only SE available. |
-| `sigma_robust` | Cell-level (`importer × good`) flag: `TRUE` when γ's SE is robust to Stage-1 σ uncertainty — σ̂ is unclamped, has a finite SE, sits clear of the σ = 1 identification pole, and the propagated term inflates no γ SE in the cell beyond the screen threshold. `FALSE` when any of those fail; `NA` for Tier-3 imputed cells with no per-cell σ. `TRUE` on 14.6% of rows (19.9% of estimated cells), `FALSE` on 58.7%, `NA` on 26.7%. Filter on this to keep only cells whose γ SE is stable once σ is treated as estimated rather than known (see Known limitations). |
+| `sigma_robust` | Cell-level (`importer × good`) flag: `TRUE` when γ's SE is robust to Stage-1 σ uncertainty — σ̂ is unclamped, has a finite SE, sits clear of the σ = 1 identification pole, and the propagated term inflates no γ SE in the cell beyond the screen threshold. `FALSE` when any of those fail; `NA` for Tier-3 imputed cells with no per-cell σ. `TRUE` on 10.7% of rows (14.6% of estimated cells), `FALSE` on 62.6%, `NA` on 26.7%. Filter on this to keep only cells whose γ SE is stable once σ is treated as estimated rather than known (see Known limitations). |
 | `sigma_se` | Stage-1 standard error of `sigma` for the product, carried in for the propagation. `NA` where Stage 1 clamped σ or ω (the cap is reported without a usable SE) or returned none. Constant within a product. |
 | `dgamma_dsigma` | Local sensitivity ∂γ/∂σ for the cell, from the implicit-function derivative of the γ first-order condition; the input to `gamma_se_total`. Large magnitudes mark cells where γ moves sharply with σ, typically those near the σ = 1 pole. |
 | `gamma_exposure` | Number of exporters in the estimating set for the cell. |
@@ -122,7 +122,7 @@ Columns:
 | `convergence`, `obj_value` | Optimizer convergence code and objective value. |
 | `opt_tariff`, `opt_tariff_all` | Implied optimal tariff derived from (σ, γ): Soderbery's heterogeneous-exporter optimal-tariff statistic, a trade-weighted aggregate of γ across the cell's exporters (weights ∝ trade / (1 + γσ)), **constant within an (importer, product) cell**. `opt_tariff` aggregates directly estimated exporters (tiers 0-2) only; `opt_tariff_all` includes Tier-3 imputations. Downstream of the estimates — treat as derived, not primary — and collapsing toward zero where supply identification floors ω (see Known limitations). |
 
-A reader reproducing the headline numbers should find σ median ≈ 2.727 on
+A reader reproducing the headline numbers should find σ median ≈ 2.462 on
 the canonical 1,240-product universe. `analysis/master.R` prints this as
 it runs.
 
@@ -235,48 +235,59 @@ Stated forthrightly:
   -37.2% to 30.4% (negative at 8 of 12 grid points),
   so comparisons to Feenstra-GMM or Broda–Weinstein estimates should not
   assume the upward bias of that tradition.
-- **Estimator-provenance composition.** On the full universe, 41.1% of
+- **Estimator-provenance composition.** On the full universe, 28.0% of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
-  to the Step 2 fallback, of which 5.2% of the full universe (14,619 cells)
-  are clamped at the σ/ω caps and report the cap, not an estimate; a further 9.7% (27,297 cells) are constrained boundary HLIML optima -- 11,470 on the ω floor, 6,438 at the σ cap, 9,389 at the ω cap -- routed only where both the closed-form HLIML point and Step 2 were inadmissible (`final_source == "hliml_boundary"`, no SE). 93.8% of cells fail the
+  to the Step 2 fallback, of which 5.0% of the full universe (14,172 cells)
+  are clamped at the σ/ω caps and report the cap, not an estimate; a further 19.7% (55,240 cells) are constrained boundary HLIML optima -- 15,578 on the ω floor, 7,259 at the σ cap, 32,403 at the ω cap -- routed where the closed-form HLIML point was inadmissible and Step 2 supplied no admissible ω (`final_source == "hliml_boundary"`, no SE). 93.7% of cells fail the
   Stock-Yogo weak-instrument threshold at the strict 10% maximal-size
   critical value this pipeline screens at. At Grant-Soderbery (2024)'s own
-  25% rule of thumb, 38.5% of evaluated cells pass the
+  25% rule of thumb, 38.6% of evaluated cells pass the
   weak-instrument screen, 58.1% pass the Sargan
-  overidentification test (conventional p > 0.2), and 22.7% pass both --
+  overidentification test (conventional p > 0.2), and 23.5% pass both --
   the joint credibility screen of the G&S protocol. Per-cell flags
   (`stockyogo_pass_gs25`, `sargan_pass`, `gs_pass_both`) ship in the Stage 1
   output so either threshold can be applied downstream. Conditional on `status == "ok"`
-  the interior rate rises to 63.3%; both framings appear in the methodology
+  the interior rate rises to 43.3%; both framings appear in the methodology
   write-up. Headline σ medians are reported on the canonical 1,240 HS4
   universe.
 - **Period extension relative to Soderbery (2018).** This pipeline
   estimates over a longer window than Soderbery's original sample, which
   contributes to estimate differences independently of the estimator
   change from Feenstra GMM to HLIML.
-- **Supply-side flooring, and shrinkage that masks it.** The Stage 1
-  inversion clamps the supply parameter ω to a lower floor (1e-4); a cell
-  pushed there is reported as near-perfectly-elastic supply, not as a
-  failure; the `adjust` code does not flag it, though the Stage 1
-  `omega_floored` boolean isolates exactly these cells. Stage 2
-  ridge shrinkage toward good-level priors then lifts most of that floored
-  mass, so the published γ floors in only 0.0% of cells and looks
-  better-behaved than the Stage 1 supply identification underneath it (the
-  Stage 1 ω-floor share is far larger, at 23.1%
-  of cells; see `docs/methodology/stage1_README.md`). Where ω is floored, both γ and the
+- **Supply-side boundaries: two ends of the ω axis.** The Feenstra
+  inversion has no positive ω for a point whose ρ exceeds (σ−1)/σ: the
+  algebraic ω is negative, and geometrically the point is the continuation
+  of the admissible interval *past ω = +∞*. Grant & Soderbery's Stata code
+  clamps such points to the 1e-4 floor — the opposite end of the axis —
+  and reports them as near-perfectly-elastic supply; this pipeline did the
+  same through v0.6.1. From v0.7.0
+  (`--stage1-negative-omega reject`; `floor` reproduces v0.6.1) such points are
+  inadmissible at every inversion and take the constrained boundary optimum,
+  which lands at the ω *cap* in most cases (`omega_capped`, `adjust` 8).
+  The ω floor now holds 5.6% of cells,
+  15,578 of them constrained floor-edge optima (`adjust` 6) — the genuine
+  perfectly-elastic-supply end, which the `omega_floored` boolean isolates.
+  Two populations need care: 13,494 cells report a Step-2 σ with ω
+  undetermined (no admissible ω, no usable edge; `omega` is NA), and
+  2,503 floor-edge optima were reached from a beyond-∞ point
+  (`boundary_corner`): they sit near σ = 1 with a flat objective and should be
+  filtered for supply-side uses. Stage 2 ridge shrinkage toward good-level
+  priors lifts floored mass, so the published γ floors in only 0.0% of cells and looks
+  better-behaved than the Stage 1 supply identification underneath it
+  (see `docs/methodology/stage1_README.md`). Where ω is floored, both γ and the
   derived `opt_tariff` collapse toward zero — toward elastic supply and a
   near-zero optimal tariff — so a γ or tariff sitting at that boundary is an
   identification artifact, not an interior estimate.
 - **Standard errors: conditional on σ, with a robustness screen.** `gamma_se`
   is computed with σ held fixed at its Stage 1 value (a global-median fallback
   wherever Stage 1 did not identify σ), so it is conditional on σ. Only
-  62.4% of rows carry a clean cell-specific SE: 25.7% are Tier 3 cells
+  54.7% of rows carry a clean cell-specific SE: 25.8% are Tier 3 cells
   assigned the regional prior outright (no SE) and the remaining
-  11.9% are boundary, plateau, non-converged, or unflagged fits. The pipeline
+  19.5% are boundary, plateau, non-converged, or unflagged fits. The pipeline
   additionally propagates the Stage 1 σ uncertainty by the delta method into
   `gamma_se_total` and flags the result with a cell-level `sigma_robust` screen:
   σ̂ unclamped and with a finite SE, clear of the σ = 1 pole, and no γ SE in the
-  cell inflated beyond threshold. 14.6% of rows pass (19.9% of estimated cells); 58.7% are flagged `FALSE` and 26.7% are Tier-3 imputed cells (`NA`) with no per-cell σ. The screen is governed almost entirely by σ̂'s distance from the σ = 1 pole, not by the inflation cutoff, and the pass rate is stable across a wide grid of both thresholds (`analysis/sensitivity_sweep.R` reproduces it). Where `sigma_robust` is `FALSE` or `NA`, treat `gamma_se` as a conditional, lower-bound measure of uncertainty; where `TRUE`, `gamma_se_total` is the σ-aware SE — and in either case the SE is frequently as large as the estimate itself.
+  cell inflated beyond threshold. 10.7% of rows pass (14.6% of estimated cells); 62.6% are flagged `FALSE` and 26.7% are Tier-3 imputed cells (`NA`) with no per-cell σ. The screen is governed almost entirely by σ̂'s distance from the σ = 1 pole, not by the inflation cutoff, and the pass rate is stable across a wide grid of both thresholds (`analysis/sensitivity_sweep.R` reproduces it). Where `sigma_robust` is `FALSE` or `NA`, treat `gamma_se` as a conditional, lower-bound measure of uncertainty; where `TRUE`, `gamma_se_total` is the σ-aware SE — and in either case the SE is frequently as large as the estimate itself.
 - **σ is sensitive to the estimator, not only the sample.** On the Tier 4
   comparison against the legacy Feenstra-GMM baseline, the HLIML σ and the
   GMM σ agree poorly in both level and cross-cell rank ordering. Comparisons
