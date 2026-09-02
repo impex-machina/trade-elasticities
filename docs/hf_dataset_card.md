@@ -20,6 +20,46 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+> **v0.6.1 (2026-09-01).** Corrects the HLIML boundary search (the routing
+> introduced in v0.6.0 for cells where neither the closed-form interior
+> estimator nor the Step-2 fallback yields an admissible point). The v0.6.0
+> search minimised the profiled objective along each edge of the admissible
+> box with a single `optimize()` call, which assumes a unimodal objective;
+> the edge profiles are multimodal, so on the two omega-edges (where sigma
+> is free) the search could terminate at the sigma -> 1 Cobb-Douglas pole,
+> and a value of 1 + 1e-6 then passed the `sigma > 1` cleanliness filter
+> into the shipped table (patches 0038-0041). **3,286 of 30,056 v0.6.0
+> boundary-routed cells (10.9%) shipped at the sigma-pole** (sigma <=
+> 1.001), concentrated on the omega-floor edge. Under the corrected search
+> **3,285 of those 3,286 are now correctly `all_inversions_failed`** -- they
+> have no admissible optimum anywhere in the box -- exactly one re-routed to
+> a legitimate edge, and the boundary sigma-pole count is now **0** (minimum
+> boundary sigma 1.0012). Clean Stage 1 cells move 185,144 -> **182,385**
+> (66.0% -> 65.0%) and boundary-routed cells 30,056 -> **27,297** (equal
+> drops of 2,759: every cell that left the clean set failed honestly). The
+> Stage 1 **sigma median moves 2.7045 -> 2.7272**, the net of two effects on
+> distinct populations -- removing the pole cells raises it +0.058 (they sat
+> at sigma ~ 1 in the left tail), while the honest re-estimation of the
+> remaining non-pole cells lowers it -0.035. **Stage 2b gamma is
+> superseded**: gamma median 0.657 -> **0.628**, opt_tariff median 0.674 ->
+> **0.657**, rows 6,860,437 -> 6,829,023, convergence 68.9% -> 69.2%, tier
+> composition unchanged (3.3/70.1/0.2/26.4). Country structural ratios
+> (v0.6.1): gamma/(1+gamma) 0.386, 1/(sigma-1) 0.579,
+> gamma/((1+gamma)(sigma-1)) 0.204 (Soderbery 2018: 0.408 / 0.532 / 0.217).
+> Pillar-2 synthetic-recovery validation was re-run under the closed-form
+> default for the first time (its capture could not run under that default
+> until patch 0042, so v0.6.0's Pillar-2 numbers predated the closed form):
+> the median recovery yield rises to 98% (from 71.8%), reflecting the closed
+> form's higher success rate, with Tier 1b consistency and Tier 2 sanity
+> checks still passing.
+> Of the v0.6.0 sigma-median movement attributed to the closed form (2.878
+> -> 2.705), roughly a third was this pole artifact; the artifact-free level
+> is ~2.76, and v0.6.1's 2.727 reflects that net of the honest
+> re-estimation. Re-pull anything consuming sigma OR gamma. Data revision:
+> `96e1589e4b5bd0bde0b3f2643b673ee09ff9f680`. **v0.6.0 remains available pinned at revision
+> `4d0987e22977a6482eeefd8d9a3d5452d907e505`** -- do not mix versions within
+> one analysis.
+
 > **v0.6.0 (2026-08-19).** Stage 1 moves from the BFGS search to the
 > closed-form HLIML estimator with hybrid boundary-search routing
 > (patches 0025-0037): usable Stage 1 cells rise **50.5% -> 66.0%**
