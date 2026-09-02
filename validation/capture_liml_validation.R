@@ -27,7 +27,15 @@ tier1a_csv  <- file.path(out_dir, "liml_validation_tier1a.csv")
 tier1b_csv  <- file.path(out_dir, "liml_validation_tier1b.csv")
 console_txt <- file.path(out_dir, "liml_validation_console.txt")
 
-# Load the estimator and harness
+# Load the estimator and harness. utils_general.R must precede
+# liml_estimator.R: estimate_cell_liml()'s boundary-routing site (reached
+# under the default hliml_method = "closed") calls boundary_flags(), which
+# lives in utils_general.R. hs_codes.R is sourced too so the harness has the
+# full estimator environment. (patch 0042 — the pre-0042 script sourced only
+# the estimator and died with 'could not find function "boundary_flags"' the
+# first time the capture was run under the closed-form default.)
+source("R/utils_general.R")
+source("R/hs_codes.R")
 source("R/liml_estimator.R")
 source("validation/validate_liml.R")
 
@@ -235,6 +243,8 @@ md <- c(md,
   "",
   "```r",
   "setwd('<repo_root>')",
+  "source('R/utils_general.R')",
+  "source('R/hs_codes.R')",
   "source('R/liml_estimator.R')",
   "source('validation/validate_liml.R')",
   "run_standalone_validations()",
