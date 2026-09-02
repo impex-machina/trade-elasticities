@@ -254,16 +254,27 @@ Stated forthrightly:
   estimates over a longer window than Soderbery's original sample, which
   contributes to estimate differences independently of the estimator
   change from Feenstra GMM to HLIML.
-- **Supply-side flooring, and shrinkage that masks it.** The Stage 1
-  inversion clamps the supply parameter ω to a lower floor (1e-4); a cell
-  pushed there is reported as near-perfectly-elastic supply, not as a
-  failure; the `adjust` code does not flag it, though the Stage 1
-  `omega_floored` boolean isolates exactly these cells. Stage 2
-  ridge shrinkage toward good-level priors then lifts most of that floored
-  mass, so the published γ floors in only {{format_pct(req(r$stage2b$gamma_floor, "n_floor"), req(r$stage2b$gamma_floor, "denominator"))}} of cells and looks
-  better-behaved than the Stage 1 supply identification underneath it (the
-  Stage 1 ω-floor share is far larger, at {{format_pct(req(r$stage1$omega_floor, "n_floor"), req(r$stage1$omega_floor, "denominator"))}}
-  of cells; see `docs/methodology/stage1_README.md`). Where ω is floored, both γ and the
+- **Supply-side boundaries: two ends of the ω axis.** The Feenstra
+  inversion has no positive ω for a point whose ρ exceeds (σ−1)/σ: the
+  algebraic ω is negative, and geometrically the point is the continuation
+  of the admissible interval *past ω = +∞*. Grant & Soderbery's Stata code
+  clamps such points to the 1e-4 floor — the opposite end of the axis —
+  and reports them as near-perfectly-elastic supply; this pipeline did the
+  same through v0.6.1{{beyond_inf_phrase(r$stage1$negative_omega)}}. From v0.7.0
+  (`--stage1-negative-omega {{req(r$stage1$negative_omega, "rule")}}`; `floor` reproduces v0.6.1) such points are
+  inadmissible at every inversion and take the constrained boundary optimum,
+  which lands at the ω *cap* in most cases (`omega_capped`, `adjust` 8).
+  The ω floor now holds {{format_pct(req(r$stage1$omega_floor, "n_floor"), req(r$stage1$omega_floor, "denominator"))}} of cells,
+  {{format_int(req(r$stage1$omega_floor, "n_floor_boundary_edge"))}} of them constrained floor-edge optima (`adjust` 6) — the genuine
+  perfectly-elastic-supply end, which the `omega_floored` boolean isolates.
+  Two populations need care: {{format_int(req(r$stage1$negative_omega, "n_sigma_without_omega"))}} cells report a Step-2 σ with ω
+  undetermined (no admissible ω, no usable edge; `omega` is NA), and
+  {{format_int(req(r$stage1$negative_omega, "n_boundary_corner"))}} floor-edge optima were reached from a beyond-∞ point
+  (`boundary_corner`): they sit near σ = 1 with a flat objective and should be
+  filtered for supply-side uses. Stage 2 ridge shrinkage toward good-level
+  priors lifts floored mass, so the published γ floors in only {{format_pct(req(r$stage2b$gamma_floor, "n_floor"), req(r$stage2b$gamma_floor, "denominator"))}} of cells and looks
+  better-behaved than the Stage 1 supply identification underneath it
+  (see `docs/methodology/stage1_README.md`). Where ω is floored, both γ and the
   derived `opt_tariff` collapse toward zero — toward elastic supply and a
   near-zero optimal tariff — so a γ or tariff sitting at that boundary is an
   identification artifact, not an interior estimate.

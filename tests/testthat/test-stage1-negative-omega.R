@@ -16,8 +16,9 @@
 #      status constraint_violated, sigma/rho unchanged; the omega -> 0
 #      continuation (eta1_nonpositive), an interior point, and a sub-floor
 #      POSITIVE omega (still floored, status ok) are untouched.
-#   2. estimate_cell_liml(): default "floor" is bit-identical to v0.6.x on a
-#      beyond-Inf cell and on an interior cell.
+#   2. estimate_cell_liml(): "floor" is bit-identical to v0.6.x on a
+#      beyond-Inf cell; the DEFAULT is "reject" (patch 0047, v0.7.0) and an
+#      interior cell is identical under both rules.
 #   3. "reject" routing on three seeded cells: (a) cf beyond-Inf + Step 2
 #      failed -> boundary omega_cap; (b) cf beyond-Inf + Step 2 interior ->
 #      step2_weighted adjust 1 with an interior omega; (c) cf beyond-Inf AND
@@ -63,19 +64,21 @@ test_that("invert_structural(reject) returns omega = NA for the beyond-Inf case 
   expect_identical(a, b); expect_identical(a$status, "ok"); expect_equal(a$omega, 1e-4)
 })
 
-test_that("default floor is bit-identical to v0.6.x; reject re-routes the three seeded cases", {
+test_that("floor is bit-identical to v0.6.x, reject is the default and re-routes the three seeded cases", {
   .no_source(environment())
   # (a) seed 91043: cf beyond-Inf, Step 2 fails (eta1_nonpositive)
   m <- .no_cell(2, 0.01, 10L, 15L, seed = 91043L)
   f0 <- estimate_cell_liml(m, hliml_method = "closed")
   ff <- estimate_cell_liml(m, hliml_method = "closed", negative_omega = "floor")
   fr <- estimate_cell_liml(m, hliml_method = "closed", negative_omega = "reject")
-  expect_identical(f0, ff); expect_identical(ff$hliml_negative_omega, "floor")
+  expect_identical(f0, fr); expect_identical(f0$hliml_negative_omega, "reject")   # default = reject (0047)
+  expect_identical(ff$hliml_negative_omega, "floor")
   expect_identical(ff$final_source, "hliml"); expect_true(ff$omega_floored)
   expect_identical(fr$hliml_negative_omega, "reject")
   expect_identical(fr$final_source, "hliml_boundary")
   expect_identical(fr$hliml_boundary_edge, "omega_cap"); expect_identical(fr$adjust, 8L)
   expect_equal(fr$omega, 10); expect_true(fr$omega_capped); expect_false(fr$omega_floored)
+  expect_false(fr$boundary_corner); expect_false(ff$boundary_corner)   # cap edge, not the corner (0047)
   expect_true(is.na(fr$sigma_se))
   expect_false(fr$hliml_cf_admissible); expect_true(is.na(fr$omega_hliml_cf))
   expect_identical(fr$hliml_cf_inversion, "constraint_violated")
@@ -89,8 +92,8 @@ test_that("default floor is bit-identical to v0.6.x; reject re-routes the three 
   expect_gt(g$omega, 1e-4); expect_lt(g$omega, 10); expect_true(is.finite(g$sigma_se))
   # (c) seed 91051: cf beyond-Inf AND Step 2 beyond-Inf -> boundary outranks sigma-without-omega
   m3 <- .no_cell(2, 0.01, 10L, 15L, seed = 91051L)
-  hf <- estimate_cell_liml(m3, hliml_method = "closed")
-  hr <- estimate_cell_liml(m3, hliml_method = "closed", negative_omega = "reject")
+  hf <- estimate_cell_liml(m3, hliml_method = "closed", negative_omega = "floor")
+  hr <- estimate_cell_liml(m3, hliml_method = "closed")            # default = reject
   expect_identical(hf$inversion_status, "constraint_violated"); expect_equal(hf$omega_step2, 1e-4)
   expect_identical(hr$inversion_status, "constraint_violated"); expect_true(is.na(hr$omega_step2))
   expect_true(is.finite(hr$sigma_step2))                     # Step-2 sigma retained
@@ -103,6 +106,18 @@ test_that("default floor is bit-identical to v0.6.x; reject re-routes the three 
   expect_identical(a$final_source, "hliml"); expect_identical(a$hliml_cf_inversion, "ok")
   a$hliml_negative_omega <- NULL; b$hliml_negative_omega <- NULL
   expect_identical(a, b)
+})
+
+test_that("boundary_corner is present on both return paths and FALSE off the floor edge", {
+  .no_source(environment())
+  m <- .no_cell(2, 0.01, 10L, 15L, seed = 91043L)         # cap-edge cell under reject
+  f <- estimate_cell_liml(m, hliml_method = "closed")
+  expect_identical(f$hliml_boundary_edge, "omega_cap"); expect_false(f$boundary_corner)
+  thin <- m[m$exporter %in% unique(m$exporter)[1:2], ]    # non-ok path
+  ft <- estimate_cell_liml(thin, hliml_method = "closed")
+  expect_false(identical(ft$status, "ok")); expect_false(isTRUE(ft$boundary_corner))   # early returns carry no flag; the wrapper writes FALSE
+  mi <- .no_cell(3, 1, 20L, 40L, seed = 20260819L)        # interior cell
+  expect_false(estimate_cell_liml(mi, ref_exporter = 1L)$boundary_corner)
 })
 
 test_that("the wrapper stamps hliml_negative_omega; the CLI flag parses and validates", {
@@ -120,7 +135,8 @@ test_that("the wrapper stamps hliml_negative_omega; the CLI flag parses and vali
   expect_true(all(out$hliml_negative_omega[!is.na(out$hliml_method)] == "reject"))
   out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE)
-  expect_true(all(out0$hliml_negative_omega[!is.na(out0$hliml_method)] == "floor"))
+  expect_true(all(out0$hliml_negative_omega[!is.na(out0$hliml_method)] == "reject"))   # default (0047)
+  expect_true("boundary_corner" %in% names(out0)); expect_true(all(out0$boundary_corner %in% c(TRUE, FALSE)))
   unlink(tmp)
 
   source(file.path(root, "R", "parse_cli.R"), local = TRUE)
@@ -128,8 +144,10 @@ test_that("the wrapper stamps hliml_negative_omega; the CLI flag parses and vali
   source(file.path(root, "R", "validate_config.R"), local = TRUE)
   dd <- tempfile(); dir.create(dd)
   o0 <- parse_cli(c("--data", dd))
-  expect_identical(o0$stage1_negative_omega, "floor")
-  expect_identical(build_config(o0)$stage1_negative_omega, "floor")
+  expect_identical(o0$stage1_negative_omega, "reject")                 # default (0047)
+  expect_identical(build_config(o0)$stage1_negative_omega, "reject")
+  of <- parse_cli(c("--data", dd, "--stage1-negative-omega", "floor"))
+  expect_identical(of$stage1_negative_omega, "floor")                  # the v0.6.1 reproducer
   o1 <- parse_cli(c("--data", dd, "--stage1-negative-omega", "reject"))
   expect_identical(o1$stage1_negative_omega, "reject")
   expect_error(parse_cli(c("--data", dd, "--stage1-negative-omega", "clamp")),

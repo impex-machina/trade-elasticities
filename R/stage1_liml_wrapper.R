@@ -68,9 +68,10 @@ run_stage1_liml <- function(baci_dt,
                             verbose = TRUE,
                             hliml_method = "closed",
                             cf_admissibility = "legacy",
-                            negative_omega = "floor") {
-  # negative_omega (patch 0046): "floor" | "reject"; see invert_structural()
-  # and estimate_cell_liml(). Default floor is bit-preserving.
+                            negative_omega = "reject") {
+  # negative_omega (patch 0046; default "reject" from patch 0047 / v0.7.0):
+  # see invert_structural() and estimate_cell_liml(). "floor" reproduces
+  # v0.6.1.
   # cf_admissibility (patch 0043): "legacy" | "strict"; see
   # estimate_cell_liml(). Default legacy is bit-preserving.
   # baci_dt: data.table with (importer, exporter, good, t, value, quantity)
@@ -182,6 +183,7 @@ run_stage1_liml <- function(baci_dt,
                   hliml_method = fit$hliml_method %||% hliml_method,
                   hliml_cf_admissibility = fit$hliml_cf_admissibility %||% cf_admissibility,
                   hliml_negative_omega = fit$hliml_negative_omega %||% negative_omega,
+                  boundary_corner = FALSE,
                   sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
                   omega_hliml_cf = fit$omega_hliml_cf %||% NA_real_,
                   rho_hliml_cf = fit$rho_hliml_cf %||% NA_real_,
@@ -230,6 +232,7 @@ run_stage1_liml <- function(baci_dt,
       hliml_method = fit$hliml_method %||% hliml_method,
       hliml_cf_admissibility = fit$hliml_cf_admissibility %||% cf_admissibility,  # patch 0043
       hliml_negative_omega = fit$hliml_negative_omega %||% negative_omega,        # patch 0046
+      boundary_corner = isTRUE(fit$boundary_corner),                                # patch 0047
       hliml_boundary_edge = fit$hliml_boundary_edge %||% NA_character_,
       hliml_Q = fit$hliml_Q %||% NA_real_,
       sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,

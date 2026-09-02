@@ -201,10 +201,21 @@ boundary_phrase <- function(rs, n_cells) {
   # stays ASCII-clean (see asymmetry_phrase); the literal Greek letters used
   # here before patch 0045 rendered as raw bytes under a non-UTF-8 locale and
   # broke the README lock check there.
-  sprintf("; a further %s (%s cells) are constrained boundary HLIML optima -- %s on the \u03c9 floor, %s at the \u03c3 cap, %s at the \u03c9 cap -- routed only where both the closed-form HLIML point and Step 2 were inadmissible (`final_source == \"hliml_boundary\"`, no SE)",
+  sprintf("; a further %s (%s cells) are constrained boundary HLIML optima -- %s on the \u03c9 floor, %s at the \u03c3 cap, %s at the \u03c9 cap -- routed where the closed-form HLIML point was inadmissible and Step 2 supplied no admissible \u03c9 (`final_source == \"hliml_boundary\"`, no SE)",
           format_pct(bt, n_cells), format_int(bt),
           format_int(rs[["boundary_omega_floor"]]), format_int(rs[["boundary_sigma_cap"]]),
           format_int(rs[["boundary_omega_cap"]]))
+}
+
+# beyond_inf_phrase (patch 0047): quantifies the v0.6.1 defect from the
+# run's own table when the run still carries it (rule "floor"), and is
+# silent under reject, where the count is zero by construction. The README
+# never states a number the current data cannot reproduce.
+beyond_inf_phrase <- function(no) {
+  n <- no[["n_cf_beyond_inf_interior"]]
+  if (is.null(n) || is.na(n) || n == 0) return("")
+  sprintf(" (%s cells, %s of the universe, in this table)", format_int(n),
+          format_pct(n, no[["denominator"]]))
 }
 
 asymmetry_phrase <- function(n_asym) {
@@ -241,6 +252,7 @@ render_env$format_num <- format_num
 render_env$asymmetry_phrase <- asymmetry_phrase
 render_env$yield_direction_phrase <- yield_direction_phrase
 render_env$boundary_phrase <- boundary_phrase
+render_env$beyond_inf_phrase <- beyond_inf_phrase
 render_env$sigma_bias_sign_phrase <- sigma_bias_sign_phrase
 render_env$manifest_n_files <- manifest_n_files
 

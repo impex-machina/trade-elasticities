@@ -122,14 +122,15 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     optparse::make_option(
       c("--stage1-negative-omega"),
-      type = "character", default = "floor",
+      type = "character", default = "reject",
       help = paste("Treatment of a NEGATIVE algebraic omega in the Feenstra",
                    "inversion (rho beyond (sigma-1)/sigma: the continuation of",
-                   "the admissible interval past omega = +Inf): 'floor' (clamp",
-                   "to 1e-4 as GS_Estimation.do does -- reproduces v0.6.x",
-                   "bit-for-bit) or 'reject' (omega = NA at every inversion;",
-                   "the closed form is inadmissible, Step 2 carries no omega,",
-                   "and the boundary search takes the cell). Default: %default"),
+                   "the admissible interval past omega = +Inf): 'reject' (v0.7.0",
+                   "default: omega = NA at every inversion; the closed form is",
+                   "inadmissible, Step 2 carries no omega, and the boundary",
+                   "search takes the cell) or 'floor' (clamp to 1e-4 as",
+                   "GS_Estimation.do does -- reproduces v0.6.1 bit-for-bit).",
+                   "Default: %default"),
       metavar = "RULE"
     ),
     optparse::make_option(

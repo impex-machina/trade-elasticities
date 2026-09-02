@@ -16,7 +16,7 @@
 #      the "eta1_nonpositive" region is the omega -> 0 continuation.
 #   2. hliml_closed_form(strict = TRUE) rejects a clamped point that the
 #      legacy rule accepts; every other field is identical.
-#   3. estimate_cell_liml(): default cf_admissibility is "legacy" and
+#   3. estimate_cell_liml(negative_omega = "floor", ): default cf_admissibility is "legacy" and
 #      bit-identical to v0.6.x; "strict" re-routes a seeded constraint-
 #      violated cell to the cascade -- one seed lands on the omega_cap
 #      boundary edge, another on Step 2 -- and never leaves the cell
@@ -88,10 +88,10 @@ test_that("estimate_cell_liml: default is legacy and bit-identical; strict re-ro
   .cfa_source(environment())
   # seed 91043 -> strict lands on the omega_cap boundary edge
   mom <- .cfa_cell(2, 0.01, 10L, 15L, seed = 91043L)
-  f0 <- estimate_cell_liml(mom, ref_exporter = NULL, hliml_method = "closed")
-  fl <- estimate_cell_liml(mom, ref_exporter = NULL, hliml_method = "closed",
+  f0 <- estimate_cell_liml(negative_omega = "floor", mom, ref_exporter = NULL, hliml_method = "closed")
+  fl <- estimate_cell_liml(negative_omega = "floor", mom, ref_exporter = NULL, hliml_method = "closed",
                            cf_admissibility = "legacy")
-  fs <- estimate_cell_liml(mom, ref_exporter = NULL, hliml_method = "closed",
+  fs <- estimate_cell_liml(negative_omega = "floor", mom, ref_exporter = NULL, hliml_method = "closed",
                            cf_admissibility = "strict")
   expect_identical(f0, fl)                          # default == legacy
   expect_identical(fl$hliml_cf_admissibility, "legacy")
@@ -123,8 +123,8 @@ test_that("estimate_cell_liml: default is legacy and bit-identical; strict re-ro
 
   # seed 91004 -> strict falls to Step 2 (interior sigma_w, omega_w), adjust 1
   mom2 <- .cfa_cell(2, 0.01, 10L, 15L, seed = 91004L)
-  gl <- estimate_cell_liml(mom2, ref_exporter = NULL, hliml_method = "closed")
-  gs <- estimate_cell_liml(mom2, ref_exporter = NULL, hliml_method = "closed",
+  gl <- estimate_cell_liml(negative_omega = "floor", mom2, ref_exporter = NULL, hliml_method = "closed")
+  gs <- estimate_cell_liml(negative_omega = "floor", mom2, ref_exporter = NULL, hliml_method = "closed",
                            cf_admissibility = "strict")
   expect_identical(gl$final_source, "hliml"); expect_true(gl$omega_floored)
   expect_identical(gs$final_source, "step2_weighted"); expect_identical(gs$adjust, 1L)
@@ -136,14 +136,14 @@ test_that("estimate_cell_liml: default is legacy and bit-identical; strict re-ro
 test_that("bfgs mode ignores the rule; an ordinary interior cell is unaffected by strict", {
   .cfa_source(environment())
   mom <- .cfa_cell(3, 1, 20L, 40L, seed = 20260819L)   # the closed-form lock cell
-  fl <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "closed")
-  fs <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "closed",
+  fl <- estimate_cell_liml(negative_omega = "floor", mom, ref_exporter = 1L, hliml_method = "closed")
+  fs <- estimate_cell_liml(negative_omega = "floor", mom, ref_exporter = 1L, hliml_method = "closed",
                            cf_admissibility = "strict")
   expect_identical(fl$hliml_cf_inversion, "ok")
   fl$hliml_cf_admissibility <- NULL; fs$hliml_cf_admissibility <- NULL
   expect_identical(fl, fs)
-  bl <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "bfgs")
-  bs <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "bfgs",
+  bl <- estimate_cell_liml(negative_omega = "floor", mom, ref_exporter = 1L, hliml_method = "bfgs")
+  bs <- estimate_cell_liml(negative_omega = "floor", mom, ref_exporter = 1L, hliml_method = "bfgs",
                            cf_admissibility = "strict")
   bl$hliml_cf_admissibility <- NULL; bs$hliml_cf_admissibility <- NULL
   expect_identical(bl, bs)

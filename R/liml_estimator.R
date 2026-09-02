@@ -1209,9 +1209,13 @@ estimate_cell_liml <- function(cell_df,
                                rho_clamp = c(0.0001, 0.999),
                                hliml_method = c("closed", "bfgs", "both"),
                                cf_admissibility = c("legacy", "strict"),
-                               negative_omega = c("floor", "reject")) {
-  # negative_omega (patch 0046): "floor" (default, bit-preserving) or
-  # "reject". Under "reject" every inversion in this function (Step-1
+                               negative_omega = c("reject", "floor")) {
+  # negative_omega (patch 0046; DEFAULT flipped to "reject" in patch 0047 on
+  # the v0.7.0-rc A/B of 2026-09-02, docs/methodology/v061_v070rc_comparison.md;
+  # "floor" reproduces v0.6.1 bit-for-bit). The primitives invert_structural()
+  # and hliml_closed_form() keep "floor" as their own default -- they are the
+  # Stata-faithful building blocks -- and always receive the rule explicitly
+  # from here. Under "reject" every inversion in this function (Step-1
   # starts, Step 2, closed form) returns omega = NA for a beyond-Inf point;
   # the closed form is then inadmissible, the Step-2 cascade carries no
   # omega, and the boundary search takes the cell EVEN IF Step 2 supplied a
@@ -1668,6 +1672,7 @@ estimate_cell_liml <- function(cell_df,
       hliml_method = hliml_method,
       hliml_cf_admissibility = cf_admissibility,
       hliml_negative_omega = negative_omega,
+      boundary_corner = FALSE,
       sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
       omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,
       rho_hliml_cf   = if (cf_ok) cf$rho   else NA_real_,
@@ -1773,6 +1778,16 @@ estimate_cell_liml <- function(cell_df,
     hliml_method = hliml_method,
     hliml_cf_admissibility = cf_admissibility,   # patch 0043
     hliml_negative_omega = negative_omega,       # patch 0046
+    # boundary_corner (patch 0047): a constrained optimum on the omega-FLOOR
+    # edge reached from a closed-form point that was beyond omega = +Inf
+    # (inversion status constraint_violated) -- the opposite end of the
+    # omega axis. Provenance-defined, no threshold. On the v0.7.0-rc these
+    # 4,108 cells sit near sigma = 1 (median 1.21, 16% at or below 1.05) with a
+    # flat objective (median Q_bd/Q_cf 0.96): weakly identified structurally
+    # although their first-stage F is ordinary. Flagged, not re-routed.
+    boundary_corner = identical(final_source, "hliml_boundary") &&
+      identical(hliml_boundary_edge, "omega_floor") &&
+      !is.null(cf) && identical(cf$inversion_status, "constraint_violated"),
     hliml_Q = if (hliml_status == "ok") as.numeric(hliml_fit$obj_value) else NA_real_,
     sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
     omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,

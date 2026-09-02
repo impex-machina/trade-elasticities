@@ -205,6 +205,34 @@ stopifnot(
 # re-run.) Backs the root-README flooring bullet's quantified omega-floor share.
 stage1_summary$omega_floor <- list(
   n_floor     = sum(stage1$omega <= 1e-4, na.rm = TRUE),
+  denominator = nrow(stage1),
+  # patch 0047: split the floor by provenance. Under the v0.7.0 default
+  # (negative-omega = reject) essentially the whole floor is the constrained
+  # omega_floor EDGE (adjust 6, the genuine omega -> 0 end); under the v0.6.1
+  # rule ~80% of it was beyond-omega=Inf points clamped to the wrong end.
+  n_floor_boundary_edge = sum(stage1$omega <= 1e-4 & stage1$adjust == 6L, na.rm = TRUE),
+  n_floor_other         = sum(stage1$omega <= 1e-4 & !(stage1$adjust %in% 6L), na.rm = TRUE)
+)
+
+# negative_omega (patch 0047 / v0.7.0): the rule the run used and the three
+# populations it creates. Columns are absent from pre-0046 tables; every count
+# degrades to the v0.6.1 reading (rule "floor", corner 0) rather than failing.
+has_col <- function(nm) nm %in% names(stage1)
+neg_rule <- if (has_col("hliml_negative_omega")) {
+  r <- unique(stats::na.omit(stage1$hliml_negative_omega)); if (length(r) == 1L) r else paste(r, collapse = "+")
+} else "floor"
+stage1_summary$negative_omega <- list(
+  rule = neg_rule,
+  # closed-form points that were beyond omega = +Inf yet shipped as INTERIOR
+  # HLIML with a floored omega (the v0.6.1 defect; 36,914 there, 0 under reject)
+  n_cf_beyond_inf_interior = if (has_col("hliml_cf_inversion"))
+    sum(stage1$status == "ok" & stage1$final_source == "hliml" &
+        stage1$hliml_cf_inversion %in% "constraint_violated") else NA_integer_,
+  # Step-2 sigma with no admissible omega and no usable edge
+  n_sigma_without_omega = sum(stage1$status == "ok" & stage1$final_source == "step2_weighted" &
+                              is.na(stage1$omega)),
+  # floor-edge optima reached from a beyond-Inf point (the opposite corner)
+  n_boundary_corner = if (has_col("boundary_corner")) sum(stage1$boundary_corner %in% TRUE) else 0L,
   denominator = nrow(stage1)
 )
 
