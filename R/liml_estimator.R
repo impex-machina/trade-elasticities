@@ -950,12 +950,18 @@ hliml_boundary_search <- function(Y, X_ohx, group,
 # dense algebra so v0.5.x output stays bit-identical.
 # -------------------------------------------------------------------------
 
-hncs_sandwich_se_groups <- function(Y, X_ohx, group, e_hat, sigma, omega, rho,
-                                    alpha = NULL) {
+# (patch 0049) The HNCS building blocks -- H_bar = X'(P - D - alpha I)X and the
+# two-piece meat sigma_bar, both on the (ones, x1, x2) coefficient block --
+# evaluated at an arbitrary point (theta, alpha) via its residuals. Factored
+# out of hncs_sandwich_se_groups() VERBATIM so the interior SEs are
+# bit-identical, and reused by hncs_edge_se_groups() for constrained edge
+# optima. Also returns the F_het / J_h diagnostics that share the residual
+# group sums.
+hncs_parts_groups <- function(Y, X_ohx, group, e_hat, alpha = NULL, gm = NULL) {
   Y <- as.numeric(Y); X_ohx <- as.matrix(X_ohx); e_hat <- as.numeric(e_hat)
   n <- length(Y); k <- ncol(X_ohx)
   g <- as.integer(factor(group)); n_g <- tabulate(g); l <- length(n_g)
-  gm <- hliml_group_moments(Y, X_ohx, group)
+  if (is.null(gm)) gm <- hliml_group_moments(Y, X_ohx, group)
   if (is.null(alpha)) {
     M0 <- tryCatch(solve(gm$XcXc, gm$XcPdXc), error = function(e) NULL)
     if (is.null(M0)) return(list(status = "hncs_fail_singular_XcXc"))
@@ -977,9 +983,6 @@ hncs_sandwich_se_groups <- function(Y, X_ohx, group, e_hat, sigma, omega, rho,
   m_g <- rowsum(Mm, g, reorder = TRUE)                   # l x k
   sigma_second <- crossprod(m_g / n_g)                   # sum_g m_g m_g' / n_g^2
   sigma_bar <- sigma_first + sigma_second
-  H_bar_inv <- tryCatch(solve(H_bar), error = function(e) NULL)
-  if (is.null(H_bar_inv)) return(list(status = "hncs_fail_singular_Hbar"))
-  v_bar <- H_bar_inv %*% sigma_bar %*% H_bar_inv
   se_g <- rowsum(e_hat, g, reorder = TRUE); e2_g <- rowsum(e2, g, reorder = TRUE)
   e4_g <- rowsum(e2^2, g, reorder = TRUE)
   ePde <- sum((se_g^2 - e2_g) / n_g)
@@ -987,6 +990,19 @@ hncs_sandwich_se_groups <- function(Y, X_ohx, group, e_hat, sigma, omega, rho,
   F_het <- l * ePde / ee2
   inner <- sum((e2_g^2 - e4_g) / n_g^2) / l
   J_h <- ePde / sqrt(max(inner, 1e-30)) + l
+  list(status = "ok", H_bar = H_bar, sigma_bar = sigma_bar, alpha = alpha,
+       F_het = F_het, J_h = J_h, n = n, k = k, l = l)
+}
+
+hncs_sandwich_se_groups <- function(Y, X_ohx, group, e_hat, sigma, omega, rho,
+                                    alpha = NULL) {
+  parts <- hncs_parts_groups(Y, X_ohx, group, e_hat, alpha = alpha)
+  if (!identical(parts$status, "ok")) return(parts)
+  H_bar <- parts$H_bar; sigma_bar <- parts$sigma_bar; alpha <- parts$alpha
+  F_het <- parts$F_het; J_h <- parts$J_h
+  H_bar_inv <- tryCatch(solve(H_bar), error = function(e) NULL)
+  if (is.null(H_bar_inv)) return(list(status = "hncs_fail_singular_Hbar"))
+  v_bar <- H_bar_inv %*% sigma_bar %*% H_bar_inv
   V_sub <- v_bar[2:3, 2:3, drop = FALSE]
   d_sub <- matrix(c(
     -(sigma - 1)^3 * (1 - rho),
@@ -1009,6 +1025,70 @@ hncs_sandwich_se_groups <- function(Y, X_ohx, group, e_hat, sigma, omega, rho,
   }
   list(status = "ok", sigma_se = sigma_se, omega_se = omega_se, rho_se = rho_se,
        F_het = F_het, J_h = J_h, v_bar = v_bar, alpha = alpha)
+}
+
+# -------------------------------------------------------------------------
+# (patch 0049) HNCS sandwich for a constrained EDGE optimum.
+#
+# A boundary point pins one structural coordinate (omega on the omega_floor /
+# omega_cap edges, sigma on the sigma_cap edge) and minimises the profiled
+# objective along the other, with theta0 free. That is an unconstrained
+# M-estimator of phi = (theta0, t) for the objective Q(theta(phi)), so the
+# HNCS sandwich applies through the reparameterisation theta = theta(phi):
+#
+#   Var(phi_hat) = (J'H J)^-1 (J' Sigma J) (J'H J)^-1,   J = d theta / d phi (3 x 2)
+#
+# with H_bar and Sigma_bar the SAME HNCS blocks as the interior estimator,
+# evaluated at the constrained point and its objective value alpha_c = Q_bd
+# (the constrained first-order condition is J'(B - alpha_c A)b = 0, and the
+# projected curvature J'H_bar J is the profile's second derivative at an edge
+# minimum up to the positive factor b'Ab, exactly as in the interior case).
+# In the full 3-space H_bar has a negative direction at a constrained point
+# -- the unconstrained descent direction -- but its projection onto the edge
+# tangent is positive definite at a genuine edge minimum; if it is not, the
+# point is a degenerate corner and the SE is reported NA with a status.
+#
+# The free coordinate IS the structural parameter, so no further delta step:
+#   omega edges: sigma_se = sqrt(Var[2,2]); omega_se = NA (pinned);
+#                rho_se  = |d rho / d sigma| sigma_se = omega(1+omega)/(1+sigma*omega)^2 * sigma_se
+#   sigma_cap  : omega_se = sqrt(Var[2,2]); sigma_se = NA (pinned);
+#                rho_se  = (sigma-1)/(1+sigma*omega)^2 * omega_se
+# theta derivatives (theta1 = w/((1+w)(s-1)), theta2 = (w(s-2)-1)/((1+w)(s-1))):
+#   d theta1/d sigma = -w/((1+w)(s-1)^2)      d theta2/d sigma = 1/(s-1)^2
+#   d theta1/d omega =  1/((1+w)^2 (s-1))     d theta2/d omega = 1/(1+w)^2
+# -------------------------------------------------------------------------
+hncs_edge_se_groups <- function(Y, X_ohx, group, e_hat, sigma, omega, edge,
+                                alpha, gm = NULL) {
+  if (!edge %in% c("omega_floor", "omega_cap", "sigma_cap"))
+    return(list(status = "edge_se_unsupported_edge"))
+  parts <- hncs_parts_groups(Y, X_ohx, group, e_hat, alpha = alpha, gm = gm)
+  if (!identical(parts$status, "ok")) return(parts)
+  s <- sigma; w <- omega
+  dth <- if (edge == "sigma_cap") c(1 / ((1 + w)^2 * (s - 1)), 1 / (1 + w)^2)
+         else c(-w / ((1 + w) * (s - 1)^2), 1 / (s - 1)^2)
+  J <- cbind(c(1, 0, 0), c(0, dth[1], dth[2]))          # d(theta0,theta1,theta2)/d(theta0,t)
+  Hp <- crossprod(J, parts$H_bar %*% J)                 # 2 x 2 projected curvature
+  Sp <- crossprod(J, parts$sigma_bar %*% J)
+  ev <- tryCatch(eigen(Hp, symmetric = TRUE, only.values = TRUE)$values,
+                 error = function(e) NULL)
+  if (is.null(ev) || !all(is.finite(ev)) || min(ev) <= 0)
+    return(list(status = "edge_se_curvature_not_pd", F_het = parts$F_het, J_h = parts$J_h))
+  Hp_inv <- tryCatch(solve(Hp), error = function(e) NULL)
+  if (is.null(Hp_inv)) return(list(status = "edge_se_singular_curvature"))
+  Vp <- Hp_inv %*% Sp %*% Hp_inv
+  var_t <- Vp[2, 2]
+  if (!is.finite(var_t) || var_t < 0) return(list(status = "edge_se_negative_variance"))
+  se_t <- sqrt(var_t)
+  if (edge == "sigma_cap") {
+    omega_se <- se_t; sigma_se <- NA_real_
+    rho_se <- (s - 1) / (1 + s * w)^2 * se_t
+  } else {
+    sigma_se <- se_t; omega_se <- NA_real_
+    rho_se <- w * (1 + w) / (1 + s * w)^2 * se_t
+  }
+  list(status = "ok", sigma_se = sigma_se, omega_se = omega_se, rho_se = rho_se,
+       se_free = se_t, edge = edge, F_het = parts$F_het, J_h = parts$J_h,
+       v_phi = Vp, alpha = parts$alpha)
 }
 
 
@@ -1209,7 +1289,13 @@ estimate_cell_liml <- function(cell_df,
                                rho_clamp = c(0.0001, 0.999),
                                hliml_method = c("closed", "bfgs", "both"),
                                cf_admissibility = c("legacy", "strict"),
-                               negative_omega = c("reject", "floor")) {
+                               negative_omega = c("reject", "floor"),
+                               edge_se = c("none", "hncs")) {
+  # edge_se (patch 0049): "none" (v0.7.0, bit-preserving: boundary optima
+  # ship without SEs) or "hncs" (the HNCS sandwich projected onto the edge
+  # tangent, hncs_edge_se_groups(); the pinned coordinate stays NA). Point
+  # estimates and routing are untouched either way.
+  edge_se <- match.arg(edge_se)
   # negative_omega (patch 0046; DEFAULT flipped to "reject" in patch 0047 on
   # the v0.7.0-rc A/B of 2026-09-02, docs/methodology/v061_v070rc_comparison.md;
   # "floor" reproduces v0.6.1 bit-for-bit). The primitives invert_structural()
@@ -1639,11 +1725,28 @@ estimate_cell_liml <- function(cell_df,
   route_bd <- hliml_method == "closed" && bd_ok && isTRUE(bd$usable) &&
     is.na(final_omega) &&
     (is.na(final_sigma) || negative_omega == "reject")
+  edge_se_status <- NA_character_
   if (route_bd) {
     final_sigma <- bd$sigma
     final_omega <- bd$omega
     final_rho   <- bd$rho
     final_sigma_se <- NA_real_; final_omega_se <- NA_real_; final_rho_se <- NA_real_
+    if (edge_se == "hncs") {
+      # (patch 0049) residuals at the constrained point (theta0 profiled by the
+      # search, theta1/theta2 from the edge), objective value = Q_bd
+      e_hat_bd <- as.numeric(Y_h - X_h_ohx %*% c(bd$theta0, bd$theta1, bd$theta2))
+      se_bd <- tryCatch(
+        hncs_edge_se_groups(Y_h, X_h_ohx, cell_df$exporter, e_hat = e_hat_bd,
+                            sigma = bd$sigma, omega = bd$omega, edge = bd$edge,
+                            alpha = bd$Q),
+        error = function(e) list(status = paste0("edge_se_error_",
+                                                 substr(conditionMessage(e), 1, 40))))
+      edge_se_status <- se_bd$status
+      if (identical(se_bd$status, "ok")) {
+        final_sigma_se <- se_bd$sigma_se; final_omega_se <- se_bd$omega_se
+        final_rho_se   <- se_bd$rho_se
+      }
+    }
     final_source <- "hliml_boundary"
     hliml_boundary_edge <- bd$edge
     bf <- boundary_flags(bd$edge, bd$sigma, bd$omega,
@@ -1672,6 +1775,8 @@ estimate_cell_liml <- function(cell_df,
       hliml_method = hliml_method,
       hliml_cf_admissibility = cf_admissibility,
       hliml_negative_omega = negative_omega,
+      edge_se_method = edge_se,
+      edge_se_status = NA_character_,
       boundary_corner = FALSE,
       sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
       omega_hliml_cf = if (cf_ok) cf$omega else NA_real_,
@@ -1778,6 +1883,8 @@ estimate_cell_liml <- function(cell_df,
     hliml_method = hliml_method,
     hliml_cf_admissibility = cf_admissibility,   # patch 0043
     hliml_negative_omega = negative_omega,       # patch 0046
+    edge_se_method = edge_se,                    # patch 0049
+    edge_se_status = edge_se_status,
     # boundary_corner (patch 0047): a constrained optimum on the omega-FLOOR
     # edge reached from a closed-form point that was beyond omega = +Inf
     # (inversion status constraint_violated) -- the opposite end of the

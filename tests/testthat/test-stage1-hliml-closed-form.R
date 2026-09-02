@@ -29,6 +29,7 @@
 test_that("group-sum HLIML moments equal the dense projection algebra", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell()
   Y <- mom$y; X <- cbind(1, mom$x1, mom$x2)
@@ -45,6 +46,7 @@ test_that("group-sum HLIML moments equal the dense projection algebra", {
 test_that("closed form attains Q == alpha and inverts to an admissible interior point", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell()
   Y <- mom$y; X <- cbind(1, mom$x1, mom$x2)
@@ -65,6 +67,7 @@ test_that("closed form attains Q == alpha and inverts to an admissible interior 
 test_that("'both' mode: BFGS and closed form agree on an interior cell; closed form is the global min", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell()
   fit <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "both")
@@ -81,6 +84,7 @@ test_that("'both' mode: BFGS and closed form agree on an interior cell; closed f
 test_that("default is 'closed' (v0.6.0); explicit 'bfgs' is the v0.5.x reproducer with NA cf fields", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell(seed = 7L)
   f0 <- estimate_cell_liml(mom, ref_exporter = 1L)
@@ -99,6 +103,7 @@ test_that("default is 'closed' (v0.6.0); explicit 'bfgs' is the v0.5.x reproduce
 test_that("'closed' mode routes on the closed form and returns HNCS SEs", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell()
   fb <- estimate_cell_liml(mom, ref_exporter = 1L, hliml_method = "both")
@@ -135,6 +140,7 @@ test_that("--stage1-hliml parses, defaults to closed, and rejects unknown values
 test_that("hncs_sandwich_se_groups reproduces the dense HNCS sandwich at the closed-form point", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   for (seed in c(20260819L, 11L)) {
     mom <- .cf_cell(seed = seed)
@@ -162,6 +168,7 @@ test_that("hncs_sandwich_se_groups reproduces the dense HNCS sandwich at the clo
 test_that("'closed' mode never builds P and matches 'both' cf point with finite O(n) SEs", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell()
   # trace hliml_core: it must NOT be called in closed mode
@@ -184,6 +191,7 @@ test_that("'closed' mode never builds P and matches 'both' cf point with finite 
 test_that("boundary search never beats the closed form on an admissible cell and is reported only when needed", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   mom <- .cf_cell()
   Y <- mom$y; X <- cbind(1, mom$x1, mom$x2)
@@ -200,6 +208,7 @@ test_that("boundary search never beats the closed form on an admissible cell and
 test_that("boundary search rescues sigma on an all_inversions_failed cell (routed in closed mode, reported in both)", {
   root <- dirname(locate_source_dir())
   source(file.path(root, "R", "hs_codes.R"), local = TRUE)
+  source(file.path(root, "R", "utils_general.R"), local = TRUE)   # boundary_flags() (patch 0049: per-file sourcing)
   source(file.path(root, "R", "liml_estimator.R"), local = TRUE)
   source(file.path(root, "validation", "validate_liml.R"), local = TRUE)
   # seed 5005: both shipped inversions fail (status all_inversions_failed), the

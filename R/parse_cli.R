@@ -134,6 +134,16 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "RULE"
     ),
     optparse::make_option(
+      c("--stage1-edge-se"),
+      type = "character", default = "none",
+      help = paste("Standard errors for constrained boundary (edge) optima:",
+                   "'none' (v0.7.0: boundary cells ship without SEs) or 'hncs'",
+                   "(the HNCS sandwich projected onto the edge tangent; the",
+                   "pinned coordinate stays NA). Point estimates and routing",
+                   "are identical either way. Default: %default"),
+      metavar = "RULE"
+    ),
+    optparse::make_option(
       c("--stage2-gradient"),
       type = "character", default = "numeric",
       help = paste("Stage 2 L-BFGS-B gradient: 'numeric' (optim's finite",
@@ -231,6 +241,9 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage1_hliml %in% c("bfgs", "closed", "both")) {
     fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",
                  opts$stage1_hliml))
+  }
+  if (!opts$stage1_edge_se %in% c("none", "hncs")) {
+    fail(sprintf("--stage1-edge-se must be 'none' or 'hncs', got: '%s'", opts$stage1_edge_se))
   }
   if (!opts$stage1_negative_omega %in% c("floor", "reject")) {
     fail(sprintf("--stage1-negative-omega must be 'floor' or 'reject', got: '%s'",

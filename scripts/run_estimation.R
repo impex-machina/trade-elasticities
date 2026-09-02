@@ -105,6 +105,7 @@ cat(sprintf("  BW lag mode:      %s\n", opts$bw_lag))
 cat(sprintf("  Stage-1 HLIML:    %s\n", opts$stage1_hliml))
 cat(sprintf("  Stage-1 CF rule:  %s\n", opts$stage1_cf_admissibility))
 cat(sprintf("  Stage-1 neg-omega: %s\n", opts$stage1_negative_omega))
+cat(sprintf("  Stage-1 edge SE:  %s\n", opts$stage1_edge_se))
 cat(sprintf("  Stage-2 gradient: %s\n\n", opts$stage2_gradient))
 
 
@@ -248,6 +249,7 @@ if (should_run("1", opts, paths)) {
       hliml_method  = opts$stage1_hliml,
       cf_admissibility = opts$stage1_cf_admissibility,   # patch 0043
       negative_omega   = opts$stage1_negative_omega,      # patch 0046
+      edge_se          = opts$stage1_edge_se,             # patch 0049
       verbose       = TRUE
     )
     

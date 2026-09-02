@@ -58,6 +58,9 @@ validate_config <- function(cfg) {
       !cfg$stage2_gradient %in% c("numeric", "analytic")) {
     stop("stage2_gradient must be 'numeric' or 'analytic', got: ", cfg$stage2_gradient)
   }
+  if (!is.null(cfg$stage1_edge_se) && !cfg$stage1_edge_se %in% c("none", "hncs")) {
+    stop("stage1_edge_se must be 'none' or 'hncs', got: ", cfg$stage1_edge_se)
+  }
   if (!is.null(cfg$stage1_negative_omega) &&
       !cfg$stage1_negative_omega %in% c("floor", "reject")) {
     stop("stage1_negative_omega must be 'floor' or 'reject', got: ",
