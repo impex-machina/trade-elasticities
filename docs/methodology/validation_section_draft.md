@@ -38,19 +38,20 @@ the synthetic-recovery grid as evidence that the standard errors are
 correct. We report it, with one caveat about where it is informative. On the
 4x3 (sigma, omega) grid at J = 25 exporters and T = 30 periods (200
 replications per point), the estimator returns an admissible estimate
-in 41 to 96 percent of replications (median 72 percent). Conditional
-on success, the median sigma is within 3 percent of truth at every
-grid point with sigma <= 3 and within 7 percent at sigma in {5, 8}
-for omega <= 1; the exceptions are the high-sigma, high-omega corner
--- (5, 3) and (8, 3), where the median sigma is biased down by 30 and
-46 percent and omega is pulled toward its floor -- which is also where
-the yield is lowest and where the sigma = 10 admissibility cap binds.
-Coverage tracks that surface: 0.95 to 0.97 for sigma and 0.90 to 0.97
-for omega on the sigma <= 3 rows, 0.67 and 0.76 at (8, 3), median 0.91
-across the grid. Tier 1b at (3, 1) shows the consistency signature
-directly: the yield rises from 72 percent at n = 150 to 99 to 100
-percent at n >= 1,500, and the median sigma bias shrinks from -8.8 to
--2.3 percent (omega: -19 to -0.6 percent). We therefore read coverage
+in 80 to 100 percent of replications (median 98 percent). Conditional
+on success, the median sigma is within about 3 percent of truth for
+omega <= 1 across the grid, the one exception being (8, 1) at 9
+percent; bias becomes material only along the high-omega edge
+(omega = 3), where the median sigma runs from +30 percent at low sigma
+to -37 percent at (8, 3) and omega is pulled toward its floor at the
+high-sigma corners (-53 and -93 percent at (5, 3) and (8, 3)). That
+edge is also where the yield is lowest, 80 percent at (2, 3). Coverage
+tracks the same surface: 0.85 to 0.97 for sigma and 0.89 to 0.97 for
+omega on the sigma <= 3 rows, falling to 0.55 and 0.68 at (8, 3),
+median 0.91 across the grid. Tier 1b at (3, 1) shows the consistency
+signature directly: the yield rises from 93 percent at n = 150 to 100
+percent at n >= 600, and the median sigma bias shrinks from -12 to -2
+percent (omega: -51 to -0.3 percent). We therefore read coverage
 as informative about the standard errors on the well-identified region
 and as a bias diagnostic only at the corner. The standard errors are further validated by the two channels that isolate them: the analytic
 Jacobian verification above, and the Pillar 3 Monte Carlo, in which the
@@ -164,7 +165,7 @@ for Step-2 cells in the weak-identification mass the analytic SE is if
 anything conservative. The per-cell bootstrap file is published
 precisely so users can calibrate to their own cell mix rather than
 inherit a global factor. The pre-stated caveats stand: this
-benchmarks dispersion, not bias, and replicate selection is of the same kind as the yield selection in Pillar 2 -- mild in the well-identified region, material only at the high-sigma corner.
+benchmarks dispersion, not bias, and replicate selection is of the same kind as the yield selection in Pillar 2 -- mild in the well-identified region, material only along the high-omega edge.
 
 ## 5. Release note for replication
 

@@ -2,12 +2,12 @@
   "n_cells": 280649,
   "n_products": 1240,
   "n_importers": 234,
-  "sy_fails": 173509,
-  "sy_evaluated": 185119,
-  "sy_pass_gs25": 70979,
-  "sy_gs25_evaluated": 185119,
-  "sargan_passes": 105226,
-  "sargan_evaluated": 180790,
+  "sy_fails": 170976,
+  "sy_evaluated": 182363,
+  "sy_pass_gs25": 70246,
+  "sy_gs25_evaluated": 182363,
+  "sargan_passes": 103525,
+  "sargan_evaluated": 178227,
   "gs_both_passes": 26239,
   "gs_both_evaluated": 115431,
   "adjust_x_final_source": {
@@ -32,13 +32,13 @@
       "pre_discard": 0
     },
     "code_6_8_boundary": {
-      "hliml_boundary": 30056,
+      "hliml_boundary": 27297,
       "other": 0
     },
     "code_pre_discard": {
       "hliml": 0,
       "step2_weighted": 0,
-      "pre_discard": 95505
+      "pre_discard": 98264
     }
   },
   "routing_summary": {
@@ -48,21 +48,21 @@
     "omega_negative_floor": 0,
     "clamped_at_sigma_cap": 12989,
     "clamped_at_omega_cap": 1630,
-    "boundary_omega_floor": 13893,
-    "boundary_sigma_cap": 9152,
-    "boundary_omega_cap": 7011,
-    "boundary_total": 30056,
-    "pre_discard": 95505,
+    "boundary_omega_floor": 11470,
+    "boundary_sigma_cap": 6438,
+    "boundary_omega_cap": 9389,
+    "boundary_total": 27297,
+    "pre_discard": 98264,
     "step2_total": 39648,
     "clamped_total": 14619
   },
   "omega_floor": {
-    "n_floor": 67122,
+    "n_floor": 64699,
     "denominator": 280649
   },
   "status_breakdown": {
-    "ok": 185144,
-    "all_inversions_failed": 23109,
+    "ok": 182385,
+    "all_inversions_failed": 25868,
     "fail_too_few_exporters": 4944,
     "step1_fail_singular_QWW": 1658,
     "step2_fail_singular_QWW_fellback_to_step1": 645,
@@ -76,7 +76,7 @@
     },
     "interior_conditional_on_ok": {
       "numerator": 115440,
-      "denominator": 185144
+      "denominator": 182385
     },
     "step2_full_universe": {
       "numerator": 39648,
