@@ -21,6 +21,13 @@ The combined contents are the paper's evidence base. Three pillars:
 
 ## Methodology layer
 
+- `beyond_infinity_correction.md` — the v0.7.0 correction to the Feenstra
+  feasibility block: why a negative algebraic ω is the continuation past
+  ω = +∞, how often the inherited clamp mis-assigned it (13.2% of the HS4
+  universe), the constrained-optimum replacement, and its consequences for
+  σ, ω, γ and inference (v0.7.1 edge SEs). Written as a paper section; the
+  ledger entry is A8 in `stata_port_deviations.md`.
+
 These documents describe the pipeline's structure and the choices in it.
 They were re-homed from the pre-refactor working directory during the
 2026-05 refactor, with path references updated for the new repository
