@@ -20,6 +20,26 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+> **v0.7.2 (2026-09-21).** Validation-only release: **every estimate, SE and
+> routing field is identical to v0.7.1.** The four Pillar-2/3 validation
+> files (`liml_validation_tier1a/b.csv`, `se_calibration_mc_summary.csv`,
+> `se_calibration_mc_per_param.csv`) are re-captured under the estimator's
+> reference configuration -- negative-omega rejection (v0.7.0) and edge SEs
+> (v0.7.1) -- which the previous capture (2026-09-01, v0.6.1 rule) predated.
+> Tier 1a on the (sigma, omega) grid: worst absolute median bias **93% ->
+> 58%** (omega at sigma = 8, omega = 3), with omega bias falling at every
+> weakly identified point (e.g. -0.60 -> -0.24 at sigma 5 / omega 0.3, -0.68
+> -> -0.30 at 8 / 1) as floored omegas no longer drag the medians; sigma bias
+> range -40% to +30%; median CI coverage 90% (was 91%), success rate
+> min 80% / median 98%. Coverage dips 3-11 points at the high-sigma /
+> high-omega corner where truth sits near the caps and the interior HNCS
+> sandwich itself degrades (documented in `docs/methodology/v071_edge_se.md`);
+> verdict word unchanged (INVESTIGATE), as in every capture since v0.5.x.
+> Tier 1b (consistency) and Tier 2 (closed-form sanity) PASS. Capture:
+> `docs/methodology/liml_validation_20260921.md`. Point-estimate and SE
+> consumers need not re-pull; consumers of the validation CSVs should.
+> Data revision: `b1240168d4b83697eb30cdf99551924a55422ad0`. **v0.7.1 remains available pinned at
+> revision `49466cd24ee2547d838b658dc3869c86deee63bf`.**
 > **v0.7.1 (2026-09-21).** Validation-only release: **every point estimate and
 > routing field is identical to v0.7.0** (Stage 1: 280,649 cells, ok 181,245,
 > interior 78,526 / Step 2 47,479 / boundary 55,240; sigma 2.462; Stage 2b:
