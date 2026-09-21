@@ -14,7 +14,7 @@
 #
 # Usage (from the repo root; needs the raw cache locally, ~5 GB in memory):
 #   Rscript analysis/sigma_uv_trim_sensitivity.R --cache <raw_cache.rds> \
-#       [--frac 0.03] [--seed 20260921] [--threshold 2.0] [--ncores 8] \
+#       [--frac 0.03] [--seed 20260921] [--threshold 2.0] [--ncores 8] [--variant obs|row] \
 #       [--out results/sigma_uv_trim_sensitivity.json] \
 #       [--md docs/results/sigma_uv_trim_sensitivity.md]
 # On the box: the same, from /tmp/w/trade-elasticities with the cache in out_rc/.
@@ -28,8 +28,13 @@ get_arg <- function(flag, default = NULL) { i <- match(flag, args); if (is.na(i)
 cache  <- get_arg("--cache"); frac <- as.numeric(get_arg("--frac", "0.03"))
 seed   <- as.integer(get_arg("--seed", "20260921")); thresh <- as.numeric(get_arg("--threshold", "2.0"))
 ncores <- as.integer(get_arg("--ncores", "8"))
-out_json <- get_arg("--out", "results/sigma_uv_trim_sensitivity.json")
-out_md   <- get_arg("--md",  "docs/results/sigma_uv_trim_sensitivity.md")
+# variant (patch 0057): "obs" (default) applies the trim to the DIFFERENCED
+# observation inside prepare_cell_moments() -- Stage 2's rule exactly; "row"
+# drops the raw (exporter, t) row, which also destroys the following year's
+# difference and therefore over-trims (the 2026-09-21 first result).
+variant <- get_arg("--variant", "obs"); stopifnot(variant %in% c("obs", "row"))
+out_json <- get_arg("--out", if (variant == "obs") "results/sigma_uv_trim_sensitivity_obs.json" else "results/sigma_uv_trim_sensitivity.json")
+out_md   <- get_arg("--md",  if (variant == "obs") "docs/results/sigma_uv_trim_sensitivity_obs.md" else "docs/results/sigma_uv_trim_sensitivity.md")
 if (is.null(cache) || !file.exists(cache)) stop("--cache <raw cache rds> is required")
 
 cat("reading cache...\n"); raw <- as.data.table(readRDS(cache))
@@ -54,17 +59,24 @@ trim_uv <- function(d, thresh) {
   keep <- is.na(d$dlp) | abs(d$dlp) < thresh
   d[keep, !c("lp", "lp_prev", "t_prev", "dlp")]
 }
-sub_trim <- trim_uv(copy(sub), thresh)
-cat(sprintf("trim drops %s of %s rows (%.2f%%)\n", format(nrow(sub) - nrow(sub_trim), big.mark = ","),
-            format(nrow(sub), big.mark = ","), 100 * (1 - nrow(sub_trim) / nrow(sub))))
-
-run <- function(d, tag) {
+run <- function(d, tag, uv = NA_real_) {
   tmp <- tempfile(fileext = ".rds")
-  r <- run_stage1_liml(d, output_path = tmp, n_cores = ncores, min_exporters = 2L, min_periods = 3L, verbose = FALSE)
+  r <- run_stage1_liml(d, output_path = tmp, n_cores = ncores, min_exporters = 2L, min_periods = 3L,
+                       verbose = FALSE, uv_outlier_threshold = uv)
   unlink(tmp); r[, run := tag]; r
 }
-cat("Stage 1, as shipped...\n");      a <- run(sub, "shipped")
-cat("Stage 1, trim upstream...\n");   b <- run(sub_trim, "trimmed")
+if (variant == "row") {
+  sub_trim <- trim_uv(copy(sub), thresh)
+  cat(sprintf("row variant: trim drops %s of %s rows (%.2f%%)\n", format(nrow(sub) - nrow(sub_trim), big.mark = ","),
+              format(nrow(sub), big.mark = ","), 100 * (1 - nrow(sub_trim) / nrow(sub))))
+  cat("Stage 1, as shipped...\n");      a <- run(sub, "shipped")
+  cat("Stage 1, trim upstream...\n");   b <- run(sub_trim, "trimmed")
+} else {
+  sub_trim <- sub
+  cat(sprintf("obs variant: |d ln p| >= %.1f dropped on the differenced observation inside prepare_cell_moments()\n", thresh))
+  cat("Stage 1, as shipped...\n");      a <- run(sub, "shipped")
+  cat("Stage 1, trim upstream...\n");   b <- run(sub, "trimmed", uv = thresh)
+}
 
 m <- merge(a[, .(importer, good, s_a = status, src_a = final_source, sig_a = sigma, om_a = omega, se_a = sigma_se)],
            b[, .(importer, good, s_b = status, src_b = final_source, sig_b = sigma, om_b = omega, se_b = sigma_se)],
@@ -72,6 +84,7 @@ m <- merge(a[, .(importer, good, s_a = status, src_a = final_source, sig_a = sig
 ok_both <- m[s_a == "ok" & s_b == "ok"]
 q <- function(x) unname(quantile(x, c(.25, .5, .75), na.rm = TRUE))
 res <- list(
+  variant = variant,
   n_cells = nrow(m), frac = frac, seed = seed, threshold = thresh,
   rows = list(shipped = nrow(sub), trimmed = nrow(sub_trim)),
   ok = list(shipped = sum(m$s_a == "ok", na.rm = TRUE), trimmed = sum(m$s_b == "ok", na.rm = TRUE), both = nrow(ok_both)),
@@ -91,9 +104,11 @@ res <- list(
 dir.create(dirname(out_json), showWarnings = FALSE, recursive = TRUE); dir.create(dirname(out_md), showWarnings = FALSE, recursive = TRUE)
 write_json(res, out_json, auto_unbox = TRUE, pretty = TRUE, digits = 8, na = "null")
 pct <- function(x) sprintf("%.1f%%", 100 * x)
-md <- c("# Stage-1 sigma sensitivity to the Stage-2 unit-value trim", "",
-  sprintf("Subsample of %s (importer, good) cells (frac %.3f, seed %d); trim |d ln p| >= %.1f applied upstream of Stage 1. Generated %s.",
-          format(res$n_cells, big.mark = ","), frac, seed, thresh, res$generated), "",
+md <- c(sprintf("# Stage-1 sigma sensitivity to the Stage-2 unit-value trim (%s variant)", variant), "",
+  sprintf("Subsample of %s (importer, good) cells (frac %.3f, seed %d); trim |d ln p| >= %.1f applied %s. Generated %s.",
+          format(res$n_cells, big.mark = ","), frac, seed, thresh,
+          if (variant == "obs") "to the differenced observation inside prepare_cell_moments() (Stage 2's rule)"
+          else "by dropping the raw row (over-trims: the following year's difference is lost too)", res$generated), "",
   sprintf("- rows: %s -> %s (%s dropped by the trim)", format(res$rows$shipped, big.mark = ","), format(res$rows$trimmed, big.mark = ","),
           pct(1 - res$rows$trimmed / res$rows$shipped)),
   sprintf("- ok cells: shipped %s, trimmed %s, both %s", format(res$ok$shipped, big.mark = ","), format(res$ok$trimmed, big.mark = ","), format(res$ok$both, big.mark = ",")),

@@ -87,6 +87,8 @@ build_config <- function(opts) {
     stage1_negative_omega = opts$stage1_negative_omega %||% "reject",
     # patch 0049: SEs for boundary (edge) optima.
     stage1_edge_se = opts$stage1_edge_se %||% "hncs",
+    # patch 0057: Stage-2's unit-value trim applied inside Stage 1 (NA = off).
+    stage1_uv_trim = if (is.null(opts$stage1_uv_trim)) NA_real_ else opts$stage1_uv_trim,
 
     # --- Across-exporter weighting (methodological) ---
     exporter_weight     = "trade_value",

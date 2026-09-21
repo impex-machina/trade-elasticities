@@ -69,7 +69,10 @@ run_stage1_liml <- function(baci_dt,
                             hliml_method = "closed",
                             cf_admissibility = "legacy",
                             negative_omega = "reject",
-                            edge_se = "hncs") {
+                            edge_se = "hncs",
+                            uv_outlier_threshold = NA_real_) {
+  # uv_outlier_threshold (patch 0057): Stage-2's |d ln p| trim applied inside
+  # prepare_cell_moments(); NA = off (v0.7.x, bit-preserving).
   # edge_se (patch 0049; default "hncs" from patch 0051 / v0.7.1 reference
   # configuration): see estimate_cell_liml(). "none" reproduces v0.7.0 SEs.
   # negative_omega (patch 0046; default "reject" from patch 0047 / v0.7.0):
@@ -154,7 +157,8 @@ run_stage1_liml <- function(baci_dt,
         as.data.frame(cell_data),
         exporter_col = "exporter", time_col = "t",
         value_col = "value", quantity_col = "quantity",
-        min_year = min_year),
+        min_year = min_year,
+        uv_outlier_threshold = uv_outlier_threshold),
       error = function(e) list(moments = NULL, n_obs = 0,
                                err = sprintf("prep_error_%s",
                                              substr(conditionMessage(e), 1, 40)))
@@ -188,6 +192,7 @@ run_stage1_liml <- function(baci_dt,
                   hliml_cf_admissibility = fit$hliml_cf_admissibility %||% cf_admissibility,
                   hliml_negative_omega = fit$hliml_negative_omega %||% negative_omega,
                   edge_se_method = fit$edge_se_method %||% edge_se,
+                  stage1_uv_trim = uv_outlier_threshold,
                   edge_se_status = NA_character_,
                   boundary_corner = FALSE,
                   sigma_hliml_cf = fit$sigma_hliml_cf %||% NA_real_,
@@ -240,6 +245,7 @@ run_stage1_liml <- function(baci_dt,
       hliml_negative_omega = fit$hliml_negative_omega %||% negative_omega,        # patch 0046
       boundary_corner = isTRUE(fit$boundary_corner),                                # patch 0047
       edge_se_method = fit$edge_se_method %||% edge_se,                              # patch 0049
+      stage1_uv_trim = uv_outlier_threshold,                                          # patch 0057 (NA = off)
       edge_se_status = fit$edge_se_status %||% NA_character_,
       hliml_boundary_edge = fit$hliml_boundary_edge %||% NA_character_,
       hliml_Q = fit$hliml_Q %||% NA_real_,
@@ -295,7 +301,8 @@ run_stage1_liml <- function(baci_dt,
     stage1_psock_bootstrap(cl, .R_dir)
     parallel::clusterExport(cl,
                             c("min_year", "min_exporters", "min_periods", "process_one_cell",
-                              "hliml_method", "cf_admissibility", "negative_omega", "edge_se", "%||%"),
+                              "hliml_method", "cf_admissibility", "negative_omega", "edge_se",
+                              "uv_outlier_threshold", "%||%"),
                             envir = environment())
     results <- parallel::clusterMap(cl, process_one_cell,
                                     idx = idx_vec,

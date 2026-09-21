@@ -1949,7 +1949,16 @@ prepare_cell_moments <- function(trade_df,
                                  time_col = "t",
                                  value_col = "value",
                                  quantity_col = "quantity",
-                                 min_year = NULL) {
+                                 min_year = NULL,
+                                 uv_outlier_threshold = NA_real_) {
+  # uv_outlier_threshold (patch 0057): when finite and > 0, drop differenced
+  # observations with |lp_dif| >= threshold AFTER the calendar-lag
+  # differencing and BEFORE the reference-exporter join -- the same rule, at
+  # the same point, as prepare_data() applies before Stage 2 (2.0 there, i.e.
+  # a factor of ~7.4 in the unit value). Only the differenced observation is
+  # dropped; the row stays, so the next year's difference survives. NA (the
+  # default) applies no trim and is bit-preserving (v0.7.x behaviour).
+  uv_trim <- is.finite(uv_outlier_threshold) && uv_outlier_threshold > 0
 
   use_dt <- requireNamespace("data.table", quietly = TRUE)
 
@@ -1998,6 +2007,9 @@ prepare_cell_moments <- function(trade_df,
     d[is.na(t_gap) | t_gap != 1L,
       `:=`(ls_dif = NA_real_, lp_dif = NA_real_)]
     d[, t_gap := NULL]
+    if (uv_trim)   # patch 0057: Stage-2's |d ln p| trim, on the differenced observation only
+      d[is.finite(lp_dif) & abs(lp_dif) >= uv_outlier_threshold,
+        `:=`(ls_dif = NA_real_, lp_dif = NA_real_)]
     
     # Choose reference exporter: longest panel, ties by largest cusval
     exp_summary <- d[, .(n_periods = data.table::uniqueN(t), cusval = sum(value)),
@@ -2053,6 +2065,11 @@ prepare_cell_moments <- function(trade_df,
     d$ls_dif[gap_rows] <- NA_real_
     d$lp_dif[gap_rows] <- NA_real_
     d$t_gap <- NULL
+    if (uv_trim) {   # patch 0057
+      trim_rows <- is.finite(d$lp_dif) & abs(d$lp_dif) >= uv_outlier_threshold
+      d$ls_dif[trim_rows] <- NA_real_
+      d$lp_dif[trim_rows] <- NA_real_
+    }
     exp_summary <- do.call(rbind, lapply(split(d, d$exporter), function(g) {
       data.frame(exporter = g$exporter[1],
                  n_periods = length(unique(g$t)),

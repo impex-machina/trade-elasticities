@@ -106,6 +106,7 @@ cat(sprintf("  Stage-1 HLIML:    %s\n", opts$stage1_hliml))
 cat(sprintf("  Stage-1 CF rule:  %s\n", opts$stage1_cf_admissibility))
 cat(sprintf("  Stage-1 neg-omega: %s\n", opts$stage1_negative_omega))
 cat(sprintf("  Stage-1 edge SE:  %s\n", opts$stage1_edge_se))
+cat(sprintf("  Stage-1 UV trim:  %s\n", if (is.na(opts$stage1_uv_trim)) "off" else sprintf("|d ln p| < %.1f", opts$stage1_uv_trim)))
 cat(sprintf("  Stage-2 gradient: %s\n\n", opts$stage2_gradient))
 
 
@@ -250,6 +251,7 @@ if (should_run("1", opts, paths)) {
       cf_admissibility = opts$stage1_cf_admissibility,   # patch 0043
       negative_omega   = opts$stage1_negative_omega,      # patch 0046
       edge_se          = opts$stage1_edge_se,             # patch 0049
+      uv_outlier_threshold = opts$stage1_uv_trim,         # patch 0057 (NA = off)
       verbose       = TRUE
     )
     

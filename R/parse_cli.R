@@ -145,6 +145,15 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "RULE"
     ),
     optparse::make_option(
+      c("--stage1-uv-trim"),
+      type = "double", default = NA_real_,
+      help = paste("Apply Stage 2's unit-value trim inside Stage 1: drop",
+                   "differenced observations with |d ln p| >= THRESH before",
+                   "the reference-exporter join (Stage 2 uses 2.0). Off by",
+                   "default (v0.7.x behaviour). Default: off"),
+      metavar = "THRESH"
+    ),
+    optparse::make_option(
       c("--stage2-gradient"),
       type = "character", default = "numeric",
       help = paste("Stage 2 L-BFGS-B gradient: 'numeric' (optim's finite",
@@ -242,6 +251,9 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage1_hliml %in% c("bfgs", "closed", "both")) {
     fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",
                  opts$stage1_hliml))
+  }
+  if (!is.na(opts$stage1_uv_trim) && !(is.finite(opts$stage1_uv_trim) && opts$stage1_uv_trim > 0)) {
+    fail(sprintf("--stage1-uv-trim must be a positive number or omitted, got: '%s'", opts$stage1_uv_trim))
   }
   if (!opts$stage1_edge_se %in% c("none", "hncs")) {
     fail(sprintf("--stage1-edge-se must be 'none' or 'hncs', got: '%s'", opts$stage1_edge_se))
