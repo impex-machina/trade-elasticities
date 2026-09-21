@@ -20,8 +20,9 @@
 # On the box: the same, from /tmp/w/trade-elasticities with the cache in out_rc/.
 # =============================================================================
 suppressPackageStartupMessages({ library(data.table); library(jsonlite) })
-source("R/hs_codes.R"); source("R/utils_general.R"); source("R/liml_estimator.R")
-source("R/stage1_liml_wrapper.R")
+# Load the library the way the runner does: feen94_het_baci.R sets .R_dir,
+# which the PSOCK bootstrap needs to provision workers (patch 0056b).
+source("R/feen94_het_baci.R")
 args <- commandArgs(trailingOnly = TRUE)
 get_arg <- function(flag, default = NULL) { i <- match(flag, args); if (is.na(i) || i == length(args)) default else args[i + 1L] }
 cache  <- get_arg("--cache"); frac <- as.numeric(get_arg("--frac", "0.03"))
@@ -32,6 +33,11 @@ out_md   <- get_arg("--md",  "docs/results/sigma_uv_trim_sensitivity.md")
 if (is.null(cache) || !file.exists(cache)) stop("--cache <raw cache rds> is required")
 
 cat("reading cache...\n"); raw <- as.data.table(readRDS(cache))
+# the cache carries prepare_raw_data()'s names (year, cusval); the wrapper
+# expects (t, value) -- the same rename run_estimation.R performs (patch 0056)
+if ("year"   %in% names(raw)) setnames(raw, "year",   "t")
+if ("cusval" %in% names(raw)) setnames(raw, "cusval", "value")
+stopifnot(all(c("importer", "good", "exporter", "t", "value", "quantity") %in% names(raw)))
 cells <- unique(raw[, .(importer, good)])
 set.seed(seed); pick <- cells[sample.int(nrow(cells), max(1L, round(frac * nrow(cells))))]
 sub <- raw[pick, on = .(importer, good)]
