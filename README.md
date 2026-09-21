@@ -232,7 +232,7 @@ Stated forthrightly:
   and the yield rises as the
   sample grows from 150 to 3,000 observations. Conditional on
   success, the median σ bias across the grid runs from
-  -37.2% to 30.4% (negative at 8 of 12 grid points),
+  -40.4% to 30.4% (negative at 8 of 12 grid points),
   so comparisons to Feenstra-GMM or Broda–Weinstein estimates should not
   assume the upward bias of that tradition.
 - **Estimator-provenance composition.** On the full universe, 28.0% of

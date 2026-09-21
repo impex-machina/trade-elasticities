@@ -4,105 +4,105 @@
       "regime": "homo,   lambda=0",
       "formula": "unp_gn",
       "n_params": 11,
-      "med_ratio": 0.979802128042883,
-      "mad_ratio": 0.0433630343036884,
-      "pct_err": -2.01978719571166
+      "med_ratio": 0.984300172628715,
+      "mad_ratio": 0.0681912419660992,
+      "pct_err": -1.56998273712854
     },
     {
       "regime": "homo,   lambda=0",
       "formula": "sandwich",
       "n_params": 11,
-      "med_ratio": 0.661210423298917,
-      "mad_ratio": 0.201961851232884,
-      "pct_err": -33.8789576701083
+      "med_ratio": 0.680990758895182,
+      "mad_ratio": 0.162309298021334,
+      "pct_err": -31.9009241104818
     },
     {
       "regime": "homo,   lambda=0",
       "formula": "pen_gn",
       "n_params": 11,
-      "med_ratio": 0.979802128042883,
-      "mad_ratio": 0.0433630343036884,
-      "pct_err": -2.01978719571166
+      "med_ratio": 0.984300172628715,
+      "mad_ratio": 0.0681912419660992,
+      "pct_err": -1.56998273712854
     },
     {
       "regime": "hetero, lambda=0",
       "formula": "unp_gn",
       "n_params": 11,
-      "med_ratio": 0.970224743224699,
-      "mad_ratio": 0.104481213511776,
-      "pct_err": -2.97752567753011
+      "med_ratio": 0.975088752405005,
+      "mad_ratio": 0.111799160246281,
+      "pct_err": -2.49112475949949
     },
     {
       "regime": "hetero, lambda=0",
       "formula": "sandwich",
       "n_params": 11,
-      "med_ratio": 0.673051593084864,
-      "mad_ratio": 0.167813601430123,
-      "pct_err": -32.6948406915136
+      "med_ratio": 0.645833550779327,
+      "mad_ratio": 0.10526976784388,
+      "pct_err": -35.4166449220673
     },
     {
       "regime": "hetero, lambda=0",
       "formula": "pen_gn",
       "n_params": 11,
-      "med_ratio": 0.970224743224699,
-      "mad_ratio": 0.104481213511776,
-      "pct_err": -2.97752567753011
+      "med_ratio": 0.975088752405005,
+      "mad_ratio": 0.111799160246281,
+      "pct_err": -2.49112475949949
     },
     {
       "regime": "homo,   lambda=0.1",
       "formula": "unp_gn",
       "n_params": 11,
-      "med_ratio": 1.33915098811343,
-      "mad_ratio": 0.145981858868798,
-      "pct_err": 33.9150988113429
+      "med_ratio": 1.48546296994244,
+      "mad_ratio": 0.283699627340518,
+      "pct_err": 48.546296994244
     },
     {
       "regime": "homo,   lambda=0.1",
       "formula": "sandwich",
       "n_params": 11,
-      "med_ratio": 1.06078645732857,
-      "mad_ratio": 0.127160256772358,
-      "pct_err": 6.07864573285744
+      "med_ratio": 1.06736436525279,
+      "mad_ratio": 0.290130852833369,
+      "pct_err": 6.7364365252786
     },
     {
       "regime": "homo,   lambda=0.1",
       "formula": "pen_gn",
       "n_params": 11,
-      "med_ratio": 1.06082719050786,
-      "mad_ratio": 0.0975977914802625,
-      "pct_err": 6.08271905078619
+      "med_ratio": 1.07879615749193,
+      "mad_ratio": 0.133753602411341,
+      "pct_err": 7.87961574919303
     },
     {
       "regime": "hetero, lambda=0.1",
       "formula": "unp_gn",
       "n_params": 11,
-      "med_ratio": 1.29883759167825,
-      "mad_ratio": 0.249819274133476,
-      "pct_err": 29.8837591678254
+      "med_ratio": 1.32666558371709,
+      "mad_ratio": 0.189456796307971,
+      "pct_err": 32.6665583717093
     },
     {
       "regime": "hetero, lambda=0.1",
       "formula": "sandwich",
       "n_params": 11,
-      "med_ratio": 1.00200712577043,
-      "mad_ratio": 0.196817084374462,
-      "pct_err": 0.200712577043416
+      "med_ratio": 1.0423437459035,
+      "mad_ratio": 0.238481934249386,
+      "pct_err": 4.23437459034988
     },
     {
       "regime": "hetero, lambda=0.1",
       "formula": "pen_gn",
       "n_params": 11,
-      "med_ratio": 1.053266721901,
-      "mad_ratio": 0.156253951051719,
-      "pct_err": 5.32667219010037
+      "med_ratio": 1.05173316879116,
+      "mad_ratio": 0.152980117608817,
+      "pct_err": 5.17331687911644
     }
   ],
   "pen_gn_summary": {
     "n_regimes": 4,
-    "pen_gn_med_ratio_min": 0.970224743224699,
-    "pen_gn_med_ratio_max": 1.06082719050786,
-    "pen_gn_pct_err_min": -2.97752567753011,
-    "pen_gn_pct_err_max": 6.08271905078619,
-    "pen_gn_pct_err_worst_abs": 6.08271905078619
+    "pen_gn_med_ratio_min": 0.975088752405005,
+    "pen_gn_med_ratio_max": 1.07879615749193,
+    "pen_gn_pct_err_min": -2.49112475949949,
+    "pen_gn_pct_err_max": 7.87961574919303,
+    "pen_gn_pct_err_worst_abs": 7.87961574919303
   }
 }
