@@ -338,6 +338,15 @@ run_stage1_liml <- function(baci_dt,
   # Convert each result list to a data.table row with all columns,
   # using fill = TRUE so missing fields become NA.
   out_dt <- rbindlist(results, fill = TRUE, use.names = TRUE)
+  # (patch 0050) Boolean flags are FALSE, never NA, on rows the estimator
+  # never reached (thin panels return before the row constructor and
+  # rbindlist(fill = TRUE) leaves NA). The character provenance fields
+  # (hliml_method, hliml_negative_omega, edge_se_method, ...) keep NA there
+  # by convention; a flag that says "this cell is not a corner" should say
+  # so. Matches what scripts/patch_stage1_boundary_corner.R wrote on the
+  # shipped v0.7.0 table, so native and post-hoc columns agree row for row.
+  if ("boundary_corner" %in% names(out_dt))
+    out_dt[is.na(boundary_corner), boundary_corner := FALSE]
   
   # Summary diagnostics
   if (verbose) {
