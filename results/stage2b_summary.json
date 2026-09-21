@@ -26,8 +26,8 @@
     "total": 6814229
   },
   "sigma_robust": {
-    "robust": 729681,
-    "not_robust": 4263018,
+    "robust": 1198957,
+    "not_robust": 3793742,
     "tier3_na": 1821530,
     "n_estimated": 4992699,
     "total": 6814229
