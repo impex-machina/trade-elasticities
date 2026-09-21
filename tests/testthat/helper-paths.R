@@ -105,4 +105,4 @@ assert_cpp_files_present <- function(cpp_dir = NULL) {
 
 
 # Compatibility for older R versions; testthat already provides %||%.
-`%||%` <- function(a, b) if (is.null(a)) b else a
+`%||%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a   # patch 0053: same semantics as R/utils_general.R

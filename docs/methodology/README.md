@@ -9,8 +9,11 @@ behaves as advertised on synthetic and real BACI data.
 The combined contents are the paper's evidence base. Three pillars:
 
 1. **BACI HS4 empirical core** — production diagnostics on the 280,649-cell
-   HS4 universe (51.9% Stage 1 ok rate, σ median 2.91 matching Soderbery's
-   2.88, Stage 2b 8.13M cell-exporter rows with 60.7% finite γ-SE)
+   HS4 universe. The headline numbers (Stage-1 ok rate, σ and γ medians,
+   row counts, SE coverage) are generated from the shipped run by
+   `scripts/build_readme.R` into the repository README and change with every
+   data release; this file does not restate them. The release history with
+   each layer's pins is `docs/hf_dataset_card.md`.
 2. **Synthetic recovery** — Tier 1+2 of `validate_liml.R` confirming
    HLIML's behavior on known data-generating processes
 3. **SE calibration** — Monte Carlo validation of penalized Gauss-Newton
@@ -130,12 +133,18 @@ Post-submission updates (e.g., responses to reviewer comments, additional
 robustness checks) are added under `docs/methodology/supplementary/`
 rather than by editing the frozen documents.
 
-*Last updated: 2026-05-26: Pillar 4 (HLIML-vs-Feenstra-GMM, Tier 4) cut
-from scope per slim-down Decision 1 (research goal is comparison against
-Soderbery's published dataset, not estimator self-comparison);
-`tier4_hliml_vs_gmm.md`, `tier4_comp.csv`, `tier4_comp_with_adjust.csv`
-and the four Tier-4 capture/adjust scripts removed; four-pillar evidence
-base reduced to three. Stage 2a/2b parity reports (stage2a_parity.md, stage2b_parity.md) also removed: refactor verification was internal-only, structural-parity finding retained inline in refactor_history.md; two inaccurate "SE calibration in stage2b_parity" references corrected to point at se_calibration_mc_summary.csv. Earlier — 2026-05-22 (N+8): evidence docs renamed
+*Last updated: 2026-09-21 (patch 0053): headline numbers removed from this
+file in favour of the data-driven README; the v0.6.x–v0.7.x estimator
+changes (closed-form HLIML, boundary routing, negative-ω rejection, edge
+SEs) are documented in `stage1_liml.md`, `stata_port_deviations.md`
+(A5–A8) and the `v0xx_v0yy` comparison docs in this directory. Earlier —
+2026-05-26: Pillar 4 (HLIML-vs-Feenstra-GMM, Tier 4) cut from scope per
+slim-down Decision 1 (research goal is comparison against Soderbery's
+published dataset, not estimator self-comparison); the Tier-4 capture and
+adjust scripts removed and the evidence base reduced to three pillars. The
+`tier4_comp*.csv` / `tier4_console.txt` files still under `docs/results/`
+are retained as frozen artefacts of that cut analysis and are not part of
+the evidence base. Stage 2a/2b parity reports (stage2a_parity.md, stage2b_parity.md) also removed: refactor verification was internal-only, structural-parity finding retained inline in refactor_history.md; two inaccurate "SE calibration in stage2b_parity" references corrected to point at se_calibration_mc_summary.csv. Earlier — 2026-05-22 (N+8): evidence docs renamed
 to canonical undated names; Grant & Soderbery (2024) PDF moved to
 `inst/`; `validation_README.md` absorbed here; frozen-at-submission
 stipulation added.*

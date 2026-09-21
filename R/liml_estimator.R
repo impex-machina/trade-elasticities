@@ -1626,7 +1626,9 @@ estimate_cell_liml <- function(cell_df,
   #   0 = HLIML admissible
   #   1 = HLIML failed, sigma from Step 2 (sigma_w > 1)
   #   2 = HLIML failed, omega from Step 2 (omega_w != .)
-  #   3 = omega < 0, clamped to 0.0001
+  #   3 = omega < 0, clamped to 0.0001  (unreachable: invert_structural() floors
+  #       under negative_omega = 'floor' before this block sees it, and
+  #       rejects under 'reject' -- kept for Stata parity of the code table)
   #   4 = sigma clamped at the upper cap (omega state in omega_capped)
   #   5 = omega clamped at the upper cap, sigma NOT capped
   #   6 = boundary HLIML on the omega floor (patch 0031, "closed" mode only)

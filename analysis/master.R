@@ -30,7 +30,7 @@
 source("R/dependencies.R")
 source("R/load_outputs.R")
 
-`%||%` <- function(a, b) if (is.null(a)) b else a
+source("R/utils_general.R")   # `%||%` (patch 0053: single definition, NULL-or-NA semantics)
 
 parse_master_args <- function(args = commandArgs(trailingOnly = TRUE)) {
   out <- list(rerun_pillars = FALSE, skip_pillar = NULL,

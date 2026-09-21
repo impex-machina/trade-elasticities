@@ -172,7 +172,7 @@ stage1_summary$routing_summary <- list(
   hliml_interior        = sum(stage1$adjust == 0L, na.rm = TRUE),
   step2_clean           = sum(stage1$adjust == 1L, na.rm = TRUE),
   step2_omega_only      = sum(stage1$adjust == 2L, na.rm = TRUE),
-  omega_negative_floor  = sum(stage1$adjust == 3L, na.rm = TRUE),
+  omega_negative_floor  = sum(stage1$adjust == 3L, na.rm = TRUE),   # always 0: code 3 is unreachable (ledger A8)
   clamped_at_sigma_cap  = sum(stage1$adjust == 4L, na.rm = TRUE),
   clamped_at_omega_cap  = sum(stage1$adjust == 5L, na.rm = TRUE),
   boundary_omega_floor  = sum(stage1$adjust == 6L, na.rm = TRUE),   # v0.6.0 (patch 0031)

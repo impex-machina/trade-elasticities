@@ -389,4 +389,4 @@ run_stage1_liml <- function(baci_dt,
 }
 
 # Small helper used in worker
-`%||%` <- function(a, b) if (is.null(a) || is.na(a)) b else a
+# `%||%` lives in R/utils_general.R (patch 0053); exported to PSOCK workers by name as before.

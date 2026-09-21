@@ -1,4 +1,4 @@
-`%||%` <- function(a, b) if (is.null(a)) b else a
+# `%||%` lives in R/utils_general.R (patch 0053); sourced before this file by feen94_het_baci.R and by every script that uses build_config().
 
 #' R/build_config.R
 #'

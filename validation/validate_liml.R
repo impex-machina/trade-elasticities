@@ -27,7 +27,7 @@
 #   validate_tier3(baci_path = ..., soderbery_path = ..., n_cells = 100)
 # =========================================================================
 
-`%||%` <- function(a, b) if (is.null(a)) b else a
+if (!exists("%||%", mode = "function")) `%||%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a   # patch 0053: same semantics as R/utils_general.R when sourced standalone
 
 .cat_header <- function(txt) {
   bar <- paste(rep("=", 72), collapse = "")

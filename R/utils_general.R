@@ -158,3 +158,15 @@ boundary_flags <- function(edge, sigma, omega, sigma_cap, omega_cap,
                             (!is.na(omega) && omega >= omega_cap - tol))
   )
 }
+
+
+# ---------------------------------------------------------------------------
+# (patch 0053) The one `%||%` for the whole pipeline. NULL-or-NA semantics --
+# the estimator's per-cell lists carry NA for "not computed" as often as
+# NULL for "absent", and every call site passes a scalar. Previously
+# defined in five files with two different semantics (NULL-only in
+# build_config.R / master.R / validate_liml.R / the test helper, NULL-or-NA
+# in the Stage-1 wrapper); whichever was sourced last won. R >= 4.4 ships a
+# NULL-only base version, which this masks deliberately.
+# ---------------------------------------------------------------------------
+`%||%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
