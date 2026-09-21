@@ -20,6 +20,36 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+> **v0.7.1 (2026-09-21).** Validation-only release: **every point estimate and
+> routing field is identical to v0.7.0** (Stage 1: 280,649 cells, ok 181,245,
+> interior 78,526 / Step 2 47,479 / boundary 55,240; sigma 2.462; Stage 2b:
+> 6,814,229 rows, gamma 0.650, opt_tariff 0.649, tiers 3.3/70.0/0.2/26.4).
+> What changes is inference on the 55,240 constrained boundary optima, which
+> v0.7.0 shipped without standard errors. `--stage1-edge-se hncs` (now the
+> reference configuration) applies the same HNCS sandwich used for interior
+> HLIML cells, projected onto the edge tangent through theta = theta(theta0, t):
+> the free coordinate (sigma on the omega edges, omega on the sigma-cap edge)
+> gets a sandwich SE, the pinned coordinate stays NA, rho follows by the
+> one-dimensional delta rule (`docs/methodology/v071_edge_se.md`). Coverage:
+> **sigma SE finite on 89.8% of clean cells (from 63.6%)**, rho SE 91.8% (from
+> 61.7%), omega SE 70.8% (from 66.9%); `sigma_robust` passes **17.6% of rows
+> (from 10.7%)**, 24.0% of non-NA rows; `gamma_se_total` median 0.588 -> 0.562.
+> 646 boundary cells (1.2%) report a status instead of an SE
+> (`edge_se_status`: negative variance 448, singular curvature 39, non-PD
+> curvature 159, the last all on the sigma-cap edge). Edge SEs are the same
+> order as interior ones (median sigma SE: omega-cap edge 1.06, omega-floor
+> edge 0.37, interior 0.48). Synthetic calibration (4,800 cells): 92-95%
+> coverage on the floor and cap edges against a 97% interior benchmark,
+> unbiased; degrades only where the interior HNCS also does (truth at a cap).
+> **Caveat:** the edge SE is conditional on the edge -- on the 2,503
+> `boundary_corner` cells it measures curvature *along* the floor edge and
+> cannot see that the objective is nearly flat between the floor and the cap;
+> the flag remains the guard. New columns: `edge_se_method`, `edge_se_status`;
+> `boundary_corner` is FALSE (not NA) on rows the estimator never reached.
+> Re-pull anything consuming `sigma_se`, `rho_se`, `gamma_se_total` or
+> `sigma_robust`; point-estimate consumers need not. Data revision:
+> `49466cd24ee2547d838b658dc3869c86deee63bf`. **v0.7.0 remains available pinned at revision
+> `feabe6f7fbc8f98bdb596e11e81aa70bac188faa`.**
 > **v0.7.0 (2026-09-02).** Corrects the treatment of a negative algebraic
 > omega in the Feenstra inversion. When rho exceeds (sigma-1)/sigma the
 > inversion has no positive omega -- the point is the continuation of the
