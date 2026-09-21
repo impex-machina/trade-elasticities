@@ -238,7 +238,7 @@ Stated forthrightly:
 - **Estimator-provenance composition.** On the full universe, 28.0% of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
   to the Step 2 fallback, of which 5.0% of the full universe (14,172 cells)
-  are clamped at the σ/ω caps and report the cap, not an estimate; a further 19.7% (55,240 cells) are constrained boundary HLIML optima -- 15,578 on the ω floor, 7,259 at the σ cap, 32,403 at the ω cap -- routed where the closed-form HLIML point was inadmissible and Step 2 supplied no admissible ω (`final_source == "hliml_boundary"`; SEs from the HNCS sandwich projected onto the edge on 47,568 of them; `edge_se_status` names the 646 where the projected curvature was not usable). 93.7% of cells fail the
+  are clamped at the σ/ω caps and report the cap, not an estimate; a further 19.7% (55,240 cells) are constrained boundary HLIML optima -- 15,578 on the ω floor, 7,259 at the σ cap, 32,403 at the ω cap -- routed where the closed-form HLIML point was inadmissible and Step 2 supplied no admissible ω (`final_source == "hliml_boundary"`; SEs from the HNCS sandwich projected onto the edge on 54,594 of them (σ on the ω edges, ω on the σ-cap edge); `edge_se_status` names the 646 where the projected curvature was not usable). 93.7% of cells fail the
   Stock-Yogo weak-instrument threshold at the strict 10% maximal-size
   critical value this pipeline screens at. At Grant-Soderbery (2024)'s own
   25% rule of thumb, 38.6% of evaluated cells pass the

@@ -65,6 +65,7 @@
   "edge_se": {
     "method": "hncs",
     "n_boundary": 55240,
+    "n_boundary_with_se": 54594,
     "n_boundary_with_sigma_se": 47568,
     "n_boundary_status_fail": 646,
     "share_ok_with_sigma_se": 0.898033049187564
