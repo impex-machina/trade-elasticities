@@ -37,6 +37,32 @@ this repo), which renames columns and writes
 translated file is regenerated on each Stage 2 run rather than persisted
 in the snapshot.
 
+## Sample construction: Stage 1 and Stage 2 estimate on different rows (v0.7.2 note)
+
+Stage 1 (`run_stage1_liml` → `prepare_cell_moments`) works directly from
+the raw cache: within each (importer, exporter, product) it keeps rows with
+finite positive value and quantity, differences log unit value and log
+share against the previous **calendar** year, and double-differences against
+the reference exporter. Stage 2 (`prepare_data`) applies one further filter
+before the γ estimation: rows with |Δ ln p| ≥ `uv_outlier_threshold` = 2.0
+(a factor of ~7.4 in the unit value from one year to the next) are dropped.
+Stage 1 applies no such trim. σ and γ for the same cell are therefore
+identified on different observation sets — the σ sample includes the
+unit-value jumps that the γ sample excludes — and the Feenstra second
+moments Stage 1 uses are exactly the statistics such jumps dominate.
+
+Two smaller asymmetries live in the same place: `run_stage1_liml` is called
+with `min_exporters = 2` from the config (its own default is 4; the
+estimator then requires ≥ 3 exporters and ≥ 5 observations per cell), and
+Stage 1 has no `min_year` filter beyond the cache's own year range.
+
+This is documented rather than changed because a change to the Stage-1
+sample moves every σ and is a release-level decision. The sensitivity run
+that informs it is `analysis/sigma_uv_trim_sensitivity.R`: it re-estimates
+Stage 1 on a cell subsample of the raw cache with and without the Stage-2
+trim applied upstream and reports how σ, routing and the SEs move. Its
+result is recorded in `docs/results/sigma_uv_trim_sensitivity.md` when run.
+
 ## Notes
 
 - The 48.1% of cells with `status != "ok"` (mostly `all_inversions_failed`,
