@@ -69,8 +69,9 @@ run_stage1_liml <- function(baci_dt,
                             hliml_method = "closed",
                             cf_admissibility = "legacy",
                             negative_omega = "reject",
-                            edge_se = "none") {
-  # edge_se (patch 0049): "none" | "hncs"; see estimate_cell_liml().
+                            edge_se = "hncs") {
+  # edge_se (patch 0049; default "hncs" from patch 0051 / v0.7.1 reference
+  # configuration): see estimate_cell_liml(). "none" reproduces v0.7.0 SEs.
   # negative_omega (patch 0046; default "reject" from patch 0047 / v0.7.0):
   # see invert_structural() and estimate_cell_liml(). "floor" reproduces
   # v0.6.1.

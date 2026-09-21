@@ -221,6 +221,21 @@ has_col <- function(nm) nm %in% names(stage1)
 neg_rule <- if (has_col("hliml_negative_omega")) {
   r <- unique(stats::na.omit(stage1$hliml_negative_omega)); if (length(r) == 1L) r else paste(r, collapse = "+")
 } else "floor"
+# edge_se (patch 0051): the SE rule the run used for boundary optima and its
+# outcome; absent on tables shipped before v0.7.1 -> "none".
+edge_rule <- if (has_col("edge_se_method")) {
+  r <- unique(stats::na.omit(stage1$edge_se_method)); if (length(r) == 1L) r else paste(r, collapse = "+")
+} else "none"
+bd_ok <- stage1$status == "ok" & stage1$final_source == "hliml_boundary"
+stage1_summary$edge_se <- list(
+  method = edge_rule,
+  n_boundary = sum(bd_ok),
+  n_boundary_with_sigma_se = sum(bd_ok & is.finite(stage1$sigma_se)),
+  n_boundary_status_fail = if (has_col("edge_se_status"))
+    sum(bd_ok & !is.na(stage1$edge_se_status) & stage1$edge_se_status != "ok") else 0L,
+  share_ok_with_sigma_se = mean(is.finite(stage1$sigma_se[stage1$status == "ok"]))
+)
+
 stage1_summary$negative_omega <- list(
   rule = neg_rule,
   # closed-form points that were beyond omega = +Inf yet shipped as INTERIOR

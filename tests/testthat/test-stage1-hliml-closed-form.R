@@ -237,6 +237,7 @@ test_that("boundary search rescues sigma on an all_inversions_failed cell (route
   expect_equal(f0$sigma, fb$sigma_hliml_bd, tolerance = 1e-10)   # routed point == the reported bd point
   expect_equal(f0$omega, 1e-4)
   expect_true(f0$omega_floored)
-  expect_true(is.na(f0$sigma_se))
+  expect_true(is.finite(f0$sigma_se) || identical(f0$edge_se_status, "edge_se_curvature_not_pd") ||
+              identical(f0$edge_se_status, "edge_se_negative_variance"))   # boundary SE (0049/0051), or a named status
   expect_false(f0$sigma_capped); expect_false(f0$omega_capped)
 })

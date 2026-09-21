@@ -13,9 +13,9 @@
 #      rule; an unsupported edge and a non-PD projected curvature return
 #      a status, never a number.
 #   3. estimate_cell_liml(edge_se = "hncs") changes ONLY the three SE fields
-#      and the two provenance fields on a boundary-routed cell; the default
-#      "none" is bit-identical to v0.7.0; interior cells are untouched by
-#      either setting.
+#      and the two provenance fields on a boundary-routed cell; the DEFAULT
+#      is "hncs" (patch 0051, the v0.7.1 reference configuration) and "none"
+#      reproduces v0.7.0; interior cells are untouched by either setting.
 #   4. wrapper column + CLI flag + config validation.
 # ============================================================================
 
@@ -86,17 +86,18 @@ test_that("hncs_edge_se_groups: Jacobian, edge mapping, and failure statuses", {
   expect_equal(f2$rho_se, (f2$sigma - 1) / (1 + f2$sigma * f2$omega)^2 * f2$omega_se)
 })
 
-test_that("edge_se changes only SE and provenance fields; default none is bit-identical; interior untouched", {
+test_that("edge_se changes only SE and provenance fields; default is hncs, none reproduces v0.7.0; interior untouched", {
   .es_source(environment())
   m <- .es_cell(2, 0.01, 10L, 15L, seed = 91051L)
   f0 <- estimate_cell_liml(m, hliml_method = "closed")
   fn <- estimate_cell_liml(m, hliml_method = "closed", edge_se = "none")
   fh <- estimate_cell_liml(m, hliml_method = "closed", edge_se = "hncs")
-  expect_identical(f0, fn); expect_identical(f0$edge_se_method, "none"); expect_true(is.na(f0$edge_se_status))
-  expect_identical(fh$final_source, "hliml_boundary"); expect_identical(fh$edge_se_method, "hncs")
-  expect_true(is.na(f0$sigma_se)); expect_true(is.finite(fh$sigma_se))
+  expect_identical(f0, fh); expect_identical(f0$edge_se_method, "hncs")        # default = hncs (0051)
+  expect_identical(fn$edge_se_method, "none"); expect_true(is.na(fn$edge_se_status))
+  expect_identical(fh$final_source, "hliml_boundary")
+  expect_true(is.na(fn$sigma_se)); expect_true(is.finite(fh$sigma_se))
   strip <- function(x) { x[c("sigma_se", "omega_se", "rho_se", "edge_se_method", "edge_se_status")] <- NULL; x }
-  expect_identical(strip(f0), strip(fh))
+  expect_identical(strip(fn), strip(fh))
   mi <- .es_cell(3, 1, 20L, 40L, seed = 20260819L)
   a <- estimate_cell_liml(mi, ref_exporter = 1L); b <- estimate_cell_liml(mi, ref_exporter = 1L, edge_se = "hncs")
   expect_identical(a$final_source, "hliml")
@@ -120,14 +121,15 @@ test_that("wrapper column, CLI flag and config validation", {
   expect_true(all(out$edge_se_method[!is.na(out$hliml_method)] == "hncs"))
   out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE)
-  expect_true(all(out0$edge_se_method[!is.na(out0$hliml_method)] == "none"))
+  expect_true(all(out0$edge_se_method[!is.na(out0$hliml_method)] == "hncs"))   # default (0051)
   unlink(tmp)
   source(file.path(root, "R", "parse_cli.R"), local = TRUE)
   source(file.path(root, "R", "build_config.R"), local = TRUE)
   source(file.path(root, "R", "validate_config.R"), local = TRUE)
   dd <- tempfile(); dir.create(dd)
-  o0 <- parse_cli(c("--data", dd)); expect_identical(o0$stage1_edge_se, "none")
-  expect_identical(build_config(o0)$stage1_edge_se, "none")
+  o0 <- parse_cli(c("--data", dd)); expect_identical(o0$stage1_edge_se, "hncs")   # default (0051)
+  expect_identical(build_config(o0)$stage1_edge_se, "hncs")
+  on <- parse_cli(c("--data", dd, "--stage1-edge-se", "none")); expect_identical(on$stage1_edge_se, "none")
   o1 <- parse_cli(c("--data", dd, "--stage1-edge-se", "hncs")); expect_identical(o1$stage1_edge_se, "hncs")
   expect_error(parse_cli(c("--data", dd, "--stage1-edge-se", "bootstrap")), "stage1-edge-se")
   cfg <- build_config(o1); cfg$stage1_edge_se <- "bootstrap"

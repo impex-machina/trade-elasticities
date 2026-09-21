@@ -86,7 +86,7 @@ build_config <- function(opts) {
     # patch 0046: negative-omega rule for the Feenstra inversion (Stage 1).
     stage1_negative_omega = opts$stage1_negative_omega %||% "reject",
     # patch 0049: SEs for boundary (edge) optima.
-    stage1_edge_se = opts$stage1_edge_se %||% "none",
+    stage1_edge_se = opts$stage1_edge_se %||% "hncs",
 
     # --- Across-exporter weighting (methodological) ---
     exporter_weight     = "trade_value",

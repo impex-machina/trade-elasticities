@@ -194,17 +194,25 @@ sigma_bias_sign_phrase <- function(t1a) {
 # v0.6.0 (patch 0031): boundary-HLIML cells (adjust 6/7/8, routed only where
 # the closed form and Step 2 both failed). Silent when the run has none
 # (v0.5.x tables), so the sentence is unchanged for legacy JSONs.
-boundary_phrase <- function(rs, n_cells) {
+# (patch 0051) SE clause for the boundary sentence, driven by the run's own
+# edge_se block (absent on pre-v0.7.1 JSONs -> the old "no SE" reading).
+edge_se_clause <- function(es) {
+  if (is.null(es) || !identical(es[["method"]], "hncs")) return(", no SE")
+  sprintf("; SEs from the HNCS sandwich projected onto the edge on %s of them; `edge_se_status` names the %s where the projected curvature was not usable",
+          format_int(es[["n_boundary_with_sigma_se"]] + 0L), format_int(es[["n_boundary_status_fail"]] + 0L))
+}
+
+boundary_phrase <- function(rs, n_cells, es = NULL) {
   bt <- rs[["boundary_total"]]
   if (is.null(bt) || !is.finite(bt) || bt == 0) return("")
   # \u03c9 / \u03c3 = omega / sigma, written as Unicode escapes so this file
   # stays ASCII-clean (see asymmetry_phrase); the literal Greek letters used
   # here before patch 0045 rendered as raw bytes under a non-UTF-8 locale and
   # broke the README lock check there.
-  sprintf("; a further %s (%s cells) are constrained boundary HLIML optima -- %s on the \u03c9 floor, %s at the \u03c3 cap, %s at the \u03c9 cap -- routed where the closed-form HLIML point was inadmissible and Step 2 supplied no admissible \u03c9 (`final_source == \"hliml_boundary\"`, no SE)",
+  sprintf("; a further %s (%s cells) are constrained boundary HLIML optima -- %s on the \u03c9 floor, %s at the \u03c3 cap, %s at the \u03c9 cap -- routed where the closed-form HLIML point was inadmissible and Step 2 supplied no admissible \u03c9 (`final_source == \"hliml_boundary\"`%s)",
           format_pct(bt, n_cells), format_int(bt),
           format_int(rs[["boundary_omega_floor"]]), format_int(rs[["boundary_sigma_cap"]]),
-          format_int(rs[["boundary_omega_cap"]]))
+          format_int(rs[["boundary_omega_cap"]]), edge_se_clause(es))
 }
 
 # beyond_inf_phrase (patch 0047): quantifies the v0.6.1 defect from the

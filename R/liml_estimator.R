@@ -1290,11 +1290,14 @@ estimate_cell_liml <- function(cell_df,
                                hliml_method = c("closed", "bfgs", "both"),
                                cf_admissibility = c("legacy", "strict"),
                                negative_omega = c("reject", "floor"),
-                               edge_se = c("none", "hncs")) {
-  # edge_se (patch 0049): "none" (v0.7.0, bit-preserving: boundary optima
-  # ship without SEs) or "hncs" (the HNCS sandwich projected onto the edge
-  # tangent, hncs_edge_se_groups(); the pinned coordinate stays NA). Point
-  # estimates and routing are untouched either way.
+                               edge_se = c("hncs", "none")) {
+  # edge_se (patch 0049; DEFAULT flipped to "hncs" in patch 0051 after the
+  # v0.7.1 release made it the reference configuration): "hncs" = the HNCS
+  # sandwich projected onto the edge tangent, hncs_edge_se_groups(), pinned
+  # coordinate NA; "none" reproduces the v0.7.0 SE columns (boundary optima
+  # without SEs). Point estimates and routing are untouched either way, so
+  # the validation harnesses (validate_liml.R, monte_carlo_se.R), which call
+  # this with defaults, now measure the shipped configuration.
   edge_se <- match.arg(edge_se)
   # negative_omega (patch 0046; DEFAULT flipped to "reject" in patch 0047 on
   # the v0.7.0-rc A/B of 2026-09-02, docs/methodology/v061_v070rc_comparison.md;

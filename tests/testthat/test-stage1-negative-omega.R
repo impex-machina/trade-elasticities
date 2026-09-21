@@ -79,7 +79,7 @@ test_that("floor is bit-identical to v0.6.x, reject is the default and re-routes
   expect_identical(fr$hliml_boundary_edge, "omega_cap"); expect_identical(fr$adjust, 8L)
   expect_equal(fr$omega, 10); expect_true(fr$omega_capped); expect_false(fr$omega_floored)
   expect_false(fr$boundary_corner); expect_false(ff$boundary_corner)   # cap edge, not the corner (0047)
-  expect_true(is.na(fr$sigma_se))
+  expect_true(is.finite(fr$sigma_se)); expect_identical(fr$edge_se_status, "ok")   # edge SE is the default since 0051
   expect_false(fr$hliml_cf_admissible); expect_true(is.na(fr$omega_hliml_cf))
   expect_identical(fr$hliml_cf_inversion, "constraint_violated")
   expect_identical(fr$sigma_hliml_cf, ff$sigma_hliml_cf)   # the cf sigma is still reported
@@ -98,7 +98,7 @@ test_that("floor is bit-identical to v0.6.x, reject is the default and re-routes
   expect_identical(hr$inversion_status, "constraint_violated"); expect_true(is.na(hr$omega_step2))
   expect_true(is.finite(hr$sigma_step2))                     # Step-2 sigma retained
   expect_identical(hr$final_source, "hliml_boundary"); expect_identical(hr$hliml_boundary_edge, "omega_cap")
-  expect_equal(hr$omega, 10); expect_true(is.na(hr$sigma_se))
+  expect_equal(hr$omega, 10); expect_true(is.finite(hr$sigma_se))               # edge SE (0051)
   # an interior cell is unchanged apart from the provenance field
   mi <- .no_cell(3, 1, 20L, 40L, seed = 20260819L)
   a <- estimate_cell_liml(mi, ref_exporter = 1L)

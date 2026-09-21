@@ -135,12 +135,13 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     optparse::make_option(
       c("--stage1-edge-se"),
-      type = "character", default = "none",
+      type = "character", default = "hncs",
       help = paste("Standard errors for constrained boundary (edge) optima:",
-                   "'none' (v0.7.0: boundary cells ship without SEs) or 'hncs'",
-                   "(the HNCS sandwich projected onto the edge tangent; the",
-                   "pinned coordinate stays NA). Point estimates and routing",
-                   "are identical either way. Default: %default"),
+                   "'hncs' (v0.7.1 default: the HNCS sandwich projected onto",
+                   "the edge tangent; the pinned coordinate stays NA) or",
+                   "'none' (v0.7.0: boundary cells ship without SEs). Point",
+                   "estimates and routing are identical either way.",
+                   "Default: %default"),
       metavar = "RULE"
     ),
     optparse::make_option(
