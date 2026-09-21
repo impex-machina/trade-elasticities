@@ -198,8 +198,10 @@ sigma_bias_sign_phrase <- function(t1a) {
 # edge_se block (absent on pre-v0.7.1 JSONs -> the old "no SE" reading).
 edge_se_clause <- function(es) {
   if (is.null(es) || !identical(es[["method"]], "hncs")) return(", no SE")
-  sprintf("; SEs from the HNCS sandwich projected onto the edge on %s of them; `edge_se_status` names the %s where the projected curvature was not usable",
-          format_int(es[["n_boundary_with_sigma_se"]] + 0L), format_int(es[["n_boundary_status_fail"]] + 0L))
+  n_se <- es[["n_boundary_with_se"]]
+  if (is.null(n_se)) n_se <- es[["n_boundary_with_sigma_se"]]   # pre-0055 JSON
+  sprintf("; SEs from the HNCS sandwich projected onto the edge on %s of them (\u03c3 on the \u03c9 edges, \u03c9 on the \u03c3-cap edge); `edge_se_status` names the %s where the projected curvature was not usable",
+          format_int(n_se + 0L), format_int(es[["n_boundary_status_fail"]] + 0L))
 }
 
 boundary_phrase <- function(rs, n_cells, es = NULL) {

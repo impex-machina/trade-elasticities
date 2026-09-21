@@ -230,6 +230,10 @@ bd_ok <- stage1$status == "ok" & stage1$final_source == "hliml_boundary"
 stage1_summary$edge_se <- list(
   method = edge_rule,
   n_boundary = sum(bd_ok),
+  # any edge SE: sigma on the omega edges, omega on the sigma_cap edge
+  # (patch 0055: the previous sigma_se-only count left out the 7,026
+  # sigma-cap cells whose free coordinate is omega)
+  n_boundary_with_se = sum(bd_ok & (is.finite(stage1$sigma_se) | is.finite(stage1$omega_se))),
   n_boundary_with_sigma_se = sum(bd_ok & is.finite(stage1$sigma_se)),
   n_boundary_status_fail = if (has_col("edge_se_status"))
     sum(bd_ok & !is.na(stage1$edge_se_status) & stage1$edge_se_status != "ok") else 0L,
