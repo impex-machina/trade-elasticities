@@ -98,6 +98,11 @@ res <- list(
                     share_identical = ok_both[, mean(sig_b == sig_a)]),
   signed_median_rel = ok_both[, median(sig_b / sig_a - 1)],
   sigma_se_median = list(shipped = median(m[s_a == "ok", se_a], na.rm = TRUE), trimmed = median(m[s_b == "ok", se_b], na.rm = TRUE)),
+  # (patch 0059) the rc turned on these: share of clean cells at the sigma cap, and the route mix
+  sigma_cap_share = list(shipped = m[s_a == "ok", mean(sig_a >= 10 - 1e-3)], trimmed = m[s_b == "ok", mean(sig_b >= 10 - 1e-3)]),
+  sigma_se_finite_share = list(shipped = m[s_a == "ok", mean(is.finite(se_a))], trimmed = m[s_b == "ok", mean(is.finite(se_b))]),
+  route_mix = list(shipped = m[s_a == "ok", .N, by = src_a][order(src_a)], trimmed = m[s_b == "ok", .N, by = src_b][order(src_b)]),
+  omega_cap_share = list(shipped = m[s_a == "ok", mean(om_a >= 10 - 1e-3, na.rm = TRUE)], trimmed = m[s_b == "ok", mean(om_b >= 10 - 1e-3, na.rm = TRUE)]),
   route_transitions = ok_both[, .N, by = .(src_a, src_b)][order(-N)],
   generated = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")
 )
@@ -116,7 +121,13 @@ md <- c(sprintf("# Stage-1 sigma sensitivity to the Stage-2 unit-value trim (%s 
           paste(sprintf("%.3f", res$sigma_quartiles$shipped), collapse = " / "), paste(sprintf("%.3f", res$sigma_quartiles$trimmed), collapse = " / ")),
   sprintf("- on cells ok in both: |dsigma|/sigma median %.3f (p75 %.3f, p90 %.3f); > 10%%: %s; identical: %s; signed median %+.3f",
           res$rel_dsigma$median, res$rel_dsigma$p75, res$rel_dsigma$p90, pct(res$rel_dsigma$share_gt_10pct), pct(res$rel_dsigma$share_identical), res$signed_median_rel),
-  sprintf("- route changed on %s of cells ok in both; sigma_se median %.3f -> %.3f", pct(res$route_changed_share), res$sigma_se_median$shipped, res$sigma_se_median$trimmed), "",
+  sprintf("- route changed on %s of cells ok in both; sigma_se median %.3f -> %.3f", pct(res$route_changed_share), res$sigma_se_median$shipped, res$sigma_se_median$trimmed),
+  sprintf("- sigma at the cap (ok cells): %s -> %s; sigma_se finite: %s -> %s; omega at the cap: %s -> %s",
+          pct(res$sigma_cap_share$shipped), pct(res$sigma_cap_share$trimmed), pct(res$sigma_se_finite_share$shipped), pct(res$sigma_se_finite_share$trimmed),
+          pct(res$omega_cap_share$shipped), pct(res$omega_cap_share$trimmed)),
+  sprintf("- route mix (ok cells), shipped: %s | trimmed: %s",
+          paste(sprintf("%s %d", res$route_mix$shipped$src_a, res$route_mix$shipped$N), collapse = ", "),
+          paste(sprintf("%s %d", res$route_mix$trimmed$src_b, res$route_mix$trimmed$N), collapse = ", ")), "",
   "Route transitions (rows shipped, cols trimmed):", "", "| shipped | trimmed | N |", "|---|---|---|",
   apply(res$route_transitions, 1, function(r) sprintf("| %s | %s | %s |", r[1], r[2], r[3])), "")
 writeLines(md, out_md); cat(paste(md, collapse = "\n"), "\n"); cat("wrote", out_json, "and", out_md, "\n")
