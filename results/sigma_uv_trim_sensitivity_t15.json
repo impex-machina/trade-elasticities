@@ -1,0 +1,85 @@
+{
+  "variant": "obs",
+  "n_cells": 5613,
+  "frac": 0.02,
+  "seed": 20260921,
+  "threshold": 1.5,
+  "rows": {
+    "shipped": 2238760,
+    "trimmed": 2238760
+  },
+  "ok": {
+    "shipped": 3652,
+    "trimmed": 3551,
+    "both": 3187
+  },
+  "route_changed_share": 0.5434578,
+  "sigma_median": {
+    "shipped": 2.46621874,
+    "trimmed": 4.53580671
+  },
+  "sigma_quartiles": {
+    "shipped": [1.55634727, 2.46621874, 4.80153326],
+    "trimmed": [2.30894209, 4.53580671, 9.23362518]
+  },
+  "rel_dsigma": {
+    "median": 0.6790815,
+    "p75": 1.90691256,
+    "p90": 4.2548556,
+    "share_gt_10pct": 0.85534986,
+    "share_identical": 0.04926263
+  },
+  "signed_median_rel": 0.46607692,
+  "sigma_se_median": {
+    "shipped": 0.75985529,
+    "trimmed": 1.50234292
+  },
+  "route_transitions": [
+    {
+      "src_a": "hliml",
+      "src_b": "hliml",
+      "N": 828
+    },
+    {
+      "src_a": "hliml_boundary",
+      "src_b": "hliml",
+      "N": 375
+    },
+    {
+      "src_a": "hliml",
+      "src_b": "step2_weighted",
+      "N": 359
+    },
+    {
+      "src_a": "hliml_boundary",
+      "src_b": "hliml_boundary",
+      "N": 331
+    },
+    {
+      "src_a": "step2_weighted",
+      "src_b": "hliml",
+      "N": 325
+    },
+    {
+      "src_a": "step2_weighted",
+      "src_b": "step2_weighted",
+      "N": 296
+    },
+    {
+      "src_a": "hliml_boundary",
+      "src_b": "step2_weighted",
+      "N": 264
+    },
+    {
+      "src_a": "hliml",
+      "src_b": "hliml_boundary",
+      "N": 257
+    },
+    {
+      "src_a": "step2_weighted",
+      "src_b": "hliml_boundary",
+      "N": 152
+    }
+  ],
+  "generated": "2026-09-22 14:17:30 EDT"
+}
