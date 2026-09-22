@@ -65,6 +65,9 @@ validate_config <- function(cfg) {
   if (!is.null(cfg$stage1_edge_se) && !cfg$stage1_edge_se %in% c("none", "hncs")) {
     stop("stage1_edge_se must be 'none' or 'hncs', got: ", cfg$stage1_edge_se)
   }
+  if (!is.null(cfg$stage1_step2_vce) && !cfg$stage1_step2_vce %in% c("legacy", "kclass")) {
+    stop("stage1_step2_vce must be 'legacy' or 'kclass', got: ", cfg$stage1_step2_vce)
+  }
   if (!is.null(cfg$stage1_negative_omega) &&
       !cfg$stage1_negative_omega %in% c("floor", "reject")) {
     stop("stage1_negative_omega must be 'floor' or 'reject', got: ",

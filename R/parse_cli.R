@@ -145,6 +145,18 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "RULE"
     ),
     optparse::make_option(
+      c("--stage1-step2-vce"),
+      type = "character", default = "legacy",
+      help = paste("Sandwich behind the Step-2 (weighted Fuller LIML) standard",
+                   "errors: 'legacy' (OLS meat X'diag(u^2)X; reproduces every",
+                   "release through v0.7.2 bit-for-bit) or 'kclass' (the",
+                   "k-class meat X_k'diag(u^2)X_k implied by the estimating",
+                   "equations). Changes only the SEs of step2_weighted cells;",
+                   "points, routing and HLIML/boundary SEs are identical.",
+                   "Default: %default"),
+      metavar = "RULE"
+    ),
+    optparse::make_option(
       c("--stage1-uv-trim"),
       type = "double", default = NA_real_,
       help = paste("Apply Stage 2's unit-value trim inside Stage 1: drop",
@@ -257,6 +269,9 @@ validate_cli_opts <- function(opts, parser = NULL) {
   }
   if (!opts$stage1_edge_se %in% c("none", "hncs")) {
     fail(sprintf("--stage1-edge-se must be 'none' or 'hncs', got: '%s'", opts$stage1_edge_se))
+  }
+  if (!opts$stage1_step2_vce %in% c("legacy", "kclass")) {
+    fail(sprintf("--stage1-step2-vce must be 'legacy' or 'kclass', got: '%s'", opts$stage1_step2_vce))
   }
   if (!opts$stage1_negative_omega %in% c("floor", "reject")) {
     fail(sprintf("--stage1-negative-omega must be 'floor' or 'reject', got: '%s'",

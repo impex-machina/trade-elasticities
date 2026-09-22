@@ -45,6 +45,12 @@ residual-variance weighting and the $1/\hat{s}$ HLIML rescale (`:45-49`,
 `:37-41`); the feasibility-adjust cascade semantics (`:200-214`, extended by
 B9 flags); $\rho = \omega(\sigma-1)/(1+\sigma\omega)$ (`:142`).
 
+## E. Port-side defects (introduced by the port, not present in Stata)
+
+| # | Port site | Behaviour | Correction | Basis |
+|---|---|---|---|---|
+| E1 | `R/liml_estimator.R` `fuller_liml_core()` (Step 2 `e(V)` counterpart of `GS_Estimation.do:51`, `ivreg2 ... fuller(1) robust`) | The "robust" sandwich used the **OLS** meat $X'\mathrm{diag}(u^2)X$ for a k-class estimator; the k-class estimating equations $X_k'(y-X\eta)=0$ imply the meat $X_k'\mathrm{diag}(u^2)X_k$, $X_k = ((1-\kappa)I+\kappa P_Z)X$. Overstates the Step-2 structural SEs (~12× on the Pillar-2 DGP; legacy coverage 100% vs 94% k-class). | `vce = "kclass"` (patch 0061; `--stage1-step2-vce kclass`, stamp `step2_vce_method`); `legacy` reproduces v0.7.2 bit-for-bit pending the release-train flip. See `stage1_liml.md`, "Step-2 standard errors". | Derivation from the estimating equations; Monte Carlo (`tests/testthat/test-step2-kclass-vce.R`); route-tagged Pillar-2 coverage; consistent with the 2026-07-10 real-data bootstrap on Step-2 strata. Parity of the k-class form with ivreg2's `e(V)` on a G&S cell is the outstanding check. |
+
 ## D. Upstream issues flagged to the authors (not ported, not corrected here)
 
 - `error_construct.do`: `gen double omega_FR = omega2/1+omega2` — operator

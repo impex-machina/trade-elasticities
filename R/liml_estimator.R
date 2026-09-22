@@ -81,7 +81,13 @@
 # -------------------------------------------------------------------------
 
 fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
-                             endog_idx = NULL) {
+                             endog_idx = NULL,
+                             vce = c("legacy", "kclass")) {
+  # vce (patch 0061, 2026-09-22 fresh-eyes review): which sandwich fills
+  # V_eta_robust. "legacy" (default, bit-preserving through v0.7.2) uses the
+  # OLS meat X' diag(u^2) X; "kclass" uses the k-class meat X_k' diag(u^2) X_k
+  # with X_k = ((1 - kappa) I + kappa P_Z) X -- see the variance block below.
+  vce <- match.arg(vce)
   # Y: n x 1 outcome vector (lp_dif squared, in our setting)
   # X: n x k regressors  - typically [x1, x2, ones]
   #    Convention: endogenous regressors FIRST, then included exogenous, then constant
@@ -258,13 +264,31 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   K_inv <- solve(K_mat)
   V_eta_homo <- sigma2_u * K_inv
 
-  # Robust (HC0-style) variance for LIML
-  # Stata's robust LIML variance is more involved. Use the standard sandwich:
-  #   V_robust = K_mat^{-1} * X' diag(u^2) X * K_mat^{-1}
-  # This is the heteroskedasticity-consistent version.
-  # NOTE: Stata's actual formula uses m_omega which depends on options;
-  # this is the simplest robust variant.
-  meat <- crossprod(X, as.numeric(u_hat^2) * X)
+  # Robust (HC0-style) variance for the k-class estimator.
+  #
+  # (patch 0061) The k-class estimator solves the estimating equations
+  #   X_k' (Y - X eta) = 0,   X_k = ((1 - kappa) I + kappa P_Z) X,
+  # so eta_hat - eta = K_mat^{-1} X_k' u with K_mat = X_k' X exactly (the
+  # matrix solved above: (1-kappa) X'X + kappa X'P_Z X), and the
+  # heteroskedasticity-consistent sandwich is
+  #   V_robust = K_mat^{-1} (X_k' diag(u^2) X_k) K_mat^{-1}.
+  # At kappa = 1 this is the familiar 2SLS HC0 sandwich with X_hat = P_Z X.
+  # The meat shipped through v0.7.2 ("legacy") was X' diag(u^2) X -- the OLS
+  # meat -- which, because X carries within-exporter variation that the
+  # projected X_k does not, overstates the variance: on the Pillar-2 DGP the
+  # Step-2 sigma SE is ~12x the k-class value (median relative SE 6.0 vs
+  # 0.51) with 100% coverage against 94% (docs/methodology/
+  # stage1_liml.md, "Step-2 standard errors"). Interior HLIML and boundary
+  # SEs come from the HNCS sandwich and are unaffected either way.
+  # "legacy" is kept as the bit-for-bit reproducer of every release through
+  # v0.7.2 (the flip is a release-train decision, as with 0049 -> 0051).
+  meat_X <- if (vce == "kclass") {
+    PX <- Z %*% (ZtZ_inv %*% ZtX)                # P_Z X, n x k
+    (1 - kappa) * X + kappa * PX                 # X_k
+  } else {
+    X
+  }
+  meat <- crossprod(meat_X, as.numeric(u_hat^2) * meat_X)
   V_eta_robust <- K_inv %*% meat %*% K_inv
 
   list(
@@ -277,7 +301,8 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
     lambda_min = lambda,
     n = n, k = k, l = l,
     sigma2_u = sigma2_u,
-    endog_idx = endog_idx
+    endog_idx = endog_idx,
+    vce = vce                                   # patch 0061
   )
 }
 
@@ -1290,7 +1315,17 @@ estimate_cell_liml <- function(cell_df,
                                hliml_method = c("closed", "bfgs", "both"),
                                cf_admissibility = c("legacy", "strict"),
                                negative_omega = c("reject", "floor"),
-                               edge_se = c("hncs", "none")) {
+                               edge_se = c("hncs", "none"),
+                               step2_vce = c("legacy", "kclass")) {
+  # step2_vce (patch 0061, 2026-09-22 fresh-eyes review): the sandwich
+  # behind the Step-2 (weighted Fuller LIML) SEs -- fuller_liml_core(vce=).
+  # "legacy" (default, bit-preserving through v0.7.2) is the OLS meat
+  # X'diag(u^2)X; "kclass" is the k-class meat X_k'diag(u^2)X_k. Changes
+  # ONLY sigma_se/omega_se/rho_se on step2_weighted cells and the
+  # *_step2_se diagnostics everywhere; points, routing, HLIML/boundary SEs
+  # and the weak-IV/overid statistics are untouched. The flip to "kclass"
+  # is a release-train decision (see the vce block in fuller_liml_core()).
+  step2_vce <- match.arg(step2_vce)
   # edge_se (patch 0049; DEFAULT flipped to "hncs" in patch 0051 after the
   # v0.7.1 release made it the reference configuration): "hncs" = the HNCS
   # sandwich projected onto the edge tangent, hncs_edge_se_groups(), pinned
@@ -1391,7 +1426,7 @@ estimate_cell_liml <- function(cell_df,
 
   # ---- STEP 1: Unweighted Fuller(1) LIML for starting values + residuals ----
   fit1 <- fuller_liml_core(Y, X, Z, weights = NULL, fuller_alpha = fuller_alpha,
-                           endog_idx = endog_idx)
+                           endog_idx = endog_idx, vce = step2_vce)
   if (fit1$status != "ok")
     return(list(status = paste0("step1_", fit1$status), n = n))
 
@@ -1437,7 +1472,8 @@ estimate_cell_liml <- function(cell_df,
   weights_step2 <- 1 / u2_pred
 
   fit2 <- fuller_liml_core(Y, X, Z, weights = weights_step2,
-                           fuller_alpha = fuller_alpha, endog_idx = endog_idx)
+                           fuller_alpha = fuller_alpha, endog_idx = endog_idx,
+                           vce = step2_vce)
   if (fit2$status != "ok") {
     # Fall back to step 1 estimate
     return(list(status = paste0("step2_", fit2$status, "_fellback_to_step1"),
@@ -1781,6 +1817,7 @@ estimate_cell_liml <- function(cell_df,
       hliml_cf_admissibility = cf_admissibility,
       hliml_negative_omega = negative_omega,
       edge_se_method = edge_se,
+      step2_vce_method = step2_vce,                # patch 0061
       edge_se_status = NA_character_,
       boundary_corner = FALSE,
       sigma_hliml_cf = if (cf_ok) cf$sigma else NA_real_,
@@ -1889,6 +1926,7 @@ estimate_cell_liml <- function(cell_df,
     hliml_cf_admissibility = cf_admissibility,   # patch 0043
     hliml_negative_omega = negative_omega,       # patch 0046
     edge_se_method = edge_se,                    # patch 0049
+    step2_vce_method = step2_vce,                # patch 0061
     edge_se_status = edge_se_status,
     # boundary_corner (patch 0047): a constrained optimum on the omega-FLOOR
     # edge reached from a closed-form point that was beyond omega = +Inf

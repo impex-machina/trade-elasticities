@@ -73,6 +73,52 @@ variance the way Feenstra's second moments do and because it is the
 inherited Soderbery-era rule; the difference is now a stated design choice.
 The trimmed σ is a robustness result, available to anyone with the flag.
 
+## Step-2 standard errors: the k-class sandwich (patch 0061, 2026-09-22)
+
+The Step-2 point estimate is a weighted Fuller(1) LIML, i.e. a k-class
+estimator: it solves $X_k'(y - X\eta) = 0$ with
+$X_k = ((1-\kappa)I + \kappa P_Z)X$, so $\hat\eta - \eta = K^{-1}X_k'u$ with
+$K = X_k'X$ and the heteroskedasticity-consistent sandwich is
+$K^{-1}(X_k'\,\mathrm{diag}(u^2)\,X_k)K^{-1}$ (at $\kappa = 1$ the 2SLS HC0
+form). Through v0.7.2 `fuller_liml_core()` filled `V_eta_robust` with the
+**OLS** meat $X'\mathrm{diag}(u^2)X$ instead. Because $X$ carries
+within-exporter variation that the projected $X_k$ does not, that meat
+overstates the variance, and the delta method amplifies it into the
+structural SEs. This is the SE that ships as `sigma_se` / `omega_se` /
+`rho_se` on every `step2_weighted` cell (47,479 in v0.7.2) and that feeds
+their `gamma_se_total` and `sigma_robust` screen; interior HLIML and
+boundary cells use the HNCS sandwich and are unaffected.
+
+Measured on the Pillar-2 DGP (`validate_liml.R::simulate_one_cell`, the
+Tier-1a 4×3 grid, 150 replications per point, both rules on the same cells
+so points and routing are identical):
+
+| route | cells | σ 95% coverage, legacy | k-class | median σ SE / σ, legacy | k-class |
+|---|---|---|---|---|---|
+| `hliml` (interior) | 1,042 | 0.872 | 0.872 | 0.236 | 0.236 |
+| `hliml_boundary` | 486 | 0.836 | 0.836 | 0.273 | 0.273 |
+| `step2_weighted` | 195 | **1.000** | **0.940** | **6.03** | **0.51** |
+
+The legacy Step-2 σ SE is ~12× the k-class one and covers 100% of the
+time — an uninformative interval. Pooled across routes (what Tier 1a
+reports) coverage barely moves (0.876 → 0.870), which is why the defect
+never surfaced there. The real-data exporter-cluster bootstrap of
+2026-07-10 showed the same sign on Step-2 strata (bootstrap SD / analytic
+SE 0.24–0.73). A direct Monte Carlo on a group-instrument IV design
+(`tests/testthat/test-step2-kclass-vce.R`) puts the legacy η SEs at
+1.8–2.1× the sampling SD and the k-class SEs within 5%.
+
+`fuller_liml_core(vce = "kclass")` / `estimate_cell_liml(step2_vce =
+"kclass")` / `run_stage1_liml(step2_vce = "kclass")` /
+`--stage1-step2-vce kclass` implement the k-class sandwich; the row stamp
+`step2_vce_method` records the rule. The default stays `legacy`
+(bit-preserving through v0.7.2) until the release-train flip, as with
+`--stage1-edge-se` (0049 → 0051). Expected downstream effect of the flip:
+Step-2 `sigma_se` falls by roughly an order of magnitude, `sigma_robust`
+passes on more Step-2 cells (the pole test $\hat\sigma - 2.5\,\mathrm{se} > 1$
+currently fails them by construction), and `gamma_se_total` is populated
+on them; γ, opt_tariff and every point estimate are unchanged.
+
 ## Notes
 
 - The 48.1% of cells with `status != "ok"` (mostly `all_inversions_failed`,
