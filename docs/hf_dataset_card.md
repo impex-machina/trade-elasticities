@@ -20,6 +20,18 @@ pretty_name: "Trade Elasticities (BACI HS92 V202601)"
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
+**Note on the Stage-1 sample (2026-09-22).** σ is estimated on the untrimmed
+unit-value panel, while γ (Stage 2) drops differenced observations with
+|Δ ln p| ≥ 2. This was tested, not assumed: applying the same rule inside the
+Feenstra stage raises the median σ from 2.46 to 3.73 on the full universe and
+a threshold curve shows σ rising monotonically as the rule tightens (3.00 /
+3.64 / 4.54 at 3.0 / 2.0 / 1.5) with no plateau, while the share of cells at
+the σ cap rises from 14% to 19%. The rule removes identifying price variance
+rather than a distinct outlier population, so no threshold is privileged and
+none is shipped; the trimmed estimates are a robustness result
+(`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
+under another cleaning rule must say which rule.
+
 > **v0.7.2 (2026-09-21).** Validation-only release: **every estimate, SE and
 > routing field is identical to v0.7.1.** The four Pillar-2/3 validation
 > files (`liml_validation_tier1a/b.csv`, `se_calibration_mc_summary.csv`,
