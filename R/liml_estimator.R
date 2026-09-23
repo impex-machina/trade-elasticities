@@ -1661,7 +1661,12 @@ estimate_cell_liml <- function(cell_df,
   # The adjust flag mirrors Stata's:
   #   0 = HLIML admissible
   #   1 = HLIML failed, sigma from Step 2 (sigma_w > 1)
-  #   2 = HLIML failed, omega from Step 2 (omega_w != .)
+  #   2 = HLIML failed, omega from Step 2 (omega_w != .)  (unreachable, like 3:
+  #       the code is assigned only when Step 2's sigma was NOT accepted, i.e.
+  #       sigma was capped or NA; a capped sigma is overwritten to 4 below and
+  #       an NA sigma implies an NA omega, so no cell can leave this block as 2
+  #       -- patch 0062, 2026-09-22 fresh-eyes review; results/stage1_summary.json
+  #       step2_omega_only has been 0 on every run)
   #   3 = omega < 0, clamped to 0.0001  (unreachable: invert_structural() floors
   #       under negative_omega = 'floor' before this block sees it, and
   #       rejects under 'reject' -- kept for Stata parity of the code table)

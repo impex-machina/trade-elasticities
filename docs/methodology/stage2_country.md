@@ -124,6 +124,21 @@ Three methodology notes worth flagging:
    `2λ · diag(1/γ̂²)` to J'WJ brings calibration within 5% of empirical
    variability.
 
+4. **The reference exporter's γ_k is identified only through the export
+   side of the other exporters (patch 0062, 2026-09-22 fresh-eyes
+   review).** The import side supplies one time-averaged Eq. (10) moment
+   per non-reference exporter, each involving only (γ_j, γ_k): J
+   equations in J + 1 unknowns. The reference exporter has no Eq. (11)
+   row of its own (`build_export_moments()` runs over the Tier-1
+   non-reference exporters), so γ_k is pinned by the over-identification
+   the Tier-1 export rows add: each such row identifies its own γ_j
+   directly, and the corresponding import-side equation then identifies
+   γ_k. In a cell with no Tier-1 exporter the system is short by one
+   equation and only the log-ridge prior (λ) identifies γ_k; at the
+   production tier mix (about 70% of rows Tier 1) this is rare, and
+   `gamma_exposure` / `gamma_shrink_wt` on the `tier == 0` row show it
+   cell by cell.
+
 The full derivation is at `stage2_derivation.md`. The SE calibration was
 verified by Monte Carlo; the original `monte_carlo_se*.R` scripts were lost
 during the refactor and are not recoverable. A single reconstructed harness,

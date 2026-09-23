@@ -119,7 +119,8 @@ stage1_summary <- list(
 #   adjust == 0: HLIML admissible (sigma > 1, omega > 0, both under caps)
 #   adjust == 1: HLIML failed, Step 2 sigma admissible
 #   adjust == 2: HLIML failed, Step 2 omega admissible but sigma not
-#                (zero cells in current data)
+#                (unreachable, like 3 -- patch 0062: a capped Step-2 sigma is
+#                overwritten to 4, an NA sigma implies an NA omega; always 0)
 #   adjust == 3: omega defensively floored to 0.0001 when < 0
 #                (zero cells in current data; comment says "shouldn't reach")
 #   adjust == 4: Step 2 sigma exceeded sigma_start_cap, clamped to cap
@@ -171,7 +172,7 @@ rm(xt)
 stage1_summary$routing_summary <- list(
   hliml_interior        = sum(stage1$adjust == 0L, na.rm = TRUE),
   step2_clean           = sum(stage1$adjust == 1L, na.rm = TRUE),
-  step2_omega_only      = sum(stage1$adjust == 2L, na.rm = TRUE),
+  step2_omega_only      = sum(stage1$adjust == 2L, na.rm = TRUE),   # always 0: code 2 is unreachable (patch 0062)
   omega_negative_floor  = sum(stage1$adjust == 3L, na.rm = TRUE),   # always 0: code 3 is unreachable (ledger A8)
   clamped_at_sigma_cap  = sum(stage1$adjust == 4L, na.rm = TRUE),
   clamped_at_omega_cap  = sum(stage1$adjust == 5L, na.rm = TRUE),

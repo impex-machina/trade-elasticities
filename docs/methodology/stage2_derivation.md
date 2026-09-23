@@ -80,6 +80,27 @@ $$
 
 The residual is $r^{imp}_j = Y^{imp}_j - \text{pred}^{imp}_j$, so $\partial r / \partial \theta = -\partial \text{pred} / \partial \theta$.
 
+**Representation note (patch 0062, 2026-09-22 fresh-eyes review).** The
+five import-side regressors are not linearly independent: with
+$\Delta^k \ln p_j = \Delta \ln p_j - \Delta \ln p_k$ the identity
+$X^{imp}_{j,2} = X^{imp}_{j,1} + X^{imp}_{j,3}$ holds exactly
+(`imp_x3 = imp_x2 + imp_x4` in the R column names), so the coefficient
+vector representing the moment $E[e_j \cdot S_j] = 0$ is not unique. An
+independent re-derivation from the structural pair
+$a_j = -(\sigma-1)b_j + e_j$ and
+$\gamma_j a_j = \gamma_j b_j + \Delta\ln p_j - (\gamma_j/\gamma_k)\Delta\ln p_k - \delta_j + (\gamma_j/\gamma_k)\delta_k$
+(with $a$ the reference-differenced share change and $b$ the
+reference-differenced price change) gives the split
+$\gamma_j(\sigma-2)/((\sigma-1)(1+\gamma_j))$ on $X_1$,
+$-1/((\sigma-1)(1+\gamma_j))$ on $X_2$ and
+$\gamma_j/(\gamma_k(\sigma-1)(1+\gamma_j))$ on $X_3$, which differs from
+the coefficients above by exactly $c \cdot (X_1 - X_2 + X_3) \equiv 0$ with
+$c = \gamma_j/((\sigma-1)(1+\gamma_j))$. The two are the same moment
+condition, and both collapse to Feenstra's $\theta_2$ in the homogeneous
+limit $\gamma_j = \gamma_k$. The Jacobian below is therefore valid for
+the representation the code uses; it would be equally valid for the
+other, and the fitted residuals coincide.
+
 Differentiating each coefficient with respect to $\gamma_j$ (symbolic verification via sympy, see commit notes):
 
 | Term | Coefficient | $\partial / \partial \gamma_j$ |

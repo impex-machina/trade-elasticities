@@ -33,6 +33,22 @@ its projection onto the tangent is positive definite at a genuine edge
 minimum, and when it is not the point is a degenerate corner and the SE is
 reported NA with status `edge_se_curvature_not_pd`.
 
+**Caveat on the curvature term (patch 0062, 2026-09-22 fresh-eyes review).**
+The exact second derivative of the profile along the edge is
+d²Q(θ(φ))/dφ² = J′(∇²Q)J + Σ_k (∂Q/∂θ_k) · ∂²θ_k/∂φ∂φ′. At an interior
+optimum ∇Q = 0 and the second term vanishes, which is the interior HNCS
+argument. At a constrained edge optimum ∇Q ≠ 0 by definition (only its
+tangential component J′∇Q is zero) and θ₁(t), θ₂(t) are nonlinear in the
+free coordinate (∂²θ₁/∂σ² = 2ω/((1+ω)(σ−1)³), ∂²θ₂/∂σ² = −2/(σ−1)³ on the ω
+edges; ∂²θ₁/∂ω² = −2/((1+ω)³(σ−1)), ∂²θ₂/∂ω² = −2/(1+ω)³ on `sigma_cap`),
+so the implementation's J′H̄J omits a term of order |∇Q| · |θ″|. The
+calibration below (92–95% coverage against a 97% interior benchmark,
+unbiased) says the omission is second-order in practice; it is stated
+here so the derivation is not read as exact. Adding the term is a
+closed-form change to `hncs_edge_se_groups()` (∇Q = 2[(B − Q·A)b]_θ / b′Ab
+from the group moments) and would be an SE-only patch on the 0049 → 0051
+pattern; it is parked until the Step-2 VCE flip (0061) has shipped.
+
 The free coordinate is the structural parameter, so no further delta step
 is needed: on the ω edges `sigma_se = √Var[2,2]` and `omega_se` is NA (the
 pinned coordinate is not estimated); on `sigma_cap` the reverse. `rho_se`
