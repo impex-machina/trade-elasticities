@@ -167,6 +167,27 @@ precisely so users can calibrate to their own cell mix rather than
 inherit a global factor. The pre-stated caveats stand: this
 benchmarks dispersion, not bias, and replicate selection is of the same kind as the yield selection in Pillar 2 -- mild in the well-identified region, material only along the high-omega edge.
 
+Harness update (patch 0063, 2026-09-22). The branch-tagged rerun named
+above is now what `validation/bootstrap_se.R` does: every replicate records
+the route `estimate_cell_liml()` took, and the per-cell file carries, beside
+the 2026-07-10 columns, the replicate route mix, the share on the published
+route, and the dispersion among those same-route replicates
+(`boot_sd_same`, `boot_mad_sd_same`, `ratio_sd_same`, `ratio_mad_same`), plus
+the median analytic SE across them (`ratio_se_same`). The within-branch
+ratio is the like-for-like comparison for a branch-conditional analytic SE;
+the all-replicate ratio remains the unconditional one. Two further things
+changed the meaning of the 2026-07-10 numbers and are the reason the
+benchmark is re-run on v0.7.3 rather than quoted: the estimator has since
+gained the closed form, boundary routing and the beyond-infinity rejection
+(v0.6.0-v0.7.0), which re-routed roughly two cells in five, and the Step-2
+sandwich meat was corrected in patch 0061, which resolves the inverted
+Step-2 pattern above (the analytic SE was overstated, not the bootstrap
+understated). The 2026-07-10 script also sourced the estimator without
+`R/utils_general.R`; on any v0.6.0+ table that would have counted every
+boundary-routed replicate as a failure, so the July files must not be
+compared to a rerun cell by cell -- they are a different estimator and a
+different harness.
+
 ## 5. Release note for replication
 
 Estimates cited in this paper are the v0.6.1 release (GitHub tag v0.6.1; HF data revision 96e1589e4b5bd0bde0b3f2643b673ee09ff9f680). v0.6.1 corrects the HLIML boundary search (patches 0038-0042): the 3,286 sigma-pole boundary cells v0.6.0 shipped are now correctly classified as failed, usable Stage 1 cells move 185,144 -> 182,385, sigma median 2.705 -> 2.727, country gamma median 0.657 -> 0.628, optimal-tariff median 0.674 -> 0.657, and Pillar-2 synthetic recovery was re-captured under the closed-form default (median yield 72% -> 98%). It supersedes v0.6.0 (GitHub tag v0.6.0; HF data revision 4d0987e22977a6482eeefd8d9a3d5452d907e505), which replaces the Stage 1 BFGS search with the closed-form HLIML estimator with boundary-search routing: usable Stage 1 cells rise from 50.5% to 66.0% of the 280,649 attempted, and sigma moves for the first time across releases (median 2.878 -> 2.705); gamma median 0.678 -> 0.657, optimal-tariff median 0.709 -> 0.674, rows 6,860,437, tier composition unchanged. A Stage 2 analytic gradient was evaluated and rejected 22:1 under the current optimizer cascade (docs/methodology/v060_stage2_gradient_ab.md), and shipped Stage 1 cap flags were corrected post-hoc for boundary corner cells (sigma_capped +1,934, omega_capped +3,328). Full delta accounting: docs/methodology/v051_v060rc_comparison.md. Relative to v0.5.0, v0.5.1 is validation-only: Stage 1 sigma and Stage 2b gamma are bit-identical to v0.5.0 (HF revision ea1c3ea464ca1ac114bf9b6c518325e8135bdc41); it corrects the Pillar-2 synthetic-recovery harness described in Section 2 and re-captures its tables. Relative to v0.4.1, v0.5.0 corrected the Broda-Weinstein weight

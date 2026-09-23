@@ -14,7 +14,22 @@
 #     chosen inside prepare_cell_moments);
 #   - compare the bootstrap dispersion of sigma-hat across successful
 #     replicates to the analytic sigma_se, as a ratio distribution by
-#     stratum.
+#     stratum;
+#   - (patch 0063, 2026-09-22) tag every replicate with the route
+#     estimate_cell_liml() took (final_source), so the dispersion decomposes
+#     into WITHIN-BRANCH dispersion (replicates on the published route --
+#     the like-for-like comparison for a branch-conditional analytic SE) and
+#     branch-switching (the unconditional pipeline variance the 2026-07-10
+#     write-up could only conjecture). Both ratios are reported.
+#
+# Sourcing (patch 0063): the estimator is loaded in dependency order --
+# utils_general.R, hs_codes.R, liml_estimator.R -- because estimate_cell_liml()
+# calls boundary_flags() (utils_general.R) on every boundary-routed cell;
+# the pre-0063 script sourced liml_estimator.R alone, which on a v0.6.0+
+# table would have turned every boundary-routed replicate into a silent
+# failure inside the per-replicate tryCatch. The per-cell worker lives in
+# validation/bootstrap_se_core.R (tested by
+# tests/testthat/test-bootstrap-branch-tag.R).
 #
 # Caveats (stated in the paper section, reported by this harness):
 #   - validates dispersion, NOT bias -- a bootstrap centered on a biased
@@ -29,11 +44,17 @@
 #   Rscript validation/bootstrap_se.R \
 #     --cache  /tmp/v030/out/baci_hs92_v202601_elast_country_hs4_raw_cache.rds \
 #     --stage1 /tmp/v030/out/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds \
-#     --n-cells 750 --B 399 --ncores 62
+#     --n-cells 750 --B 399 --ncores 62 [--step2-vce kclass]
+#
+#   --step2-vce (patch 0063): the Step-2 VCE rule to fit replicates with
+#   (patch 0061's estimate_cell_liml(step2_vce=)). Omit to use the
+#   estimator's default; pass the flag the Stage-1 run used while the two
+#   differ (the v0.7.3-rc window).
 #
 # Outputs (under --out-dir, default docs/methodology):
 #   bootstrap_se_cells_<YYYYMMDD>.csv   -- one row per sampled cell
 #   bootstrap_se_summary.csv            -- ratio quantiles by stratum + overall
+#                                          (all-replicate AND within-branch)
 # =============================================================================
 
 if (!file.exists("R/liml_estimator.R")) {
@@ -62,14 +83,28 @@ opt_list <- list(
               dest = "min_boot_ok",
               help = "Minimum successful replicates for a cell to report a ratio"),
   make_option("--out-dir", type = "character", default = "docs/methodology",
-              dest = "out_dir")
+              dest = "out_dir"),
+  make_option("--step2-vce", type = "character", default = NULL,
+              dest = "step2_vce",
+              help = "Step-2 VCE rule for the replicate fits: 'legacy' or 'kclass' (default: the estimator's default)")
 )
 opts <- parse_args(OptionParser(option_list = opt_list))
 if (is.null(opts$cache) || is.null(opts$stage1)) {
   stop("--cache and --stage1 are required.", call. = FALSE)
 }
+if (!is.null(opts$step2_vce) && !opts$step2_vce %in% c("legacy", "kclass")) {
+  stop("--step2-vce must be 'legacy' or 'kclass', got: ", opts$step2_vce, call. = FALSE)
+}
 
+# Dependency order matters (see header): boundary_flags() and `%||%` come
+# from utils_general.R and are called inside estimate_cell_liml().
+source("R/utils_general.R")
+source("R/hs_codes.R")
 source("R/liml_estimator.R")
+source("validation/bootstrap_se_core.R")
+stopifnot(exists("boundary_flags", mode = "function"),
+          exists("%||%", mode = "function"),
+          exists("bs_boot_cell", mode = "function"))
 
 today <- format(Sys.Date(), "%Y%m%d")
 dir.create(opts$out_dir, showWarnings = FALSE, recursive = TRUE)
@@ -77,8 +112,9 @@ dir.create(opts$out_dir, showWarnings = FALSE, recursive = TRUE)
 cat("========================================================================\n")
 cat("EXPORTER-CLUSTER BOOTSTRAP: STAGE 1 SIGMA SE BENCHMARK\n")
 cat("========================================================================\n")
-cat(sprintf("  cells=%d  B=%d  ncores=%d  seed=%d  min_boot_ok=%d\n",
-            opts$n_cells, opts$B, opts$ncores, opts$seed, opts$min_boot_ok))
+cat(sprintf("  cells=%d  B=%d  ncores=%d  seed=%d  min_boot_ok=%d  step2_vce=%s\n",
+            opts$n_cells, opts$B, opts$ncores, opts$seed, opts$min_boot_ok,
+            if (is.null(opts$step2_vce)) "default" else opts$step2_vce))
 
 # --- 1. Eligible universe and strata ----------------------------------------
 s1 <- readRDS(opts$stage1)
@@ -158,54 +194,23 @@ if (median(nr) == 0)
        "No outputs written.")
 
 # --- 3. Per-cell bootstrap worker --------------------------------------------
-fit_sigma <- function(panel_df) {
-  prep <- tryCatch(
-    prepare_cell_moments(panel_df,
-                         exporter_col = "exporter", time_col = "t",
-                         value_col = "value", quantity_col = "quantity",
-                         min_year = opts$min_year),
-    error = function(e) NULL)
-  if (is.null(prep) || is.null(prep$moments) ||
-      is.null(prep$n_obs) || prep$n_obs < 5) return(NA_real_)
-  fit <- tryCatch(
-    estimate_cell_liml(prep$moments, ref_exporter = prep$ref_exporter),
-    error = function(e) NULL)
-  if (is.null(fit) || !isTRUE(fit$status == "ok")) return(NA_real_)
-  as.numeric(fit$sigma)
-}
-
+# bs_fit_cell() / bs_boot_cell() live in validation/bootstrap_se_core.R
+# (patch 0063). This wrapper binds the slice, the published route and the
+# run options; the per-cell seed is index-based so results are independent
+# of scheduling.
 boot_cell <- function(i) {
   data.table::setDTthreads(1)
-  set.seed(opts$seed + i)          # deterministic regardless of scheduling
-  sl <- slices[[i]]
   row <- cells[i]
-
-  sigma_base <- fit_sigma(as.data.frame(sl))
-
-  exps <- unique(sl$exporter)
-  by_exp <- split(as.data.frame(sl), sl$exporter)
-  sig_b <- rep(NA_real_, opts$B)
-  for (b in seq_len(opts$B)) {
-    draw <- sample(exps, length(exps), replace = TRUE)
-    parts <- lapply(seq_along(draw), function(j) {
-      x <- by_exp[[as.character(draw[j])]]
-      x$exporter <- j              # relabel: duplicates enter as distinct panels
-      x
-    })
-    sig_b[b] <- fit_sigma(do.call(rbind, parts))
-  }
-  ok <- sig_b[is.finite(sig_b)]
-  n_ok <- length(ok)
-  list(importer = row$importer, good = row$good,
-       nexp_bin = as.character(row$nexp_bin), f_bin = as.character(row$f_bin),
-       final_source = row$final_source,
-       n_exporters = row$n_exporters, fstat_kp = row$fstat_kp,
-       sigma_pub = row$sigma, sigma_se_pub = row$sigma_se,
-       sigma_base = sigma_base,
-       boot_n_ok = n_ok, boot_yield = n_ok / opts$B,
-       boot_med = if (n_ok > 0) median(ok) else NA_real_,
-       boot_sd = if (n_ok >= opts$min_boot_ok) sd(ok) else NA_real_,
-       boot_mad_sd = if (n_ok >= opts$min_boot_ok) mad(ok) else NA_real_)
+  r <- bs_boot_cell(slices[[i]], published_route = row$final_source,
+                    B = opts$B, seed = opts$seed + i,
+                    min_boot_ok = opts$min_boot_ok, min_year = opts$min_year,
+                    step2_vce = opts$step2_vce)
+  c(list(importer = row$importer, good = row$good,
+         nexp_bin = as.character(row$nexp_bin), f_bin = as.character(row$f_bin),
+         final_source = row$final_source,
+         n_exporters = row$n_exporters, fstat_kp = row$fstat_kp,
+         sigma_pub = row$sigma, sigma_se_pub = row$sigma_se),
+    r)
 }
 
 cat(sprintf("  Bootstrapping %d cells x %d replicates...\n",
@@ -232,12 +237,24 @@ cat(sprintf("  Done in %.1f min\n",
 res <- rbindlist(res_list, fill = TRUE)
 res[, ratio_sd  := boot_sd / sigma_se_pub]
 res[, ratio_mad := boot_mad_sd / sigma_se_pub]
+# patch 0063: within-branch ratios (replicates on the published route) and
+# the stability of the analytic SE itself under resampling
+res[, ratio_sd_same  := boot_sd_same / sigma_se_pub]
+res[, ratio_mad_same := boot_mad_sd_same / sigma_se_pub]
+res[, ratio_se_same  := boot_med_se_same / sigma_se_pub]
 
 n_base_ok <- sum(is.finite(res$sigma_base))
 match_rate <- mean(abs(res$sigma_base - res$sigma_pub) <
                      pmax(1e-6, 1e-6 * abs(res$sigma_pub)), na.rm = TRUE)
 cat(sprintf("  Baseline refits ok: %d/%d; refit == published sigma: %.1f%%\n",
             n_base_ok, nrow(res), 100 * match_rate))
+route_match <- mean(res$base_source == res$final_source, na.rm = TRUE)
+cat(sprintf("  Baseline refit route == published route: %.1f%%\n", 100 * route_match))
+cat(sprintf("  Replicates on the published route (median share): %.1f%%; route mix hliml/step2/boundary: %.1f%% / %.1f%% / %.1f%%\n",
+            100 * median(res$boot_share_same, na.rm = TRUE),
+            100 * mean(res$boot_share_hliml, na.rm = TRUE),
+            100 * mean(res$boot_share_step2, na.rm = TRUE),
+            100 * mean(res$boot_share_boundary, na.rm = TRUE)))
 if (n_base_ok == 0)
   stop("ABORT: zero baseline refits succeeded -- schema or interface ",
        "mismatch upstream of the bootstrap. No outputs written.")
@@ -254,6 +271,7 @@ fwrite(res, cells_path)
 # --- 4. Summary: ratio distribution by stratum + overall ---------------------
 summarize <- function(d, label) {
   r <- d[is.finite(ratio_sd)]
+  rs <- d[is.finite(ratio_sd_same)]
   data.table(stratum = label, n_cells = nrow(d), n_ratio = nrow(r),
              med_yield = round(median(d$boot_yield, na.rm = TRUE), 3),
              ratio_p25 = round(quantile(r$ratio_sd, .25, na.rm = TRUE), 3),
@@ -261,7 +279,16 @@ summarize <- function(d, label) {
              ratio_p75 = round(quantile(r$ratio_sd, .75, na.rm = TRUE), 3),
              ratio_mad_med = round(median(r$ratio_mad, na.rm = TRUE), 3),
              share_within_25pct = round(mean(abs(log(r$ratio_sd)) <= log(1.25),
-                                             na.rm = TRUE), 3))
+                                             na.rm = TRUE), 3),
+             # patch 0063: branch-tagged columns (appended; the columns above
+             # keep the 2026-07-10 schema)
+             same_route_med = round(median(d$boot_share_same, na.rm = TRUE), 3),
+             n_ratio_same = nrow(rs),
+             ratio_same_med = round(median(rs$ratio_sd_same, na.rm = TRUE), 3),
+             ratio_same_mad_med = round(median(rs$ratio_mad_same, na.rm = TRUE), 3),
+             ratio_se_same_med = round(median(rs$ratio_se_same, na.rm = TRUE), 3),
+             share_same_within_25pct = round(mean(abs(log(rs$ratio_sd_same)) <= log(1.25),
+                                                  na.rm = TRUE), 3))
 }
 summ <- rbind(
   summarize(res, "OVERALL"),
@@ -271,7 +298,7 @@ summ <- rbind(
 summary_path <- file.path(opts$out_dir, "bootstrap_se_summary.csv")
 fwrite(summ, summary_path)
 
-cat("\n--- Bootstrap SE calibration (ratio = bootstrap SD / analytic sigma_se) ---\n")
+cat("\n--- Bootstrap SE calibration (ratio = bootstrap SD / analytic sigma_se; *_same = replicates on the published route) ---\n")
 print(summ, nrows = 40)
 cat(sprintf("\nPer-cell detail: %s\nSummary:        %s\n",
             cells_path, summary_path))

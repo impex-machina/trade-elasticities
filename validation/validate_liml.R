@@ -114,7 +114,11 @@ simulate_one_cell <- function(sigma_true, omega_true,
               sigma_ses = rep(NA_real_, n_reps), omega_ses = rep(NA_real_, n_reps),
               sigma_cov = rep(NA, n_reps), omega_cov = rep(NA, n_reps),
               fstats = rep(NA_real_, n_reps),
-              statuses = character(n_reps))
+              statuses = character(n_reps),
+              # patch 0063: the route each successful replicate took
+              # (final_source: hliml / step2_weighted / hliml_boundary), so
+              # coverage can be read per branch instead of pooled.
+              routes = rep(NA_character_, n_reps))
   for (r in seq_len(n_reps)) {
     mom <- simulate_one_cell(sigma_true, omega_true, J = J, T = T,
                              seed = seed_base + r * 1009L +
@@ -128,6 +132,7 @@ simulate_one_cell <- function(sigma_true, omega_true,
       res$sigma_ses[r] <- fit$sigma_se
       res$omega_ses[r] <- fit$omega_se
       res$fstats[r]    <- fit$fstat_kp
+      res$routes[r]    <- as.character(fit$final_source %||% NA_character_)
       if (!is.na(fit$sigma_se))
         res$sigma_cov[r] <- abs(fit$sigma - sigma_true) <= 1.96 * fit$sigma_se
       if (!is.na(fit$omega_se))
@@ -137,6 +142,13 @@ simulate_one_cell <- function(sigma_true, omega_true,
   res
 }
 
+
+# patch 0063: sigma CI coverage among the replicates that took one route.
+.route_cov <- function(r, route) {
+  sel <- r$routes %in% route & !is.na(r$sigma_cov)
+  if (!any(sel)) return(NA_real_)
+  mean(r$sigma_cov[sel])
+}
 
 validate_tier1a <- function(n_reps = 200,
                             sigma_grid = c(2, 3, 5, 8),
@@ -164,11 +176,34 @@ validate_tier1a <- function(n_reps = 200,
         omega_bias   = (med_o - o_true) / o_true,
         sigma_cov    = mean(r$sigma_cov, na.rm = TRUE),
         omega_cov    = mean(r$omega_cov, na.rm = TRUE),
-        med_fstat    = median(r$fstats, na.rm = TRUE)
+        med_fstat    = median(r$fstats, na.rm = TRUE),
+        # patch 0063: per-route counts and sigma coverage, appended after the
+        # ten original columns so every downstream reader of the first ten
+        # (00_setup.R, 05_pillar2_synthetic_recovery.R, the capture) is
+        # unchanged. Coverage is NA where the route has no replicate.
+        n_hliml          = sum(r$routes %in% "hliml"),
+        n_step2          = sum(r$routes %in% "step2_weighted"),
+        n_boundary       = sum(r$routes %in% "hliml_boundary"),
+        sigma_cov_hliml    = .route_cov(r, "hliml"),
+        sigma_cov_step2    = .route_cov(r, "step2_weighted"),
+        sigma_cov_boundary = .route_cov(r, "hliml_boundary")
       ))
     }
   }
-  print(summ, row.names = FALSE, digits = 3)
+  print(summ[, 1:10], row.names = FALSE, digits = 3)
+
+  .cat_section("Tier 1a by route (patch 0063)")
+  cat("Successful replicates by the branch estimate_cell_liml() took, and\n")
+  cat("sigma 95% CI coverage within each branch (pooled coverage above mixes\n")
+  cat("branches whose SEs come from different sandwiches):\n")
+  print(summ[, c("sigma_true", "omega_true", "n_hliml", "n_step2", "n_boundary",
+                 "sigma_cov_hliml", "sigma_cov_step2", "sigma_cov_boundary")],
+        row.names = FALSE, digits = 3)
+  .rt <- c(hliml = sum(summ$n_hliml), step2 = sum(summ$n_step2),
+           boundary = sum(summ$n_boundary))
+  .rt <- 100 * .rt / max(sum(.rt), 1L)
+  cat(sprintf("  Route mix across the grid: hliml %.1f%%, step2 %.1f%%, boundary %.1f%%\n",
+              .rt[["hliml"]], .rt[["step2"]], .rt[["boundary"]]))
   
   .cat_section("Tier 1a verdict")
   # PATCHED: tier1_tier2_verdicts — incorporates success_rate into verdict.

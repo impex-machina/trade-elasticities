@@ -33,6 +33,24 @@ Grid: sigma in {2, 3, 5, 8}, omega in {0.3, 1.0, 3.0}. Sample size: J=25 exporte
 
 Bias is measured as `(median_estimate - true) / true`. Coverage is the fraction of replications where |estimate - true| <= 1.96 * SE.
 
+**Coverage by route (patch 0063, 2026-09-22).** The table above pools the
+three branches `estimate_cell_liml()` can take -- interior HLIML (HNCS
+sandwich), the Step-2 Fuller LIML fallback (delta-method sandwich, the k-class
+form from patch 0061 once the default flips) and the constrained boundary
+optimum (HNCS projected onto the edge) -- whose SEs come from different
+estimators, so a pooled coverage can hide an offsetting miscalibration in one
+branch (the Step-2 VCE defect of 2026-09-22 moved pooled Tier-1a coverage by
+under one point while the branch itself sat at 100%). From patch 0063
+`.tier1_inner()` records each replicate's `final_source` and
+`validate_tier1a()` appends six columns after the ten above -- `n_hliml`,
+`n_step2`, `n_boundary` (successful replicates by route) and
+`sigma_cov_hliml`, `sigma_cov_step2`, `sigma_cov_boundary` (σ coverage within
+the route; NA where the route has no replicate) -- and prints the per-route
+table and the grid-wide route mix. The verdict logic still reads the pooled
+columns; the per-route columns are reported, not gated. The capture of
+2026-09-21 predates them; the first published table carrying them is the
+v0.7.3 re-capture.
+
 ## Tier 1b: Consistency check vs sample size
 
 Fixed (sigma=3, omega=1) -- the most identifiable region of the Tier 1a grid. Grid over J in {10, 25, 50}, T in {15, 30, 60}, yielding nine (J*T, success_rate, bias) combinations.
