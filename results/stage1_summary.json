@@ -70,6 +70,14 @@
     "n_boundary_status_fail": 646,
     "share_ok_with_sigma_se": 0.898033049187564
   },
+  "step2_vce": {
+    "method": "kclass",
+    "n_step2": 47479,
+    "n_step2_with_sigma_se": 36670,
+    "rel_se_median_step2": 0.238592270706143,
+    "rel_se_median_hliml": 0.252235832320123,
+    "rel_se_median_boundary": 0.297986256472183
+  },
   "negative_omega": {
     "rule": "reject",
     "n_cf_beyond_inf_interior": 0,
