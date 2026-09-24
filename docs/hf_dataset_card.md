@@ -60,9 +60,9 @@ under another cleaning rule must say which rule.
 > depends on which exporters the cell contains -- read Step-2 sigma_se as a
 > composition-conditional lower bound. Point-estimate consumers need not
 > re-pull; SE and validation consumers should. Details:
-> docs/methodology/stage1_liml.md ("Step-2 standard errors", "v0.7.3 rc").
-> Data revision: $oid. **v0.7.2 remains available pinned at
-> revision 1240168d4b83697eb30cdf99551924a55422ad0.**
+> `docs/methodology/stage1_liml.md` ("Step-2 standard errors", "v0.7.3 rc").
+> Data revision: `d4225cad88e68061b0af39e2917a26ee50db90ec`. **v0.7.2 remains available pinned at
+> revision `b1240168d4b83697eb30cdf99551924a55422ad0`.**
 > **v0.7.2 (2026-09-21).** Validation-only release: **every estimate, SE and
 > routing field is identical to v0.7.1.** The four Pillar-2/3 validation
 > files (`liml_validation_tier1a/b.csv`, `se_calibration_mc_summary.csv`,
