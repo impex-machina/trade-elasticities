@@ -241,6 +241,28 @@ stage1_summary$edge_se <- list(
   share_ok_with_sigma_se = mean(is.finite(stage1$sigma_se[stage1$status == "ok"]))
 )
 
+# step2_vce (patch 0064): the sandwich behind the Step-2 SEs (patch 0061) and
+# the relative-SE footing of the three branches. Absent on tables shipped
+# before v0.7.3 -> "legacy" (the OLS meat those tables carry).
+step2_rule <- if (has_col("step2_vce_method")) {
+  r <- unique(stats::na.omit(stage1$step2_vce_method)); if (length(r) == 1L) r else paste(r, collapse = "+")
+} else "legacy"
+.ok1 <- stage1$status == "ok"
+.rel_se <- function(route) {
+  sel <- .ok1 & stage1$final_source %in% route & is.finite(stage1$sigma_se) & is.finite(stage1$sigma) & stage1$sigma > 0
+  if (!any(sel)) return(NA_real_)
+  stats::median(stage1$sigma_se[sel] / stage1$sigma[sel])
+}
+stage1_summary$step2_vce <- list(
+  method = step2_rule,
+  n_step2 = sum(.ok1 & stage1$final_source %in% "step2_weighted"),
+  n_step2_with_sigma_se = sum(.ok1 & stage1$final_source %in% "step2_weighted" & is.finite(stage1$sigma_se)),
+  rel_se_median_step2    = .rel_se("step2_weighted"),
+  rel_se_median_hliml    = .rel_se("hliml"),
+  rel_se_median_boundary = .rel_se("hliml_boundary")
+)
+rm(.ok1, .rel_se)
+
 stage1_summary$negative_omega <- list(
   rule = neg_rule,
   # closed-form points that were beyond omega = +Inf yet shipped as INTERIOR
@@ -501,6 +523,55 @@ pillar3_summary <- list(
   )
 )
 rm(se_summary, pen_gn)
+
+# --- Exporter-cluster bootstrap benchmark (patch 0064) ----------------------
+# Reads the manifest copy of the branch-tagged per-cell file (patch 0063) and
+# emits results/bootstrap_se_summary.json (-> r$bootstrap_se in the README
+# build). By-route medians of the bootstrap-dispersion / analytic-SE ratios,
+# all-replicate and within-branch, plus the Step-2 split by instrument
+# strength. Silent (no JSON, README clause empty) when the file is absent or
+# predates the branch tags (the 2026-07-10 file), so old data directories
+# still build.
+BOOT_CELLS_CSV <- file.path(DERIVED_VAL, "bootstrap_se_cells.csv")
+if (file.exists(BOOT_CELLS_CSV)) {
+  bc <- data.table::fread(BOOT_CELLS_CSV)
+  if (all(c("ratio_mad_same", "ratio_sd_same", "boot_share_same", "final_source", "f_bin", "nexp_bin") %in% names(bc))) {
+    .q <- function(x) { x <- x[is.finite(x)]; if (length(x)) stats::median(x) else NA_real_ }
+    # 3-exporter cells (nexp_NA: below the first cut break) resample to a
+    # handful of distinct panels and F_NA cells barely bootstrap; both are
+    # reported but excluded from the by-route and by-F medians
+    core <- bc[!(nexp_bin %in% "nexp_NA") & !(f_bin %in% "F_NA")]
+    by_route <- function(d) lapply(split(d, d$final_source), function(x) list(
+      n_cells = nrow(x),
+      share_same_route_median = .q(x$boot_share_same),
+      ratio_mad_same_median = .q(x$ratio_mad_same),
+      ratio_sd_same_median  = .q(x$ratio_sd_same),
+      ratio_mad_median      = .q(x$ratio_mad),
+      ratio_sd_median       = .q(x$ratio_sd)))
+    s2 <- core[final_source %in% "step2_weighted"]
+    B_hat <- as.integer(round(stats::median(bc$boot_n_ok / bc$boot_yield, na.rm = TRUE)))
+    bootstrap_se_summary <- list(
+      harness = "exporter-cluster, branch-tagged (patch 0063)",
+      n_cells = nrow(bc), n_cells_core = nrow(core), n_excluded_nexp_na = sum(bc$nexp_bin %in% "nexp_NA"),
+      n_excluded_f_na = sum(bc$f_bin %in% "F_NA"), B = B_hat,
+      baseline_match_rate = mean(abs(bc$sigma_base - bc$sigma_pub) < pmax(1e-6, 1e-6 * abs(bc$sigma_pub)), na.rm = TRUE),
+      overall = list(share_same_route_median = .q(core$boot_share_same),
+                     ratio_mad_same_median = .q(core$ratio_mad_same), ratio_sd_same_median = .q(core$ratio_sd_same),
+                     ratio_mad_median = .q(core$ratio_mad), ratio_sd_median = .q(core$ratio_sd)),
+      by_route = by_route(core),
+      step2_by_f = lapply(split(s2, s2$f_bin), function(x) list(
+        n_cells = nrow(x), ratio_mad_same_median = .q(x$ratio_mad_same), ratio_sd_same_median = .q(x$ratio_sd_same)))
+    )
+    emit_json(bootstrap_se_summary, "bootstrap_se_summary")
+    message("00_setup.R: emitted results/bootstrap_se_summary.json (", nrow(bc), " cells, B = ", B_hat, ")")
+    rm(bc, core, s2, by_route, B_hat, .q)
+  } else {
+    message("00_setup.R: bootstrap_se_cells.csv predates the branch tags (patch 0063); no bootstrap JSON emitted")
+    rm(bc)
+  }
+} else {
+  message("00_setup.R: no bootstrap_se_cells.csv in ", DERIVED_VAL, "; no bootstrap JSON emitted")
+}
 
 emit_json(stage1_summary,  "stage1_summary")
 emit_json(stage2b_summary, "stage2b_summary")

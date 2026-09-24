@@ -111,13 +111,67 @@ SE 0.24–0.73). A direct Monte Carlo on a group-instrument IV design
 `fuller_liml_core(vce = "kclass")` / `estimate_cell_liml(step2_vce =
 "kclass")` / `run_stage1_liml(step2_vce = "kclass")` /
 `--stage1-step2-vce kclass` implement the k-class sandwich; the row stamp
-`step2_vce_method` records the rule. The default stays `legacy`
-(bit-preserving through v0.7.2) until the release-train flip, as with
-`--stage1-edge-se` (0049 → 0051). Expected downstream effect of the flip:
-Step-2 `sigma_se` falls by roughly an order of magnitude, `sigma_robust`
-passes on more Step-2 cells (the pole test $\hat\sigma - 2.5\,\mathrm{se} > 1$
-currently fails them by construction), and `gamma_se_total` is populated
-on them; γ, opt_tariff and every point estimate are unchanged.
+`step2_vce_method` records the rule. **`kclass` is the default from v0.7.3
+(patch 0064)**; `legacy` reproduces every table shipped through v0.7.2
+bit-for-bit, as `--stage1-edge-se none` reproduces v0.7.0.
+
+### v0.7.3 rc, 2026-09-24: the real-data footprint
+
+Stage 1 rerun on the v0.7.2 command line plus `--stage1-step2-vce kclass`
+(S3 `v073rc_run_20260924/`; on-box bit-identity gate): every non-SE
+column identical to v0.7.2 on every row; `sigma_se`, `omega_se` and
+`rho_se` identical on every non-Step-2 row and moving on 36,670 / 43,431 /
+33,307 of the 47,479 Step-2 rows (the 10,809 untouched `sigma_se` rows are
+the adjust-4 σ-capped cells whose SE is pinned NA; the 33,307 `rho_se` rows
+are adjust 1 exactly). Step-2 `sigma_se` ratio k-class / legacy: p10 0.104,
+p25 0.141, **median 0.195**, p75 0.282, p90 0.411 — the OLS meat overstated
+the Step-2 σ SE about fivefold at the median on real cells (the Pillar-2
+DGP said ~12×; real cells are smaller and weaker). Median relative SE
+(`sigma_se`/`sigma`): Step 2 **1.18 → 0.239**, now on the same footing as
+interior HLIML (0.252) and boundary (0.298); σ-SE availability unchanged at
+89.8% of ok cells. Stage 2a bit-identical; Stage 2b identical except
+`sigma_se`, `sigma_robust` and `gamma_se_total` on the 1,018,474 rows
+(14.9%) whose σ is a Step-2 cell: `sigma_robust` TRUE 17.6% → 23.9% of rows
+(on those Step-2 rows 15.4% → 57.9%), `gamma_se_total` populated 13.9% →
+19.2% (median 0.562 → 0.575). γ, `opt_tariff`, tiers and row counts are
+unchanged.
+
+The branch-tagged exporter-cluster bootstrap (patch 0063; 750 cells × 399
+replicates on the rc Stage-1 table, `--step2-vce kclass`; eligible 156,090
+cells; baseline refits 750/750 with 100% σ and route match) gives the
+like-for-like calibration by branch (medians across cells; 3-exporter and
+F-undefined cells excluded):
+
+| branch | cells | replicates on the published branch | within-branch MAD / SE | within-branch SD / SE | all-replicate MAD / SE | all-replicate SD / SE |
+|---|---|---|---|---|---|---|
+| interior HLIML | 277 | 65% | **0.95** | 1.89 | 1.50 | 4.57 |
+| boundary | 242 | 57% | **1.29** | 2.73 | 1.66 | 3.25 |
+| Step 2 | 231 | 34% | **1.34** | 3.75 | 1.83 | 3.62 |
+
+The interior HNCS sandwich is calibrated against the robust within-branch
+dispersion (0.89–1.08 across every exporter-count and F bin); the
+unconditional 4.6× of the July benchmark is branch switching plus heavy
+tails, not miscalibration. The boundary SE understates by ~30% (larger
+cells more), consistent with its edge-conditional derivation. Step 2 is the
+knife-edge branch: two-thirds of its replicates leave it, and within the
+branch the ratio splits by instrument strength — MAD 0.63 at F < 2, 1.96 at
+F 2–7, **5.58 at F ≥ 7** (SD 26.6). That is not the σ cap (published σ ≥ 9
+in 4 of 43 such cells, replicate medians ≥ 9 in 3): those cells have the
+*smallest* analytic SEs (0.3–1% of σ) beside replicate distributions that
+are wider and shifted (e.g. σ 3.59, SE 0.012, same-route replicate median
+5.19). The k-class SE is the variance conditional on the cell's exporter
+set, which the Monte Carlo covers at 94% because every simulated exporter
+obeys one σ; the exporter bootstrap adds the variance over *which*
+exporters the cell contains, and Step-2 cells — the cells whose HLIML point
+was inadmissible — are exactly the population where exporters disagree
+about σ. Read Step-2 `sigma_se` as a composition-conditional lower bound
+and `sigma_robust` as the analytic pole test it is; the per-cell bootstrap
+file publishes the resampling dispersion. Two follow-ups sharpen: routing
+inadmissible closed-form cells to the constrained HLIML optimum instead of
+Step 2 (a branch two-thirds of resamples leave is not a stable estimator
+for those cells), and a universal exporter-bootstrap dispersion column (750
+cells took 7.4 minutes on 62 cores; every Step-2 cell at B = 399 is ~8 box
+hours, every clean cell at B = 99 ~7).
 
 ## Notes
 

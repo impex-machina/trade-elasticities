@@ -58,13 +58,16 @@ test_that("bs_fit_cell fits a synthetic panel through the production path and re
   expect_true(is.finite(f$sigma) && f$sigma > 1)
   expect_true(f$route %in% .bs_routes)
   # step2_vce forwards to the estimator without touching the point or the route
-  fk <- bs_fit_cell(pan, min_year = 1995L, step2_vce = "kclass")
-  expect_identical(fk$sigma, f$sigma); expect_identical(fk$route, f$route)
-  # a Step-2-routed panel: the kclass rule changes only its SE, never the point
+  fl <- bs_fit_cell(pan, min_year = 1995L, step2_vce = "legacy")
+  expect_identical(fl$sigma, f$sigma); expect_identical(fl$route, f$route)
+  # a Step-2-routed panel: the VCE rule changes only its SE, never the point;
+  # the default is kclass (patch 0064) and legacy overstates
   p2 <- .bt_panel(3, 1, seed = 20260925L)
-  f2 <- bs_fit_cell(p2, min_year = 1995L); f2k <- bs_fit_cell(p2, min_year = 1995L, step2_vce = "kclass")
-  expect_identical(f2$route, "step2_weighted"); expect_identical(f2k$sigma, f2$sigma)
-  expect_true(is.finite(f2$sigma_se) && is.finite(f2k$sigma_se) && f2k$sigma_se < f2$sigma_se)
+  f2 <- bs_fit_cell(p2, min_year = 1995L); f2l <- bs_fit_cell(p2, min_year = 1995L, step2_vce = "legacy")
+  f2k <- bs_fit_cell(p2, min_year = 1995L, step2_vce = "kclass")
+  expect_identical(f2$route, "step2_weighted"); expect_identical(f2l$sigma, f2$sigma)
+  expect_identical(f2$sigma_se, f2k$sigma_se)
+  expect_true(is.finite(f2$sigma_se) && is.finite(f2l$sigma_se) && f2l$sigma_se > f2$sigma_se)
   # a panel too thin to prepare returns NULL, never an error
   expect_null(bs_fit_cell(pan[pan$exporter <= 2, ], min_year = 1995L))
 })

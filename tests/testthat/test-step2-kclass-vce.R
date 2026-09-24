@@ -14,7 +14,8 @@
 #   3. estimate_cell_liml(step2_vce = "kclass") changes ONLY the Step-2 SE
 #      fields (and the stamp) on a step2_weighted cell -- point estimates,
 #      routing, diagnostics untouched; on an interior cell the FINAL SEs are
-#      untouched. The default is "legacy" (bit-preserving).
+#      untouched. The default is "kclass" from v0.7.3 (patch 0064); "legacy"
+#      reproduces the tables shipped through v0.7.2.
 #   4. Wrapper column + CLI flag + config validation.
 # ============================================================================
 
@@ -54,7 +55,7 @@ test_that("legacy is bit-identical to the pre-0061 meat; kclass matches a dense 
     f0 <- fuller_liml_core(dr$y, dr$X, d$Z, weights = wts, endog_idx = c(1L, 2L))
     fl <- fuller_liml_core(dr$y, dr$X, d$Z, weights = wts, endog_idx = c(1L, 2L), vce = "legacy")
     fk <- fuller_liml_core(dr$y, dr$X, d$Z, weights = wts, endog_idx = c(1L, 2L), vce = "kclass")
-    expect_identical(f0$V_eta_robust, fl$V_eta_robust)   # default == legacy
+    expect_identical(f0$V_eta_robust, fk$V_eta_robust)   # default == kclass (patch 0064)
     expect_identical(fl$eta, fk$eta); expect_identical(fl$kappa, fk$kappa)
     expect_identical(fl$u_hat, fk$u_hat)                 # only the sandwich moves
     # inline: pre-0061 arithmetic and the dense k-class sandwich, both in
@@ -96,7 +97,7 @@ test_that("k-class SE tracks Monte-Carlo dispersion; legacy overstates it", {
   expect_true(all(ratio_l > ratio_k))
 })
 
-test_that("estimate_cell_liml(step2_vce) touches only the Step-2 SE fields; default is legacy", {
+test_that("estimate_cell_liml(step2_vce) touches only the Step-2 SE fields; default is kclass", {
   .kv_source(environment())
   se_fields <- c("sigma_se", "omega_se", "rho_se",
                  "sigma_step2_se", "omega_step2_se", "rho_step2_se")
@@ -107,16 +108,16 @@ test_that("estimate_cell_liml(step2_vce) touches only the Step-2 SE fields; defa
   b <- estimate_cell_liml(m2, ref_exporter = 1L, step2_vce = "kclass")
   l <- estimate_cell_liml(m2, ref_exporter = 1L, step2_vce = "legacy")
   expect_identical(a$final_source, "step2_weighted"); expect_identical(a$adjust, 1L)
-  expect_identical(a$step2_vce_method, "legacy"); expect_identical(b$step2_vce_method, "kclass")
-  expect_identical(a[names(a) != "step2_vce_method"], l[names(l) != "step2_vce_method"])  # default == legacy
-  expect_identical(strip(a), strip(b))                            # points, routing, diagnostics
-  expect_true(all(is.finite(c(a$sigma_se, b$sigma_se))))
-  expect_gt(a$sigma_se, b$sigma_se)                                # legacy overstates
+  expect_identical(a$step2_vce_method, "kclass"); expect_identical(l$step2_vce_method, "legacy")
+  expect_identical(a, b)                                            # default == kclass (patch 0064)
+  expect_identical(strip(a), strip(l))                            # points, routing, diagnostics
+  expect_true(all(is.finite(c(a$sigma_se, l$sigma_se))))
+  expect_gt(l$sigma_se, b$sigma_se)                                # legacy overstates
   expect_identical(b$sigma_se, b$sigma_step2_se)                   # final SE == Step-2 SE on this route
   # an interior HLIML cell: final SEs come from HNCS and must not move
   mi <- .kv_cell(3, 1, 25L, 30L, seed = 20260923L)
   ai <- estimate_cell_liml(mi, ref_exporter = 1L)
-  bi <- estimate_cell_liml(mi, ref_exporter = 1L, step2_vce = "kclass")
+  bi <- estimate_cell_liml(mi, ref_exporter = 1L, step2_vce = "legacy")
   expect_identical(ai$final_source, "hliml")
   expect_identical(ai[c("sigma", "omega", "sigma_se", "omega_se", "rho_se")],
                    bi[c("sigma", "omega", "sigma_se", "omega_se", "rho_se")])
@@ -136,18 +137,19 @@ test_that("wrapper column, CLI flag and config validation", {
   out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE)
   outk <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
-                          min_periods = 3L, verbose = FALSE, step2_vce = "kclass")
+                          min_periods = 3L, verbose = FALSE, step2_vce = "legacy")
   expect_true("step2_vce_method" %in% names(out0))
-  expect_true(all(out0$step2_vce_method[!is.na(out0$hliml_method)] == "legacy"))   # default
-  expect_true(all(outk$step2_vce_method[!is.na(outk$hliml_method)] == "kclass"))
+  expect_true(all(out0$step2_vce_method[!is.na(out0$hliml_method)] == "kclass"))   # default (patch 0064)
+  expect_true(all(outk$step2_vce_method[!is.na(outk$hliml_method)] == "legacy"))
   expect_identical(out0$sigma, outk$sigma); expect_identical(out0$final_source, outk$final_source)
   unlink(tmp)
   source(file.path(root, "R", "parse_cli.R"), local = TRUE)
   source(file.path(root, "R", "build_config.R"), local = TRUE)
   source(file.path(root, "R", "validate_config.R"), local = TRUE)
   dd <- tempfile(); dir.create(dd)
-  o0 <- parse_cli(c("--data", dd)); expect_identical(o0$stage1_step2_vce, "legacy")
-  expect_identical(build_config(o0)$stage1_step2_vce, "legacy")
+  o0 <- parse_cli(c("--data", dd)); expect_identical(o0$stage1_step2_vce, "kclass")   # patch 0064 default
+  expect_identical(build_config(o0)$stage1_step2_vce, "kclass")
+  o0$stage1_step2_vce <- NULL; expect_identical(build_config(o0)$stage1_step2_vce, "kclass")  # absent key == kclass
   ok <- parse_cli(c("--data", dd, "--stage1-step2-vce", "kclass")); expect_identical(ok$stage1_step2_vce, "kclass")
   expect_identical(build_config(ok)$stage1_step2_vce, "kclass")
   expect_error(parse_cli(c("--data", dd, "--stage1-step2-vce", "hc1")), "stage1-step2-vce")

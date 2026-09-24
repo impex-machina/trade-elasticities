@@ -71,9 +71,11 @@ run_stage1_liml <- function(baci_dt,
                             negative_omega = "reject",
                             edge_se = "hncs",
                             uv_outlier_threshold = NA_real_,
-                            step2_vce = "legacy") {
-  # step2_vce (patch 0061): sandwich behind the Step-2 SEs, "legacy" (OLS
-  # meat, bit-preserving through v0.7.2) or "kclass"; see estimate_cell_liml().
+                            step2_vce = "kclass") {
+  # step2_vce (patch 0061; default "kclass" from v0.7.3, patch 0064):
+  # sandwich behind the Step-2 SEs, "kclass" (k-class meat) or "legacy" (OLS
+  # meat, the reproducer of tables shipped through v0.7.2); see
+  # estimate_cell_liml().
   # uv_outlier_threshold (patch 0057): Stage-2's |d ln p| trim applied inside
   # prepare_cell_moments(); NA = off (v0.7.x, bit-preserving).
   # edge_se (patch 0049; default "hncs" from patch 0051 / v0.7.1 reference

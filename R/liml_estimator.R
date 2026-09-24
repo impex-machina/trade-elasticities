@@ -82,11 +82,13 @@
 
 fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
                              endog_idx = NULL,
-                             vce = c("legacy", "kclass")) {
-  # vce (patch 0061, 2026-09-22 fresh-eyes review): which sandwich fills
-  # V_eta_robust. "legacy" (default, bit-preserving through v0.7.2) uses the
-  # OLS meat X' diag(u^2) X; "kclass" uses the k-class meat X_k' diag(u^2) X_k
-  # with X_k = ((1 - kappa) I + kappa P_Z) X -- see the variance block below.
+                             vce = c("kclass", "legacy")) {
+  # vce (patch 0061, 2026-09-22 fresh-eyes review; DEFAULT flipped to "kclass"
+  # in patch 0064 for v0.7.3): which sandwich fills V_eta_robust. "kclass"
+  # (default from v0.7.3) uses the k-class meat X_k' diag(u^2) X_k with
+  # X_k = ((1 - kappa) I + kappa P_Z) X; "legacy" is the OLS meat
+  # X' diag(u^2) X that every release through v0.7.2 shipped, kept as the
+  # bit-for-bit reproducer of those tables -- see the variance block below.
   vce <- match.arg(vce)
   # Y: n x 1 outcome vector (lp_dif squared, in our setting)
   # X: n x k regressors  - typically [x1, x2, ones]
@@ -281,7 +283,9 @@ fuller_liml_core <- function(Y, X, Z, weights = NULL, fuller_alpha = 1,
   # stage1_liml.md, "Step-2 standard errors"). Interior HLIML and boundary
   # SEs come from the HNCS sandwich and are unaffected either way.
   # "legacy" is kept as the bit-for-bit reproducer of every release through
-  # v0.7.2 (the flip is a release-train decision, as with 0049 -> 0051).
+  # v0.7.2; "kclass" is the default from v0.7.3 (patch 0064, after the rc of
+  # 2026-09-24: real-data Step-2 sigma_se ratio kclass/legacy median 0.195,
+  # Step-2 rel SE 1.18 -> 0.239 vs interior 0.252 / boundary 0.298).
   meat_X <- if (vce == "kclass") {
     PX <- Z %*% (ZtZ_inv %*% ZtX)                # P_Z X, n x k
     (1 - kappa) * X + kappa * PX                 # X_k
@@ -1316,15 +1320,15 @@ estimate_cell_liml <- function(cell_df,
                                cf_admissibility = c("legacy", "strict"),
                                negative_omega = c("reject", "floor"),
                                edge_se = c("hncs", "none"),
-                               step2_vce = c("legacy", "kclass")) {
-  # step2_vce (patch 0061, 2026-09-22 fresh-eyes review): the sandwich
-  # behind the Step-2 (weighted Fuller LIML) SEs -- fuller_liml_core(vce=).
-  # "legacy" (default, bit-preserving through v0.7.2) is the OLS meat
-  # X'diag(u^2)X; "kclass" is the k-class meat X_k'diag(u^2)X_k. Changes
-  # ONLY sigma_se/omega_se/rho_se on step2_weighted cells and the
+                               step2_vce = c("kclass", "legacy")) {
+  # step2_vce (patch 0061, 2026-09-22 fresh-eyes review; DEFAULT flipped to
+  # "kclass" in patch 0064 for v0.7.3): the sandwich behind the Step-2
+  # (weighted Fuller LIML) SEs -- fuller_liml_core(vce=). "kclass" (default
+  # from v0.7.3) is the k-class meat X_k'diag(u^2)X_k; "legacy" is the OLS
+  # meat X'diag(u^2)X shipped through v0.7.2 (its bit-for-bit reproducer).
+  # Changes ONLY sigma_se/omega_se/rho_se on step2_weighted cells and the
   # *_step2_se diagnostics everywhere; points, routing, HLIML/boundary SEs
-  # and the weak-IV/overid statistics are untouched. The flip to "kclass"
-  # is a release-train decision (see the vce block in fuller_liml_core()).
+  # and the weak-IV/overid statistics are untouched.
   step2_vce <- match.arg(step2_vce)
   # edge_se (patch 0049; DEFAULT flipped to "hncs" in patch 0051 after the
   # v0.7.1 release made it the reference configuration): "hncs" = the HNCS

@@ -204,6 +204,39 @@ edge_se_clause <- function(es) {
           format_int(n_se + 0L), format_int(es[["n_boundary_status_fail"]] + 0L))
 }
 
+# (patch 0064) Step-2 VCE clause for the Standard-errors bullet, driven by
+# the run's own step2_vce block (absent, or rule "legacy", on tables shipped
+# before v0.7.3 -> empty, so the bullet is byte-identical on old JSONs).
+step2_vce_clause <- function(sv) {
+  if (is.null(sv) || !identical(sv[["method"]], "kclass")) return("")
+  f2 <- function(x) sprintf("%.2f", x)
+  sprintf(" Stage-1 `sigma_se` on the %s Step-2 (Fuller LIML fallback) cells uses the k-class sandwich from v0.7.3; through v0.7.2 an OLS meat overstated it several-fold. Median relative SE (`sigma_se`/`sigma`): %s on Step-2 cells, %s on interior HLIML cells, %s on boundary cells.",
+          format_int(sv[["n_step2"]] + 0L), f2(sv[["rel_se_median_step2"]]),
+          f2(sv[["rel_se_median_hliml"]]), f2(sv[["rel_se_median_boundary"]]))
+}
+
+# (patch 0064) Exporter-cluster bootstrap clause, driven by
+# results/bootstrap_se_summary.json (emitted by 00_setup.R only from a
+# branch-tagged per-cell file; absent -> empty). Greek/symbols as Unicode
+# escapes to keep this file ASCII-clean (see asymmetry_phrase).
+bootstrap_clause <- function(bs) {
+  if (is.null(bs) || is.null(bs[["by_route"]])) return("")
+  br <- bs[["by_route"]]
+  g <- function(route, key) br[[route]][[key]]
+  f2 <- function(x) sprintf("%.2f", x)
+  pc <- function(x) sprintf("%.0f%%", 100 * x)
+  s2f <- bs[["step2_by_f"]]
+  f7 <- if (!is.null(s2f) && !is.null(s2f[["F>=7"]])) s2f[["F>=7"]][["ratio_mad_same_median"]] else NA_real_
+  paste0(
+    sprintf(" An exporter-cluster bootstrap (%s cells \u00d7 %s replicates, branch-tagged; `validation/bootstrap_se_cells.csv`) puts the robust (MAD) dispersion of the replicates that stay on a cell's own branch at %s\u00d7 the analytic SE for interior HLIML cells, %s\u00d7 for boundary cells and %s\u00d7 for Step-2 cells, with %s, %s and %s of replicates staying on the published branch; the unconditional SD-based ratios are %s\u00d7, %s\u00d7 and %s\u00d7, the difference being branch switching and heavy tails.",
+            format_int(bs[["n_cells"]] + 0L), format_int(bs[["B"]] + 0L),
+            f2(g("hliml", "ratio_mad_same_median")), f2(g("hliml_boundary", "ratio_mad_same_median")), f2(g("step2_weighted", "ratio_mad_same_median")),
+            pc(g("hliml", "share_same_route_median")), pc(g("hliml_boundary", "share_same_route_median")), pc(g("step2_weighted", "share_same_route_median")),
+            f2(g("hliml", "ratio_sd_median")), f2(g("hliml_boundary", "ratio_sd_median")), f2(g("step2_weighted", "ratio_sd_median"))),
+    if (is.finite(f7)) sprintf(" Step-2 cells with strong instruments (Kleibergen-Paap F \u2265 7) sit at %s\u00d7 within their own branch: their \u03c3 depends on which exporters the cell contains, so read Step-2 `sigma_se` as a composition-conditional lower bound and consult the per-cell bootstrap dispersion alongside it.", f2(f7)) else ""
+  )
+}
+
 boundary_phrase <- function(rs, n_cells, es = NULL) {
   bt <- rs[["boundary_total"]]
   if (is.null(bt) || !is.finite(bt) || bt == 0) return("")
@@ -264,6 +297,8 @@ render_env$yield_direction_phrase <- yield_direction_phrase
 render_env$boundary_phrase <- boundary_phrase
 render_env$beyond_inf_phrase <- beyond_inf_phrase
 render_env$sigma_bias_sign_phrase <- sigma_bias_sign_phrase
+render_env$step2_vce_clause <- step2_vce_clause        # patch 0064
+render_env$bootstrap_clause <- bootstrap_clause        # patch 0064
 render_env$manifest_n_files <- manifest_n_files
 
 rendered <- tryCatch(

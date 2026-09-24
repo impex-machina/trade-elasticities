@@ -146,14 +146,14 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     optparse::make_option(
       c("--stage1-step2-vce"),
-      type = "character", default = "legacy",
+      type = "character", default = "kclass",
       help = paste("Sandwich behind the Step-2 (weighted Fuller LIML) standard",
-                   "errors: 'legacy' (OLS meat X'diag(u^2)X; reproduces every",
-                   "release through v0.7.2 bit-for-bit) or 'kclass' (the",
-                   "k-class meat X_k'diag(u^2)X_k implied by the estimating",
-                   "equations). Changes only the SEs of step2_weighted cells;",
-                   "points, routing and HLIML/boundary SEs are identical.",
-                   "Default: %default"),
+                   "errors: 'kclass' (v0.7.3 default: the k-class meat",
+                   "X_k'diag(u^2)X_k implied by the estimating equations) or",
+                   "'legacy' (OLS meat X'diag(u^2)X; reproduces every release",
+                   "through v0.7.2 bit-for-bit). Changes only the SEs of",
+                   "step2_weighted cells; points, routing and HLIML/boundary",
+                   "SEs are identical. Default: %default"),
       metavar = "RULE"
     ),
     optparse::make_option(

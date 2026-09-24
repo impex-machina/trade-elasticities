@@ -188,6 +188,25 @@ boundary-routed replicate as a failure, so the July files must not be
 compared to a rerun cell by cell -- they are a different estimator and a
 different harness.
 
+v0.7.3 results (2026-09-24; 750 cells x 399 replicates on the v0.7.3-rc
+Stage-1 table; eligible 156,090 cells including boundary cells; baseline
+refits 750/750 with 100% sigma and route match). By branch, medians across
+cells, 3-exporter and F-undefined cells excluded: interior HLIML --
+within-branch MAD/SE 0.95 (SD/SE 1.89), all-replicate MAD/SE 1.50 (SD/SE
+4.57), 65% of replicates stay interior; boundary -- 1.29 (2.73), 1.66
+(3.25), 57% stay; Step 2 -- 1.34 (3.75), 1.83 (3.62), 34% stay. The
+interior HNCS sandwich is calibrated to the robust within-branch
+dispersion across every exporter-count and F bin (0.89-1.08); the
+unconditional multiples in the 2026-07-10 table are branch switching and
+heavy tails. Step 2 splits by instrument strength within the branch --
+MAD/SE 0.63 at F < 2, 1.96 at F 2-7, 5.58 at F >= 7 -- and the strong-F
+excess is not the sigma cap but composition: the analytic SE is the
+variance conditional on the exporter set, and Step-2 cells are the cells
+whose exporters disagree about sigma. The text above the harness update
+should be read as the July record; this paragraph is the current
+benchmark, and `docs/methodology/stage1_liml.md` ("v0.7.3 rc") carries the
+full table and reading.
+
 ## 5. Release note for replication
 
 Estimates cited in this paper are the v0.6.1 release (GitHub tag v0.6.1; HF data revision 96e1589e4b5bd0bde0b3f2643b673ee09ff9f680). v0.6.1 corrects the HLIML boundary search (patches 0038-0042): the 3,286 sigma-pole boundary cells v0.6.0 shipped are now correctly classified as failed, usable Stage 1 cells move 185,144 -> 182,385, sigma median 2.705 -> 2.727, country gamma median 0.657 -> 0.628, optimal-tariff median 0.674 -> 0.657, and Pillar-2 synthetic recovery was re-captured under the closed-form default (median yield 72% -> 98%). It supersedes v0.6.0 (GitHub tag v0.6.0; HF data revision 4d0987e22977a6482eeefd8d9a3d5452d907e505), which replaces the Stage 1 BFGS search with the closed-form HLIML estimator with boundary-search routing: usable Stage 1 cells rise from 50.5% to 66.0% of the 280,649 attempted, and sigma moves for the first time across releases (median 2.878 -> 2.705); gamma median 0.678 -> 0.657, optimal-tariff median 0.709 -> 0.674, rows 6,860,437, tier composition unchanged. A Stage 2 analytic gradient was evaluated and rejected 22:1 under the current optimizer cascade (docs/methodology/v060_stage2_gradient_ab.md), and shipped Stage 1 cap flags were corrected post-hoc for boundary corner cells (sigma_capped +1,934, omega_capped +3,328). Full delta accounting: docs/methodology/v051_v060rc_comparison.md. Relative to v0.5.0, v0.5.1 is validation-only: Stage 1 sigma and Stage 2b gamma are bit-identical to v0.5.0 (HF revision ea1c3ea464ca1ac114bf9b6c518325e8135bdc41); it corrects the Pillar-2 synthetic-recovery harness described in Section 2 and re-captures its tables. Relative to v0.4.1, v0.5.0 corrected the Broda-Weinstein weight

@@ -87,8 +87,9 @@ build_config <- function(opts) {
     stage1_negative_omega = opts$stage1_negative_omega %||% "reject",
     # patch 0049: SEs for boundary (edge) optima.
     stage1_edge_se = opts$stage1_edge_se %||% "hncs",
-    # patch 0061: sandwich behind the Step-2 SEs. Absent key == legacy.
-    stage1_step2_vce = opts$stage1_step2_vce %||% "legacy",
+    # patch 0061: sandwich behind the Step-2 SEs. Absent key == kclass
+    # (the v0.7.3 default, patch 0064); pass "legacy" to reproduce <= v0.7.2.
+    stage1_step2_vce = opts$stage1_step2_vce %||% "kclass",
     # patch 0057: Stage-2's unit-value trim applied inside Stage 1 (NA = off).
     stage1_uv_trim = if (is.null(opts$stage1_uv_trim)) NA_real_ else opts$stage1_uv_trim,
 
