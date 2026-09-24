@@ -32,6 +32,37 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.7.3 (2026-09-24).** Validation-only release: **every point estimate,
+> routing field and gamma SE is identical to v0.7.2** (Stage 1: 280,649 cells,
+> ok 181,245, interior 78,526 / Step 2 47,479 / boundary 55,240; sigma 2.462;
+> Stage 2b: 6,814,229 rows, gamma 0.650, opt_tariff 0.649, tiers
+> 3.3/70.0/0.2/26.4). What changes is inference on the 47,479 Step-2 (Fuller
+> LIML fallback) cells: their sigma_se / omega_se / rho_se now come from the
+> k-class sandwich implied by the estimating equations; the sandwich shipped
+> through v0.7.2 used the OLS meat and overstated the Step-2 sigma SE about
+> fivefold at the median (ratio k-class / legacy 0.195, p10 0.104, p90
+> 0.411). Step-2 median relative SE falls from 1.18 to 0.239, on the same
+> footing as interior HLIML (0.252) and boundary (0.298); SE availability is
+> unchanged (89.8% of ok cells). In Stage 2b only sigma_se, sigma_robust and
+> gamma_se_total move, on the 1,018,474 rows (14.9%) whose sigma is a Step-2
+> cell: sigma_robust TRUE rises from 17.6% to 23.9% of rows (on those rows
+> 15.4% -> 57.9%), gamma_se_total is populated on 19.2% of rows (was 13.9%).
+> liml_validation_tier1a.csv is re-captured under the shipped default and
+> gains six per-route columns (successful replicates and sigma coverage by
+> branch); tier1b and the se_calibration pair are unchanged by construction.
+> The exporter-cluster bootstrap pair is replaced by a branch-tagged
+> 2026-09-24 run (750 cells x 399 replicates on this release's Stage-1
+> table; medians over the 653 cells with at least four exporters and a
+> defined weak-instrument F): among replicates that stay on a cell's own
+> branch, robust (MAD) dispersion is 1.03x the analytic SE for interior
+> HLIML cells, 1.44x for boundary cells and 1.51x for Step-2 cells; Step-2
+> cells with strong instruments (F >= 7) sit at 6.4x because their sigma
+> depends on which exporters the cell contains -- read Step-2 sigma_se as a
+> composition-conditional lower bound. Point-estimate consumers need not
+> re-pull; SE and validation consumers should. Details:
+> docs/methodology/stage1_liml.md ("Step-2 standard errors", "v0.7.3 rc").
+> Data revision: $oid. **v0.7.2 remains available pinned at
+> revision 1240168d4b83697eb30cdf99551924a55422ad0.**
 > **v0.7.2 (2026-09-21).** Validation-only release: **every estimate, SE and
 > routing field is identical to v0.7.1.** The four Pillar-2/3 validation
 > files (`liml_validation_tier1a/b.csv`, `se_calibration_mc_summary.csv`,
