@@ -423,11 +423,26 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     if (is.na(ln_gamma_prior)) return(cell_failure("all_tier3_no_prior"))
     gamma_prior <- exp(ln_gamma_prior)
     all_exp <- c(tiers$exporter, ref_exporter)
+    # (patch 0066) Full Stage-2b schema on the early-return rows. Before,
+    # this branch returned only the eight core columns, so rbindlist(fill)
+    # left gamma_se_status / sigma_robust NA: the rows were counted as
+    # "unflagged" rather than Tier-3-imputed in results/stage2b_summary.json
+    # (63,762 rows on v0.7.3 -- the sigma_robust.tier3_na minus
+    # se_status.tier3_prior gap), and the reference row (tier 0, prior gamma)
+    # passed the `tier < 3` filter in the opt_tariff block as if estimated.
+    # Every row here is assigned the prior outright: label it so. The
+    # reference keeps tier 0 (its role) and convergence -1 (imputed);
+    # is_estimated_row() in R/utils_general.R reads both.
+    n_all <- length(all_exp)
     return(data.table(
-      importer = focal_importer, exporter = all_exp,
-      sigma = sigma_val, gamma = gamma_prior,
-      ref_exporter = ref_exporter, convergence = -1L,
-      obj_value = NA_real_, tier = c(tiers$tier, 0L)
+      importer        = focal_importer, exporter = all_exp,
+      sigma           = sigma_val, gamma = gamma_prior,
+      gamma_se        = NA_real_, gamma_se_total = NA_real_,
+      sigma_robust    = NA, sigma_se = NA_real_, dgamma_dsigma = NA_real_,
+      gamma_se_status = "tier3_prior",
+      gamma_exposure  = NA_integer_, gamma_shrink_wt = NA_real_,
+      ref_exporter    = ref_exporter, convergence = -1L,
+      obj_value       = NA_real_, tier = c(tiers$tier, 0L)
     ))
   }
 
@@ -695,7 +710,9 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
       #  prefer full-coverage at the cost of bias toward the prior.
       # -------------------------------------------------------------------
       est_tiers <- if ("tier" %in% names(est)) est$tier else rep(0L, nrow(est))
-      is_estimated <- !is.na(est_tiers) & est_tiers < 3L
+      # (patch 0066) tier < 3 AND fitted: the all-Tier-3 early return's
+      # reference row is imputed (convergence -1) and must not count.
+      is_estimated <- is_estimated_row(est_tiers, est$convergence)
 
       if (any(is_estimated)) {
         ot <- optimal_tariff(est$gamma[is_estimated],

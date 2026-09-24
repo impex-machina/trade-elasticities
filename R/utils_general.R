@@ -119,6 +119,21 @@ cell_failure <- function(reason) {
 }
 
 
+#' Directly-estimated row predicate for a Stage-2 output (patch 0066,
+#' 2026-09-24 fresh-eyes audit). A row's gamma was produced by the
+#' optimizer iff its tier is 0/1/2 AND the cell was fitted: the all-Tier-3
+#' early return in estimate_importer_product_fixed_sigma() gives the
+#' REFERENCE exporter tier 0 with the good-level prior and convergence -1,
+#' and `tier < 3` alone let that imputed row pass as an estimate at the three
+#' sites that filter on it (opt_tariff, the plateau-fallback recompute in
+#' scripts/run_estimation.R, and the tail-trim source in
+#' estimate_all_fixed_sigma()). Tier-3 rows of fitted cells carry
+#' convergence -1 too, so the rule is simply: tier < 3 and not imputed.
+is_estimated_row <- function(tier, convergence) {
+  !is.na(tier) & tier < 3L & !(convergence %in% -1L)
+}
+
+
 #' Trade-weighted optimal tariff across exporters within a cell.
 #' Returns NA if no exporter has a valid (positive) gamma and trade value.
 optimal_tariff <- function(gamma, sigma, trade_values = NULL) {

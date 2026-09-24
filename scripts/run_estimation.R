@@ -432,7 +432,7 @@ if (should_run("2a", opts, paths)) {
         touched <- unique(regional_results[repl_idx, .(importer, good)])
         regional_results[touched, on = .(importer, good), `:=`(
           opt_tariff = {
-            est <- !is.na(tier) & tier < 3L
+            est <- is_estimated_row(tier, convergence)   # patch 0066
             if (any(est)) optimal_tariff(gamma[est], sigma[est][1], avg_trade[est])
             else NA_real_
           },

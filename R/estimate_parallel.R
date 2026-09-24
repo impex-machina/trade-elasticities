@@ -426,7 +426,7 @@ stage2_worker_fns <- c("estimate_product_fixed_sigma",
                        "compute_exporter_lookup",
                        "compute_exporter_weights",
                        "choose_reference", "bw_weight", "calendar_lag",
-                       "optimal_tariff",
+                       "optimal_tariff", "is_estimated_row",   # patch 0066
                        "assign_regions", "build_region_map",
                        "build_export_moments", "cell_failure",
                        "compute_dgamma_dsigma", "assess_sigma_robust",
@@ -729,7 +729,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     output <- output[!is.na(sigma) & !is.na(gamma)]
 
     if ("tier" %in% names(output)) {
-      trim_src <- output[is.na(tier) | tier < 3L]
+      trim_src <- output[is.na(tier) | is_estimated_row(tier, convergence)]   # patch 0066
     } else {
       trim_src <- output
     }
