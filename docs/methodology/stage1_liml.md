@@ -139,24 +139,29 @@ unchanged.
 The branch-tagged exporter-cluster bootstrap (patch 0063; 750 cells × 399
 replicates on the rc Stage-1 table, `--step2-vce kclass`; eligible 156,090
 cells; baseline refits 750/750 with 100% σ and route match) gives the
-like-for-like calibration by branch (medians across cells; 3-exporter and
-F-undefined cells excluded):
+like-for-like calibration by branch. Medians are over the 653 cells with
+at least four exporters and a defined weak-instrument F: the 83
+three-exporter cells resample to a handful of distinct panels (their
+within-branch MAD collapses toward zero) and the 14 F-undefined cells
+barely bootstrap, so both are reported in the per-cell file but excluded
+here (`results/bootstrap_se_summary.json` is the same computation):
 
 | branch | cells | replicates on the published branch | within-branch MAD / SE | within-branch SD / SE | all-replicate MAD / SE | all-replicate SD / SE |
 |---|---|---|---|---|---|---|
-| interior HLIML | 277 | 65% | **0.95** | 1.89 | 1.50 | 4.57 |
-| boundary | 242 | 57% | **1.29** | 2.73 | 1.66 | 3.25 |
-| Step 2 | 231 | 34% | **1.34** | 3.75 | 1.83 | 3.62 |
+| interior HLIML | 243 | 63% | **1.03** | 1.88 | 1.55 | 4.51 |
+| boundary | 205 | 55% | **1.44** | 2.73 | 1.75 | 3.25 |
+| Step 2 | 205 | 32% | **1.51** | 3.95 | 1.93 | 3.97 |
 
 The interior HNCS sandwich is calibrated against the robust within-branch
-dispersion (0.89–1.08 across every exporter-count and F bin); the
-unconditional 4.6× of the July benchmark is branch switching plus heavy
-tails, not miscalibration. The boundary SE understates by ~30% (larger
-cells more), consistent with its edge-conditional derivation. Step 2 is the
-knife-edge branch: two-thirds of its replicates leave it, and within the
-branch the ratio splits by instrument strength — MAD 0.63 at F < 2, 1.96 at
-F 2–7, **5.58 at F ≥ 7** (SD 26.6). That is not the σ cap (published σ ≥ 9
-in 4 of 43 such cells, replicate medians ≥ 9 in 3): those cells have the
+dispersion (1.03 at the median; 0.89–1.06 across the exporter-count bins);
+the unconditional 4.5× of the July benchmark is branch switching plus heavy
+tails, not miscalibration. The boundary SE understates by ~40% (larger
+cells more: 0.96 at 10–19 exporters, 1.72 at 50+), consistent with its
+edge-conditional derivation. Step 2 is the knife-edge branch: two-thirds
+of its replicates leave it, and within the branch the ratio splits by
+instrument strength — MAD 0.68 at F < 2, 2.61 at F 2–7, **6.36 at F ≥ 7**
+(SD 28.8). That is not the σ cap (published σ ≥ 9 in 3 of the 40 such
+cells, same-route replicate medians ≥ 9 in 2): those cells have the
 *smallest* analytic SEs (0.3–1% of σ) beside replicate distributions that
 are wider and shifted (e.g. σ 3.59, SE 0.012, same-route replicate median
 5.19). The k-class SE is the variance conditional on the cell's exporter

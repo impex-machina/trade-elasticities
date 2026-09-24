@@ -190,16 +190,18 @@ different harness.
 
 v0.7.3 results (2026-09-24; 750 cells x 399 replicates on the v0.7.3-rc
 Stage-1 table; eligible 156,090 cells including boundary cells; baseline
-refits 750/750 with 100% sigma and route match). By branch, medians across
-cells, 3-exporter and F-undefined cells excluded: interior HLIML --
-within-branch MAD/SE 0.95 (SD/SE 1.89), all-replicate MAD/SE 1.50 (SD/SE
-4.57), 65% of replicates stay interior; boundary -- 1.29 (2.73), 1.66
-(3.25), 57% stay; Step 2 -- 1.34 (3.75), 1.83 (3.62), 34% stay. The
+refits 750/750 with 100% sigma and route match). By branch, medians over
+the 653 cells with at least four exporters and a defined F (the 83
+three-exporter cells resample to near-degenerate panels and the 14
+F-undefined cells barely bootstrap; both are excluded): interior HLIML --
+within-branch MAD/SE 1.03 (SD/SE 1.88), all-replicate MAD/SE 1.55 (SD/SE
+4.51), 63% of replicates stay interior; boundary -- 1.44 (2.73), 1.75
+(3.25), 55% stay; Step 2 -- 1.51 (3.95), 1.93 (3.97), 32% stay. The
 interior HNCS sandwich is calibrated to the robust within-branch
-dispersion across every exporter-count and F bin (0.89-1.08); the
-unconditional multiples in the 2026-07-10 table are branch switching and
-heavy tails. Step 2 splits by instrument strength within the branch --
-MAD/SE 0.63 at F < 2, 1.96 at F 2-7, 5.58 at F >= 7 -- and the strong-F
+dispersion (0.89-1.06 across the exporter-count bins); the unconditional
+multiples in the 2026-07-10 table are branch switching and heavy tails.
+Step 2 splits by instrument strength within the branch -- MAD/SE 0.68 at
+F < 2, 2.61 at F 2-7, 6.36 at F >= 7 -- and the strong-F
 excess is not the sigma cap but composition: the analytic SE is the
 variance conditional on the exporter set, and Step-2 cells are the cells
 whose exporters disagree about sigma. The text above the harness update

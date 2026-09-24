@@ -103,13 +103,16 @@ test_that("README clauses are empty on old JSONs and render the v0.7.3 numbers w
   sv <- list(method = "kclass", n_step2 = 47479, rel_se_median_step2 = 0.239, rel_se_median_hliml = 0.252, rel_se_median_boundary = 0.298)
   s1 <- env$step2_vce_clause(sv)
   expect_true(grepl("47,479 Step-2", s1, fixed = TRUE)); expect_true(grepl("0.24 on Step-2", s1, fixed = TRUE))
-  bs <- list(n_cells = 750, B = 399,
+  bs <- list(n_cells = 750, B = 399, n_cells_core = 653,
              by_route = list(hliml = list(share_same_route_median = 0.646, ratio_mad_same_median = 0.951, ratio_sd_median = 4.568),
                              hliml_boundary = list(share_same_route_median = 0.574, ratio_mad_same_median = 1.287, ratio_sd_median = 3.252),
                              step2_weighted = list(share_same_route_median = 0.337, ratio_mad_same_median = 1.337, ratio_sd_median = 3.621)),
              step2_by_f = list(`F>=7` = list(ratio_mad_same_median = 5.576)))
   s2 <- env$bootstrap_clause(bs)
   expect_true(grepl("750 cells", s2, fixed = TRUE)); expect_true(grepl("0.95", s2, fixed = TRUE))
+  expect_true(grepl("medians over the 653 cells", s2, fixed = TRUE))
+  bs_all <- bs; bs_all$n_cells_core <- NULL
+  expect_false(grepl("medians over", env$bootstrap_clause(bs_all), fixed = TRUE))
   expect_true(grepl("65%, 57% and 34%", s2, fixed = TRUE)); expect_true(grepl("5.58", s2, fixed = TRUE))
   bs$step2_by_f <- NULL
   expect_false(grepl("strong instruments", env$bootstrap_clause(bs), fixed = TRUE))

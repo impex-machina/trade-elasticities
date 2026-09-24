@@ -227,9 +227,15 @@ bootstrap_clause <- function(bs) {
   pc <- function(x) sprintf("%.0f%%", 100 * x)
   s2f <- bs[["step2_by_f"]]
   f7 <- if (!is.null(s2f) && !is.null(s2f[["F>=7"]])) s2f[["F>=7"]][["ratio_mad_same_median"]] else NA_real_
+  # (patch 0065) the medians are over the core cells -- three-exporter cells
+  # resample to near-degenerate panels and F-undefined cells barely
+  # bootstrap; say so, and say how many, rather than imply all cells.
+  n_core <- bs[["n_cells_core"]]
+  core_phrase <- if (!is.null(n_core) && n_core < bs[["n_cells"]])
+    sprintf("; medians over the %s cells with at least four exporters and a defined weak-instrument F", format_int(n_core + 0L)) else ""
   paste0(
-    sprintf(" An exporter-cluster bootstrap (%s cells \u00d7 %s replicates, branch-tagged; `validation/bootstrap_se_cells.csv`) puts the robust (MAD) dispersion of the replicates that stay on a cell's own branch at %s\u00d7 the analytic SE for interior HLIML cells, %s\u00d7 for boundary cells and %s\u00d7 for Step-2 cells, with %s, %s and %s of replicates staying on the published branch; the unconditional SD-based ratios are %s\u00d7, %s\u00d7 and %s\u00d7, the difference being branch switching and heavy tails.",
-            format_int(bs[["n_cells"]] + 0L), format_int(bs[["B"]] + 0L),
+    sprintf(" An exporter-cluster bootstrap (%s cells \u00d7 %s replicates, branch-tagged; `validation/bootstrap_se_cells.csv`%s) puts the robust (MAD) dispersion of the replicates that stay on a cell's own branch at %s\u00d7 the analytic SE for interior HLIML cells, %s\u00d7 for boundary cells and %s\u00d7 for Step-2 cells, with %s, %s and %s of replicates staying on the published branch; the unconditional SD-based ratios are %s\u00d7, %s\u00d7 and %s\u00d7, the difference being branch switching and heavy tails.",
+            format_int(bs[["n_cells"]] + 0L), format_int(bs[["B"]] + 0L), core_phrase,
             f2(g("hliml", "ratio_mad_same_median")), f2(g("hliml_boundary", "ratio_mad_same_median")), f2(g("step2_weighted", "ratio_mad_same_median")),
             pc(g("hliml", "share_same_route_median")), pc(g("hliml_boundary", "share_same_route_median")), pc(g("step2_weighted", "share_same_route_median")),
             f2(g("hliml", "ratio_sd_median")), f2(g("hliml_boundary", "ratio_sd_median")), f2(g("step2_weighted", "ratio_sd_median"))),
