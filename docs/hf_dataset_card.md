@@ -32,7 +32,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.7.4 (2026-09-2X).** Stage-2 correction: the log-ridge penalty on
+> **v0.7.4 (2026-09-25).** Stage-2 correction: the log-ridge penalty on
 > gamma now applies to every coordinate. Through v0.7.3 it skipped
 > coordinates below 1e-5 while the optimizer bound was 1e-6, and 828,294 of
 > the 4,992,699 directly estimated Stage-2b rows (16.6%) sat at that floor,
@@ -53,7 +53,7 @@ under another cleaning rule must say which rule.
 > formula"), `docs/methodology/v073_v074rc_compare_runs.md`,
 > `docs/results/stage2_shrinkage_census_v074rc*.md`,
 > `docs/results/stage2_lambda_curve_v074rc.md`.
-> Data revision: `<fill at the card step after the HF upload>`. **v0.7.3 remains available pinned at
+> Data revision: `<the 40-hex data revision from the upload>`. **v0.7.3 remains available pinned at
 > revision `d4225cad88e68061b0af39e2917a26ee50db90ec`.**
 > **v0.7.3 (2026-09-24).** Validation-only release: **every point estimate,
 > routing field and gamma SE is identical to v0.7.2** (Stage 1: 280,649 cells,
