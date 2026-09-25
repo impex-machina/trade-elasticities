@@ -38,7 +38,7 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
                                 double ln_gamma_prior,
                                 double shrinkage_lambda,
                                 bool paper_exact_eq11 = false,
-                                bool ridge_all_coords = false) {
+                                bool ridge_all_coords = true) {   // patch 0070: default all
 
   // d[0] = gamma_k, d[1:J] = gamma_j
   // sigma is FIXED (not part of d)
@@ -151,8 +151,9 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
 
   double penalty = 0.0;
 
-  // (patch 0068) ridge_all_coords = TRUE applies the log-ridge to every
-  // coordinate (d > 0). The legacy rule (d > 1e-5) is the v0.7.3 reproducer:
+  // (patch 0068/0070) ridge_all_coords = TRUE (v0.7.4 default) applies the
+  // log-ridge to every coordinate (d > 0). The legacy rule (d > 1e-5) is the
+  // v0.7.3 reproducer:
   // with the optimizer's lower bound at 1e-6 it left the band (1e-6, 1e-5]
   // penalty-free -- a hole ~lambda*(ln 1e-5 - ln g)^2 (~11 objective units
   // at lambda = 0.1, g ~ 0.4) deep beside a data SSR of order 1e-2 .. 1 --

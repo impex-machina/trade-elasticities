@@ -32,6 +32,29 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.7.4 (2026-09-2X).** Stage-2 correction: the log-ridge penalty on
+> gamma now applies to every coordinate. Through v0.7.3 it skipped
+> coordinates below 1e-5 while the optimizer bound was 1e-6, and 828,294 of
+> the 4,992,699 directly estimated Stage-2b rows (16.6%) sat at that floor,
+> 13 log units below their prior -- the whole `gamma_se_status = boundary`
+> population (11.3% of rows); Stage 2a had 14.4% of its rows there and 39
+> of 1,240 goods a floor prior. Stage 1 is identical (sha256-gated). In
+> Stage 2b: no row at the floor; gamma q25 0.384 -> 0.458 (median 0.650 ->
+> 0.665, max 15.98 -> 11.59); median 1/gamma 1.538 -> 1.503; opt_tariff
+> median 0.649 -> 0.723; gamma_se finite on 63.0% of rows (was 54.7%);
+> boundary SE status 0.1%, non_converged 8.9% (was 4.4%); rows 6,811,822
+> (trim membership only -- tier identical on every shared key). gamma_se
+> changes definition: it is now the sampling standard error of the
+> shrinkage estimator (sandwich form; median 0.165, was 0.547) -- read it
+> with gamma_shrink_wt, whose definition also moves to lambda/gamma^2
+> units (median 0.928; data share = 1 - gamma_shrink_wt). Every
+> point-estimate consumer should re-pull. Details:
+> `docs/methodology/stage2_country.md` ("Log-ridge domain", "Variance
+> formula"), `docs/methodology/v073_v074rc_compare_runs.md`,
+> `docs/results/stage2_shrinkage_census_v074rc*.md`,
+> `docs/results/stage2_lambda_curve_v074rc.md`.
+> Data revision: `<fill at the card step after the HF upload>`. **v0.7.3 remains available pinned at
+> revision `d4225cad88e68061b0af39e2917a26ee50db90ec`.**
 > **v0.7.3 (2026-09-24).** Validation-only release: **every point estimate,
 > routing field and gamma SE is identical to v0.7.2** (Stage 1: 280,649 cells,
 > ok 181,245, interior 78,526 / Step 2 47,479 / boundary 55,240; sigma 2.462;

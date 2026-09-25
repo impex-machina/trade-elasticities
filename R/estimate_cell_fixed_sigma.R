@@ -99,12 +99,12 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
                                     boundary_thresh = 0.01,
                                     plateau_thresh = 5.0,
                                     paper_exact_eq11 = FALSE,
-                                    se_form = "legacy") {
+                                    se_form = "sandwich") {   # patch 0070: default sandwich
   # (patch 0069) se_form selects the variance formula; J'WJ is the
   # Gauss-Newton Hessian of the HALF objective (SSR/2 + (lambda/2) sum
   # (ln d - ln g)^2), whose ridge curvature at the prior is lambda / d^2:
   #   legacy    : V = s^2 (J'WJ + 2 lambda/d^2)^-1  (every release through
-  #               v0.7.3; the 2 double-counts the ridge in half-objective
+  #               v0.7.3, reproducer; the 2 double-counts the ridge in half-objective
   #               units -- it happens to approximate the sampling variance
   #               where J'WJ ~ 2 P, the Pillar-3 MC regime, and not elsewhere)
   #   posterior : V = s^2 (J'WJ + lambda/d^2)^-1     (consistent curvature;
@@ -257,7 +257,7 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
                                   imp_Y_vec, imp_X_mat, exp_Y, exp_X, exp_jmap,
                                   exp_sig_V, exp_gam_V, wt_imp_vec, wt_exp,
                                   shrinkage_lambda, delta = 1e-4,
-                                  se_form = "legacy",
+                                  se_form = "sandwich",   # patch 0070: default sandwich
                                   paper_exact_eq11 = FALSE) {
   K  <- length(d_hat); na <- rep(NA_real_, K)
   if (!is.finite(sigma_val) || sigma_val <= 1) return(na)
@@ -332,7 +332,7 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
                                  exp_sig_V, exp_gam_V, wt_imp, wt_exp,
                                  ln_gamma_prior, shrinkage_lambda,
                                  paper_exact_eq11 = FALSE,
-                                 ridge_all_coords = FALSE) {
+                                 ridge_all_coords = TRUE) {   # patch 0070: default all
   K <- length(d)
   if (sigma <= 1 || any(d <= 0)) return(rep(0, K))   # objective is a flat 1e12 there
   jac <- tryCatch(
@@ -399,15 +399,18 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   use_grad <- identical(cfg$stage2_gradient, "analytic") &&
     exists("het_residuals_and_jacobian_fixed_sigma_rcpp", mode = "function")
   grad_fn <- if (use_grad) het_grad_fixed_sigma else NULL
-  # patch 0068: domain of the log-ridge penalty. "legacy" (default; every
-  # release through v0.7.3) penalizes only coordinates above 1e-5 and leaves
-  # the band down to the 1e-6 optimizer bound penalty-free; "all" penalizes
-  # every coordinate. CLI --stage2-ridge-domain.
-  ridge_all <- identical(cfg$stage2_ridge_domain, "all")
-  # patch 0069: variance formula for gamma_se / gamma_shrink_wt / dgamma_dsigma.
-  # "legacy" (default; every release through v0.7.3), "posterior", "sandwich".
-  # CLI --stage2-se. Points, routing and tiers are identical across forms.
-  se_form <- if (is.null(cfg$stage2_se)) "legacy" else cfg$stage2_se
+  # patch 0068/0070: domain of the log-ridge penalty. "all" (v0.7.4 default,
+  # and the rule for an absent key) penalizes every coordinate; "legacy"
+  # (every release through v0.7.3) penalized only coordinates above 1e-5 and
+  # left the band down to the 1e-6 optimizer bound penalty-free -- the hole
+  # that parked 16.6% of directly estimated rows at the floor. CLI
+  # --stage2-ridge-domain.
+  ridge_all <- !identical(cfg$stage2_ridge_domain, "legacy")
+  # patch 0069/0070: variance formula for gamma_se / gamma_shrink_wt /
+  # dgamma_dsigma. "sandwich" (v0.7.4 default, and the rule for an absent
+  # key), "posterior", "legacy" (every release through v0.7.3). CLI
+  # --stage2-se. Points, routing and tiers are identical across forms.
+  se_form <- if (is.null(cfg$stage2_se)) "sandwich" else cfg$stage2_se
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the

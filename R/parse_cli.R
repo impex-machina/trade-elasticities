@@ -176,18 +176,18 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     optparse::make_option(
       c("--stage2-ridge-domain"),
-      type = "character", default = "legacy",
+      type = "character", default = "all",
       help = paste("Domain of the Stage-2 log-ridge penalty: 'legacy' (penalize",
                    "only gamma coordinates above 1e-5 -- the band down to the",
                    "1e-6 optimizer bound is penalty-free; reproduces every",
                    "release through v0.7.3 bit-for-bit) or 'all' (penalize every",
-                   "coordinate; closes the hole that parks >= 10% of estimated",
-                   "rows at the 1e-6 floor). Default: %default"),
+                   "coordinate; v0.7.4 default -- closes the hole that parked",
+                   "16.6% of directly estimated rows at the 1e-6 floor). Default: %default"),
       metavar = "MODE"
     ),
     optparse::make_option(
       c("--stage2-se"),
-      type = "character", default = "legacy",
+      type = "character", default = "sandwich",
       help = paste("Stage-2 gamma variance formula: 'legacy' (s^2 (J'WJ +",
                    "2 lambda/gamma^2)^-1; every release through v0.7.3),",
                    "'posterior' (s^2 (J'WJ + lambda/gamma^2)^-1, consistent",

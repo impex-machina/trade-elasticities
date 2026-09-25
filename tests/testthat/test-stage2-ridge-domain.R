@@ -65,10 +65,10 @@ test_that("the objective penalizes a sub-1e-5 coordinate under 'all' and not und
   # above the threshold the two modes coincide exactly
   d_up <- c(0.7, cell$gj)
   expect_identical(.rd_obj(d_up, cell, lam, lnp, FALSE), .rd_obj(d_up, cell, lam, lnp, TRUE))
-  # the default argument is legacy
+  # the default argument is 'all' (patch 0070; legacy through v0.7.3)
   o_def <- het_obj_fixed_sigma(d_in, cell$sigma, cell$Y, cell$X, numeric(0), matrix(0, 0, 9), integer(0),
                                numeric(0), numeric(0), rep(1, length(cell$Y)), numeric(0), lnp, lam)
-  expect_identical(o_def, o_leg)
+  expect_identical(o_def, o_all)
 })
 
 test_that("the analytic gradient follows the same domain rule and matches a central difference under 'all'", {
@@ -107,19 +107,19 @@ test_that("CLI, validate_config and the checkpoint stamp carry stage2_ridge_doma
   o1 <- parse_cli(c(base, "--stage2-ridge-domain", "all"))
   expect_identical(o1$stage2_ridge_domain, "all")
   o2 <- parse_cli(base)
-  expect_identical(o2$stage2_ridge_domain, "legacy")
+  expect_identical(o2$stage2_ridge_domain, "all")   # patch 0070 default
   expect_error(parse_cli(c(base, "--stage2-ridge-domain", "hole")), "stage2-ridge-domain")
   cfg <- make_synthetic_cfg(); dt <- make_synthetic_baci(seed = 42L)
   expect_silent(validate_config(cfg))
   cfg_bad <- cfg; cfg_bad$stage2_ridge_domain <- "hole"
   expect_error(validate_config(cfg_bad), "stage2_ridge_domain")
-  cfg_all <- cfg; cfg_all$stage2_ridge_domain <- "all"
-  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_all, dt)))
   cfg_leg <- cfg; cfg_leg$stage2_ridge_domain <- "legacy"
-  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_leg, dt) )
+  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_leg, dt)))
+  cfg_all <- cfg; cfg_all$stage2_ridge_domain <- "all"
+  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_all, dt))   # absent key == all (patch 0070)
 })
 
-test_that("default == legacy bit-for-bit on the e2e fixture; 'all' runs with the same schema", {
+test_that("default == 'all' bit-for-bit on the e2e fixture; legacy runs with the same schema", {
   .rd_setup()
   dt <- make_synthetic_baci(seed = 42L); cfg <- make_synthetic_cfg()
   run <- function(cfg) {
@@ -129,11 +129,11 @@ test_that("default == legacy bit-for-bit on the e2e fixture; 'all' runs with the
     r
   }
   r_def <- run(cfg)
-  cfg_leg <- cfg; cfg_leg$stage2_ridge_domain <- "legacy"
-  r_leg <- run(cfg_leg)
-  expect_identical(finalize_saved_output(r_def), finalize_saved_output(r_leg))
   cfg_all <- cfg; cfg_all$stage2_ridge_domain <- "all"
   r_all <- run(cfg_all)
-  expect_setequal(names(r_all), names(r_def))
-  expect_equal(nrow(r_all), nrow(r_def))
+  expect_identical(finalize_saved_output(r_def), finalize_saved_output(r_all))
+  cfg_leg <- cfg; cfg_leg$stage2_ridge_domain <- "legacy"
+  r_leg <- run(cfg_leg)
+  expect_setequal(names(r_leg), names(r_def))
+  expect_equal(nrow(r_leg), nrow(r_def))
 })

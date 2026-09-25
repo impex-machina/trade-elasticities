@@ -114,7 +114,7 @@ load_rcpp_objectives <- function(cpp_dir) {
                                      wt_imp, wt_exp,
                                      ln_gamma_prior, shrinkage_lambda,
                                      paper_exact_eq11 = FALSE,
-                                     ridge_all_coords = FALSE) {
+                                     ridge_all_coords = TRUE) {   # patch 0070: default all
       d_full <- c(sigma, d)
       ssr <- het_obj(d_full, imp_Y, imp_X, exp_Y, exp_X,
                      exp_jmap, exp_sig_V, exp_gam_V, wt_imp, wt_exp,

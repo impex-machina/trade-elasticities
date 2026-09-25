@@ -79,16 +79,16 @@ test_that("the three variance forms match their closed forms and coincide at lam
   expect_equal(leg$shrink_wt,  diag(2 * P) / (diag(p$JWJ) + diag(2 * P)), tolerance = 1e-10)
   expect_equal(post$shrink_wt, diag(P) / (diag(p$JWJ) + diag(P)), tolerance = 1e-10)
   expect_equal(sand$shrink_wt, post$shrink_wt)
-  # the default argument is legacy
+  # the default argument is sandwich (patch 0070; legacy through v0.7.3)
   expect_equal(compute_penalized_gn_se(cell$d_hat, cell$sigma, cell$Y, cell$X, cell$eY, cell$eX, cell$jmap, cell$sV, cell$gV,
-                                       rep(1, length(cell$Y)), rep(1, length(cell$eY)), shrinkage_lambda = lam)$se, leg$se)
+                                       rep(1, length(cell$Y)), rep(1, length(cell$eY)), shrinkage_lambda = lam)$se, sand$se)
 })
 
 test_that("compute_dgamma_dsigma's ridge curvature follows the form", {
   .sf_setup()
   cell <- .sf_cell(); lam <- 0.1; p <- .sf_pieces(cell); P <- diag(lam / cell$d_hat^2)
   g_leg  <- compute_dgamma_dsigma(cell$d_hat, cell$sigma, cell$Y, cell$X, cell$eY, cell$eX, cell$jmap, cell$sV, cell$gV,
-                                  rep(1, length(cell$Y)), rep(1, length(cell$eY)), shrinkage_lambda = lam)
+                                  rep(1, length(cell$Y)), rep(1, length(cell$eY)), shrinkage_lambda = lam, se_form = "legacy")
   g_post <- compute_dgamma_dsigma(cell$d_hat, cell$sigma, cell$Y, cell$X, cell$eY, cell$eX, cell$jmap, cell$sV, cell$gV,
                                   rep(1, length(cell$Y)), rep(1, length(cell$eY)), shrinkage_lambda = lam, se_form = "posterior")
   g_sand <- compute_dgamma_dsigma(cell$d_hat, cell$sigma, cell$Y, cell$X, cell$eY, cell$eX, cell$jmap, cell$sV, cell$gV,
@@ -106,18 +106,18 @@ test_that("CLI, validate_config and the checkpoint stamp carry stage2_se", {
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
   expect_identical(parse_cli(c(base, "--stage2-se", "sandwich"))$stage2_se, "sandwich")
-  expect_identical(parse_cli(base)$stage2_se, "legacy")
+  expect_identical(parse_cli(base)$stage2_se, "sandwich")   # patch 0070 default
   expect_error(parse_cli(c(base, "--stage2-se", "bootstrap")), "stage2-se")
   cfg <- make_synthetic_cfg(); dt <- make_synthetic_baci(seed = 42L)
   cfg_bad <- cfg; cfg_bad$stage2_se <- "bootstrap"
   expect_error(validate_config(cfg_bad), "stage2_se")
-  cfg_s <- cfg; cfg_s$stage2_se <- "sandwich"
-  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_s, dt)))
   cfg_l <- cfg; cfg_l$stage2_se <- "legacy"
-  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_l, dt))
+  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_l, dt)))
+  cfg_s <- cfg; cfg_s$stage2_se <- "sandwich"
+  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_s, dt))   # absent key == sandwich (patch 0070)
 })
 
-test_that("default == legacy bit-for-bit; sandwich moves only the SE-side columns", {
+test_that("default == sandwich bit-for-bit; legacy moves only the SE-side columns", {
   .sf_setup()
   dt <- make_synthetic_baci(seed = 42L); cfg <- make_synthetic_cfg()
   run <- function(cfg) {
@@ -127,10 +127,10 @@ test_that("default == legacy bit-for-bit; sandwich moves only the SE-side column
     r
   }
   r_def <- run(cfg)
-  cfg_leg <- cfg; cfg_leg$stage2_se <- "legacy"
-  expect_identical(finalize_saved_output(r_def), finalize_saved_output(run(cfg_leg)))
   cfg_s <- cfg; cfg_s$stage2_se <- "sandwich"
-  r_s <- run(cfg_s)
+  expect_identical(finalize_saved_output(r_def), finalize_saved_output(run(cfg_s)))
+  cfg_leg <- cfg; cfg_leg$stage2_se <- "legacy"
+  r_s <- run(cfg_leg)
   expect_setequal(names(r_s), names(r_def)); expect_equal(nrow(r_s), nrow(r_def))
   key <- c("importer", "exporter", "good")
   a <- finalize_saved_output(r_def); b <- finalize_saved_output(r_s)

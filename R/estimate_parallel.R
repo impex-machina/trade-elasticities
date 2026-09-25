@@ -504,10 +504,10 @@ stage2_psock_provision <- function(cl, cpp_dir,
       list(dim = dim(x), names = names(x), colsums = unname(num))
     } else x
   }
-  # patch 0068: an absent stage2_ridge_domain means legacy (build_config's
-  # rule), so a pre-0068 checkpoint stays resumable by a legacy run.
-  if (is.null(cfg$stage2_ridge_domain)) cfg$stage2_ridge_domain <- "legacy"
-  if (is.null(cfg$stage2_se)) cfg$stage2_se <- "legacy"                     # patch 0069, same rule
+  # patch 0068/0069/0070: an absent key means the shipped default (build_
+  # config's rule): all / sandwich since v0.7.4.
+  if (is.null(cfg$stage2_ridge_domain)) cfg$stage2_ridge_domain <- "all"
+  if (is.null(cfg$stage2_se)) cfg$stage2_se <- "sandwich"
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),
