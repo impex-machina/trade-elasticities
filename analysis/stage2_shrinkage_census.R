@@ -65,7 +65,12 @@ suppressPackageStartupMessages({ library(data.table); library(jsonlite) })
   setNames(as.list(unname(quantile(x, p))), paste0("p", p * 100))
 }
 
-shrinkage_census <- function(s2b, s2a) {
+shrinkage_census <- function(s2b, s2a, shrink_wt_def = c("legacy", "half")) {
+  # (patch 0069) gamma_shrink_wt is P/(J'WJ + P) with P = 2 lambda/gamma^2 under
+  # --stage2-se legacy (data share 2(1-s)/(2-s)) and P = lambda/gamma^2 under
+  # posterior/sandwich (data share 1 - s). Pass --shrink-wt-def half for tables
+  # produced under the latter.
+  shrink_wt_def <- match.arg(shrink_wt_def)
   s2b <- as.data.table(s2b); s2a <- as.data.table(s2a)
   for (nm in c("importer", "exporter", "good", "gamma", "tier", "convergence"))
     if (!nm %in% names(s2b)) stop("Stage-2b table lacks column ", nm)
@@ -85,7 +90,7 @@ shrinkage_census <- function(s2b, s2a) {
   est <- priors[est, on = "good"]
   est[, dev := lg - ln_gamma_prior]
   est[, s := gamma_shrink_wt]
-  est[, data_share := ifelse(is.finite(s), 2 * (1 - s) / (2 - s), NA_real_)]
+  est[, data_share := ifelse(is.finite(s), if (shrink_wt_def == "legacy") 2 * (1 - s) / (2 - s) else 1 - s, NA_real_)]
   est[, w := ifelse(is.finite(avg_trade) & avg_trade > 0, avg_trade, NA_real_)]
   est[, trade_rank := frank(-fifelse(is.finite(w), w, 0), ties.method = "first"), by = cell]
   est[, rank_bin := cut(trade_rank, c(0, 1, 3, 10, Inf), labels = c("1", "2-3", "4-10", ">10"))]
@@ -150,7 +155,7 @@ shrinkage_census <- function(s2b, s2a) {
   q6 <- sb[, .(n = .N, abs_dev_median = median(abs(dev)), abs_dev_p90 = quantile(abs(dev), 0.9),
                data_share_median = median(data_share)), by = s_bin][order(s_bin)]
 
-  list(meta = list(n_rows_2b = nrow(s2b), n_estimated = nrow(est), n_goods_with_prior = nrow(priors),
+  list(meta = list(n_rows_2b = nrow(s2b), n_estimated = nrow(est), n_goods_with_prior = nrow(priors), shrink_wt_def = shrink_wt_def,
                    timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
        q1 = q1, q2 = q2, q3 = q3, q4 = q4, q5 = q5, q6 = q6)
 }
@@ -201,11 +206,12 @@ if (sys.nframe() == 0L && !exists("SHRINKAGE_CENSUS_NO_MAIN")) {
   s2a_path <- get_arg("--stage2a", "data/derived/stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds")
   out_json <- get_arg("--out", "results/stage2_shrinkage_census.json")
   out_md   <- get_arg("--md",  "docs/results/stage2_shrinkage_census.md")
+  swd      <- get_arg("--shrink-wt-def", "legacy")
   for (p in c(s2b_path, s2a_path)) if (!file.exists(p)) stop("input not found: ", p)
   cat("reading", s2b_path, "\n"); s2b <- readRDS(s2b_path)
   cat("reading", s2a_path, "\n"); s2a <- readRDS(s2a_path)
-  res <- shrinkage_census(s2b, s2a)
-  res$meta$stage2b <- s2b_path; res$meta$stage2a <- s2a_path
+  res <- shrinkage_census(s2b, s2a, shrink_wt_def = swd)
+  res$meta$stage2b <- s2b_path; res$meta$stage2a <- s2a_path; res$meta$shrink_wt_def <- swd
   res$meta$git_rev <- tryCatch(system2("git", c("rev-parse", "--short", "HEAD"), stdout = TRUE, stderr = NULL)[1], error = function(e) NA_character_)
   dir.create(dirname(out_json), showWarnings = FALSE, recursive = TRUE); dir.create(dirname(out_md), showWarnings = FALSE, recursive = TRUE)
   write_json(res, out_json, auto_unbox = TRUE, pretty = TRUE, digits = 8, na = "null")

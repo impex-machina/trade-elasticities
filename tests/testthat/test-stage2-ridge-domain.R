@@ -71,8 +71,8 @@ test_that("the objective penalizes a sub-1e-5 coordinate under 'all' and not und
   expect_identical(o_def, o_leg)
 })
 
-test_that("the analytic gradient follows the same domain rule and matches numDeriv under 'all'", {
-  .rd_setup(); skip_if_not_installed("numDeriv")
+test_that("the analytic gradient follows the same domain rule and matches a central difference under 'all'", {
+  .rd_setup()
   cell <- .rd_cell(); lam <- 0.1; lnp <- log(0.7)
   d_in <- c(0.7, cell$gj); d_in[3] <- 5e-6
   g_leg <- .rd_grad(d_in, cell, lam, lnp, FALSE); g_all <- .rd_grad(d_in, cell, lam, lnp, TRUE)
@@ -80,8 +80,9 @@ test_that("the analytic gradient follows the same domain rule and matches numDer
   expect_equal(diff[-3], rep(0, length(d_in) - 1L))
   expect_equal(diff[3], 2 * lam * (log(5e-6) - lnp) / 5e-6, tolerance = 1e-8)
   d_int <- c(0.8, cell$gj * 1.1)
-  g_num <- numDeriv::grad(function(d) .rd_obj(d, cell, lam, lnp, TRUE), d_int)
-  expect_equal(.rd_grad(d_int, cell, lam, lnp, TRUE), g_num, tolerance = 1e-6)
+  f <- function(d) .rd_obj(d, cell, lam, lnp, TRUE); h <- 1e-6
+  g_num <- vapply(seq_along(d_int), function(i) { e <- numeric(length(d_int)); e[i] <- h; (f(d_int + e) - f(d_int - e)) / (2 * h) }, numeric(1))
+  expect_equal(.rd_grad(d_int, cell, lam, lnp, TRUE), g_num, tolerance = 1e-5)
 })
 
 test_that("started inside the hole, legacy stays at the floor and 'all' climbs out", {

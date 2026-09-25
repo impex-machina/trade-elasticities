@@ -186,6 +186,18 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "MODE"
     ),
     optparse::make_option(
+      c("--stage2-se"),
+      type = "character", default = "legacy",
+      help = paste("Stage-2 gamma variance formula: 'legacy' (s^2 (J'WJ +",
+                   "2 lambda/gamma^2)^-1; every release through v0.7.3),",
+                   "'posterior' (s^2 (J'WJ + lambda/gamma^2)^-1, consistent",
+                   "half-objective curvature) or 'sandwich' (s^2 A^-1 J'WJ A^-1,",
+                   "A = J'WJ + lambda/gamma^2: the sampling variance of the",
+                   "penalized estimator). Also sets the ridge curvature used by",
+                   "dgamma_dsigma. Points and routing are identical. Default: %default"),
+      metavar = "FORM"
+    ),
+    optparse::make_option(
       c("--stage"),
       type = "character", default = "all",
       help = paste("Which stage(s) to run: 'all', '1', '2a', '2b'.",
@@ -270,6 +282,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_gradient %in% c("numeric", "analytic")) {
     fail(sprintf("--stage2-gradient must be 'numeric' or 'analytic', got: '%s'",
                  opts$stage2_gradient))
+  }
+  if (!opts$stage2_se %in% c("legacy", "posterior", "sandwich")) {
+    fail(sprintf("--stage2-se must be 'legacy', 'posterior' or 'sandwich', got: '%s'",
+                 opts$stage2_se))
   }
   if (!opts$stage2_ridge_domain %in% c("legacy", "all")) {
     fail(sprintf("--stage2-ridge-domain must be 'legacy' or 'all', got: '%s'",

@@ -145,6 +145,12 @@ during the refactor and are not recoverable. A single reconstructed harness,
 `monte_carlo_se.R`, lives in `validation/`, and its summary output is
 `se_calibration_mc_summary.csv`.
 
+### Variance formula (patch 0069, 2026-09-25)
+
+`J'WJ` is the Gauss–Newton Hessian of the *half* objective (SSR/2 + (λ/2)Σ(ln γ − ln g)²), whose ridge curvature at the prior is λ/γ². The shipped formula through v0.7.3, `s²(J'WJ + 2λ/γ²)⁻¹`, adds the ridge in full-objective units to a data term in half-objective units. Writing x = J'WJ/P with P = λ/γ², the sampling variance of the penalized estimator is `s² A⁻¹ J'WJ A⁻¹` with A = J'WJ + P (→ 0 as the prior dominates), and the legacy formula's ratio to it is 1 + 1/(x² + 2x): ≈ 1 for x ≥ 3, 1.33 at x = 1, 13 at x = 0.04. The Pillar-3 MC sits at x ≈ 2 (its unpenalized-GN overshoot of 48% and penalized-GN 8% both follow from that x), where legacy is within 6% of the sampling SD; the shipped table's median `gamma_shrink_wt` of 0.98 corresponds to x ≈ 0.04. On the structural DGP at production shrinkage, legacy `gamma_se` is 5–20× the empirical sampling SD, the posterior form 8–29×, the sandwich 1.1–2.5× (`audit_experiments2.R`, Experiment D).
+
+`--stage2-se {legacy|posterior|sandwich}` (config `stage2_se`; part of the checkpoint stamp) selects: `legacy` (default at patch 0069, the v0.7.3 reproducer); `posterior` = `s²(J'WJ + λ/γ²)⁻¹`, the posterior-style variance under the ridge read as a prior; `sandwich` = the sampling variance above. The same ridge curvature (2λ/γ² under legacy, λ/γ² otherwise) enters `compute_dgamma_dsigma()`, so `dgamma_dsigma`, `gamma_se_total` and the `sigma_robust` inflation screen move with the form (at production shrinkage the legacy derivative is ≈ 0.4× the exact implicit-function derivative; the λ/γ² curvature gives ≈ 0.8–0.9×, the remainder being the Gauss–Newton approximation). `gamma_shrink_wt` is P/(J'WJ + P) with the P of the chosen form, so the implied data share is 2(1−s)/(2−s) under legacy and 1 − s otherwise (`analysis/stage2_shrinkage_census.R --shrink-wt-def half`). Points, routing, tiers and `opt_tariff` are identical across forms; the choice ships through the release train, with Pillar 3 re-run at production shrinkage for the chosen form.
+
 ## SE status table breakdown
 
 | Status | Count | Share | Interpretation |

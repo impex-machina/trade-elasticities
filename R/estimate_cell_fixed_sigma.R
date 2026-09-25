@@ -98,8 +98,26 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
                                     shrinkage_lambda,
                                     boundary_thresh = 0.01,
                                     plateau_thresh = 5.0,
-                                    paper_exact_eq11 = FALSE) {
-  
+                                    paper_exact_eq11 = FALSE,
+                                    se_form = "legacy") {
+  # (patch 0069) se_form selects the variance formula; J'WJ is the
+  # Gauss-Newton Hessian of the HALF objective (SSR/2 + (lambda/2) sum
+  # (ln d - ln g)^2), whose ridge curvature at the prior is lambda / d^2:
+  #   legacy    : V = s^2 (J'WJ + 2 lambda/d^2)^-1  (every release through
+  #               v0.7.3; the 2 double-counts the ridge in half-objective
+  #               units -- it happens to approximate the sampling variance
+  #               where J'WJ ~ 2 P, the Pillar-3 MC regime, and not elsewhere)
+  #   posterior : V = s^2 (J'WJ + lambda/d^2)^-1     (consistent curvature;
+  #               the posterior-style variance under the ridge as a prior)
+  #   sandwich  : V = s^2 A^-1 J'WJ A^-1, A = J'WJ + lambda/d^2  (the sampling
+  #               variance of the penalized estimator; -> 0 as the prior
+  #               dominates, -> s^2 (J'WJ)^-1 as the data dominate)
+  # All three coincide at lambda = 0. gamma_shrink_wt is P/(J'WJ + P) with the
+  # same P as the variance formula, so under legacy the data share is
+  # 2(1-s)/(2-s) and under posterior/sandwich it is 1 - s.
+  se_form <- match.arg(se_form, c("legacy", "posterior", "sandwich"))
+  ridge_factor <- if (se_form == "legacy") 2 else 1
+
   K <- length(d_hat)
   na_result <- list(
     se        = rep(NA_real_, K),
@@ -186,7 +204,7 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
   if (shrinkage_lambda > 0) {
     for (k in seq_len(K)) {
       if (d_hat[k] > 1e-8) {
-        H_prior[k, k] <- 2 * shrinkage_lambda / d_hat[k]^2
+        H_prior[k, k] <- ridge_factor * shrinkage_lambda / d_hat[k]^2
       }
     }
   }
@@ -201,7 +219,10 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
   curv_tot <- d_JtWJ + d_Hp
   shrink_wt <- ifelse(curv_tot > 0, d_Hp / curv_tot, NA_real_)
 
-  V <- tryCatch(sigma2 * solve(JtWJ + H_prior), error = function(e) NULL)
+  V <- tryCatch({
+    A_inv <- solve(JtWJ + H_prior)
+    if (se_form == "sandwich") sigma2 * (A_inv %*% JtWJ %*% A_inv) else sigma2 * A_inv
+  }, error = function(e) NULL)
   if (is.null(V)) {
     return(list(se = rep(NA_real_, K),
                 status = rep("singular", K),
@@ -236,6 +257,7 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
                                   imp_Y_vec, imp_X_mat, exp_Y, exp_X, exp_jmap,
                                   exp_sig_V, exp_gam_V, wt_imp_vec, wt_exp,
                                   shrinkage_lambda, delta = 1e-4,
+                                  se_form = "legacy",
                                   paper_exact_eq11 = FALSE) {
   K  <- length(d_hat); na <- rep(NA_real_, K)
   if (!is.finite(sigma_val) || sigma_val <= 1) return(na)
@@ -259,7 +281,7 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
   }
   if (shrinkage_lambda > 0)
     for (k in seq_len(K)) if (d_hat[k] > 1e-8)
-      A[k, k] <- A[k, k] + 2 * shrinkage_lambda / d_hat[k]^2
+      A[k, k] <- A[k, k] + (if (identical(se_form, "legacy")) 2 else 1) * shrinkage_lambda / d_hat[k]^2   # patch 0069
   jp <- JJ(sigma_val + delta); jm <- JJ(sigma_val - delta)
   if (is.null(jp) || is.null(jm) ||
       !identical(jp$status, "ok") || !identical(jm$status, "ok")) return(na)
@@ -382,6 +404,10 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # the band down to the 1e-6 optimizer bound penalty-free; "all" penalizes
   # every coordinate. CLI --stage2-ridge-domain.
   ridge_all <- identical(cfg$stage2_ridge_domain, "all")
+  # patch 0069: variance formula for gamma_se / gamma_shrink_wt / dgamma_dsigma.
+  # "legacy" (default; every release through v0.7.3), "posterior", "sandwich".
+  # CLI --stage2-se. Points, routing and tiers are identical across forms.
+  se_form <- if (is.null(cfg$stage2_se)) "legacy" else cfg$stage2_se
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
@@ -563,7 +589,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       exp_sig_V = exp_mom$sig_V, exp_gam_V = exp_mom$gam_V,
       wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
       shrinkage_lambda = shrinkage_lambda,
-      paper_exact_eq11 = pe11
+      paper_exact_eq11 = pe11,
+      se_form = se_form
     )
     gamma_k_se     <- se_out$se[1]
     gamma_j_se     <- se_out$se[2:(J + 1)]
@@ -602,7 +629,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       exp_sig_V = exp_mom$sig_V, exp_gam_V = exp_mom$gam_V,
       wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
       shrinkage_lambda = shrinkage_lambda,
-      paper_exact_eq11 = pe11)
+      paper_exact_eq11 = pe11, se_form = se_form)
     se_prop_vec <- abs(dgds) * sigma_se_cell
   } else {
     dgds <- rep(NA_real_, length(d_hat)); se_prop_vec <- rep(NA_real_, length(d_hat))
