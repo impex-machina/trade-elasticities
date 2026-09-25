@@ -108,7 +108,8 @@ cat(sprintf("  Stage-1 neg-omega: %s\n", opts$stage1_negative_omega))
 cat(sprintf("  Stage-1 edge SE:  %s\n", opts$stage1_edge_se))
 cat(sprintf("  Stage-1 Step-2 VCE: %s\n", opts$stage1_step2_vce))
 cat(sprintf("  Stage-1 UV trim:  %s\n", if (is.na(opts$stage1_uv_trim)) "off" else sprintf("|d ln p| < %.1f", opts$stage1_uv_trim)))
-cat(sprintf("  Stage-2 gradient: %s\n\n", opts$stage2_gradient))
+cat(sprintf("  Stage-2 gradient: %s\n", opts$stage2_gradient))
+cat(sprintf("  Stage-2 ridge domain: %s\n\n", if (is.null(opts$stage2_ridge_domain)) "legacy" else opts$stage2_ridge_domain))
 
 
 # ---- 3. Source library ----------------------------------------------------

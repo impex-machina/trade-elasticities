@@ -113,14 +113,15 @@ load_rcpp_objectives <- function(cpp_dir) {
                                      exp_jmap, exp_sig_V, exp_gam_V,
                                      wt_imp, wt_exp,
                                      ln_gamma_prior, shrinkage_lambda,
-                                     paper_exact_eq11 = FALSE) {
+                                     paper_exact_eq11 = FALSE,
+                                     ridge_all_coords = FALSE) {
       d_full <- c(sigma, d)
       ssr <- het_obj(d_full, imp_Y, imp_X, exp_Y, exp_X,
                      exp_jmap, exp_sig_V, exp_gam_V, wt_imp, wt_exp,
                      paper_exact_eq11 = paper_exact_eq11)
       if (ssr >= 1e12) return(1e12)
       if (shrinkage_lambda > 0 && !is.na(ln_gamma_prior)) {
-        gam_vals <- d[d > 1e-5]
+        gam_vals <- d[d > (if (ridge_all_coords) 0 else 1e-5)]   # patch 0068
         if (length(gam_vals) > 0L) {
           ssr <- ssr + shrinkage_lambda * sum((log(gam_vals) - ln_gamma_prior)^2)
         }

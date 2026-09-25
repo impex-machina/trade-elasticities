@@ -486,6 +486,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
 # ---------------------------------------------------------------------------
 .fs_cfg_stamp <- function(cfg, dt) {
   keys <- c("shrinkage_lambda", "bw_lag", "stage2_gradient", "paper_exact_eq11",
+            "stage2_ridge_domain",   # patch 0068
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -502,6 +503,9 @@ stage2_psock_provision <- function(cl, cpp_dir,
       list(dim = dim(x), names = names(x), colsums = unname(num))
     } else x
   }
+  # patch 0068: an absent stage2_ridge_domain means legacy (build_config's
+  # rule), so a pre-0068 checkpoint stays resumable by a legacy run.
+  if (is.null(cfg$stage2_ridge_domain)) cfg$stage2_ridge_domain <- "legacy"
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),

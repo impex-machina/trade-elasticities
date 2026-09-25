@@ -175,6 +175,17 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "MODE"
     ),
     optparse::make_option(
+      c("--stage2-ridge-domain"),
+      type = "character", default = "legacy",
+      help = paste("Domain of the Stage-2 log-ridge penalty: 'legacy' (penalize",
+                   "only gamma coordinates above 1e-5 -- the band down to the",
+                   "1e-6 optimizer bound is penalty-free; reproduces every",
+                   "release through v0.7.3 bit-for-bit) or 'all' (penalize every",
+                   "coordinate; closes the hole that parks >= 10% of estimated",
+                   "rows at the 1e-6 floor). Default: %default"),
+      metavar = "MODE"
+    ),
+    optparse::make_option(
       c("--stage"),
       type = "character", default = "all",
       help = paste("Which stage(s) to run: 'all', '1', '2a', '2b'.",
@@ -259,6 +270,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_gradient %in% c("numeric", "analytic")) {
     fail(sprintf("--stage2-gradient must be 'numeric' or 'analytic', got: '%s'",
                  opts$stage2_gradient))
+  }
+  if (!opts$stage2_ridge_domain %in% c("legacy", "all")) {
+    fail(sprintf("--stage2-ridge-domain must be 'legacy' or 'all', got: '%s'",
+                 opts$stage2_ridge_domain))
   }
   if (!opts$stage1_hliml %in% c("bfgs", "closed", "both")) {
     fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",

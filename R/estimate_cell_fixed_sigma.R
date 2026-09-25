@@ -294,8 +294,9 @@ assess_sigma_robust <- function(sigma_hat, sigma_se, adjust, se_cond, se_prop,
 # -----------------------------------------------------------------------------
 # Analytic gradient of het_obj_fixed_sigma() (patch 0028, v0.6.0-rc)
 #
-#   obj(d) = sum_rows w_r r_r(d)^2 + lambda * sum_{i: d_i > 1e-5} (ln d_i - ln g)^2
-#   grad_c = 2 * sum_rows w_r r_r dr_r/dd_c + 2 lambda (ln d_c - ln g)/d_c [d_c > 1e-5]
+#   obj(d) = sum_rows w_r r_r(d)^2 + lambda * sum_{i: d_i > floor} (ln d_i - ln g)^2
+#   grad_c = 2 * sum_rows w_r r_r dr_r/dd_c + 2 lambda (ln d_c - ln g)/d_c [d_c > floor]
+#   with floor = 1e-5 (legacy) or 0 (cfg$stage2_ridge_domain == "all", patch 0068)
 #
 # dr/dd comes from the same Rcpp Jacobian the SEs use
 # (het_residuals_and_jacobian_fixed_sigma_rcpp: 0-based sparse triplets,
@@ -308,7 +309,8 @@ assess_sigma_robust <- function(sigma_hat, sigma_se, adjust, se_cond, se_prop,
 het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
                                  exp_sig_V, exp_gam_V, wt_imp, wt_exp,
                                  ln_gamma_prior, shrinkage_lambda,
-                                 paper_exact_eq11 = FALSE) {
+                                 paper_exact_eq11 = FALSE,
+                                 ridge_all_coords = FALSE) {
   K <- length(d)
   if (sigma <= 1 || any(d <= 0)) return(rep(0, K))   # objective is a flat 1e12 there
   jac <- tryCatch(
@@ -327,7 +329,7 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
     g[as.integer(rownames(agg))] <- agg[, 1]
   }
   if (shrinkage_lambda > 0 && !is.na(ln_gamma_prior)) {
-    sel <- d > 1e-5
+    sel <- d > (if (ridge_all_coords) 0 else 1e-5)   # patch 0068: match the objective's domain
     g[sel] <- g[sel] + 2 * shrinkage_lambda * (log(d[sel]) - ln_gamma_prior) / d[sel]
   }
   g
@@ -375,6 +377,11 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   use_grad <- identical(cfg$stage2_gradient, "analytic") &&
     exists("het_residuals_and_jacobian_fixed_sigma_rcpp", mode = "function")
   grad_fn <- if (use_grad) het_grad_fixed_sigma else NULL
+  # patch 0068: domain of the log-ridge penalty. "legacy" (default; every
+  # release through v0.7.3) penalizes only coordinates above 1e-5 and leaves
+  # the band down to the 1e-6 optimizer bound penalty-free; "all" penalizes
+  # every coordinate. CLI --stage2-ridge-domain.
+  ridge_all <- identical(cfg$stage2_ridge_domain, "all")
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
@@ -519,6 +526,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
           ln_gamma_prior = ln_gamma_prior,
           shrinkage_lambda = shrinkage_lambda,
           paper_exact_eq11 = pe11,
+          ridge_all_coords = ridge_all,
           control = list(maxit = 500)),
     error = function(e) NULL)
 
@@ -534,6 +542,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
             ln_gamma_prior = ln_gamma_prior,
             shrinkage_lambda = shrinkage_lambda,
             paper_exact_eq11 = pe11,
+            ridge_all_coords = ridge_all,
             control = list(maxit = 1000)),
       error = function(e) NULL)
   }

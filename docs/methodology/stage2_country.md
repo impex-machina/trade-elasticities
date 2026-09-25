@@ -222,6 +222,12 @@ On the LIML-only subsample (where σ is genuinely cell-specific), ρ collapses t
 
 See `sigma_gamma_ridge.md` for the full diagnostic.
 
+## Log-ridge domain (patch 0068, 2026-09-25)
+
+The Stage-2 objective is `sum_rows w_r r_r(gamma)^2 + lambda * sum_i (ln gamma_i - ln g)^2`, with the ridge applied only to coordinates with `gamma_i > 1e-5` while the L-BFGS-B lower bound is `1e-6`. The band `(1e-6, 1e-5]` is therefore penalty-free, and the penalty just above it is `lambda * (ln 1e-5 - ln g)^2` — about 11 objective units at `lambda = 0.1`, `g ~ 0.4` — beside a data SSR of order `1e-2 .. 1`. A line search that carries a coordinate below `1e-5` sees the objective fall by that amount and accepts the point; once inside, the coordinate's ridge gradient is zero and the data gradient is too small to lift it out, so it stays at the floor. On the structural DGP the production objective parks 1.5–6% of coordinates there under strong data pull (noise ×3, or a dominant exporter with a small true gamma), 14–52% of cells with at least one, and an objective that penalizes every coordinate never does (`audit_experiments2.R`, hole tests, 2026-09-25). On the shipped v0.7.3 table the census `analysis/stage2_shrinkage_census.R` finds at least 10% of directly estimated rows at the `1e-6` floor, 13 log units below their prior, inside the `gamma_shrink_wt >= 0.99` bin (the ridge Hessian `2 lambda / gamma^2` is `2e11` there, so those rows also report a near-zero `gamma_se`). Stage 2a runs the same objective (`lambda = 0.05`), so the Stage-2b priors of goods whose regional cells fell into the hole are contaminated as well.
+
+`--stage2-ridge-domain {legacy|all}` (config `stage2_ridge_domain`; part of the Stage-2 checkpoint stamp) selects the rule: `legacy` (default at patch 0068) is the v0.7.3 reproducer, `all` penalizes every coordinate with `gamma_i > 0`. The analytic gradient (`het_grad_fixed_sigma`) and the pure-R fallback follow the same switch. The default flips at the release that ships the re-estimated Stage 2a/2b tables (v0.7.4-rc), with the A/B recorded in `docs/methodology/` in the usual pattern; the floor population, `1/gamma`, `opt_tariff` (floor exporters enter it with weight `w / (1 + gamma sigma) -> w` and `gamma ~ 0`), the lower tail-trim bound and the Soderbery ratios all move.
+
 ## Headline findings vs Soderbery (2018)
 
 From the 2026-05-14 SE-enabled heterogeneity report (retained in the local

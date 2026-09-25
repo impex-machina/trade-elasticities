@@ -58,6 +58,10 @@ validate_config <- function(cfg) {
       !cfg$stage2_gradient %in% c("numeric", "analytic")) {
     stop("stage2_gradient must be 'numeric' or 'analytic', got: ", cfg$stage2_gradient)
   }
+  if (!is.null(cfg$stage2_ridge_domain) &&
+      !cfg$stage2_ridge_domain %in% c("legacy", "all")) {
+    stop("stage2_ridge_domain must be 'legacy' or 'all', got: ", cfg$stage2_ridge_domain)
+  }
   if (!is.null(cfg$stage1_uv_trim) && !is.na(cfg$stage1_uv_trim) &&
       !(is.finite(cfg$stage1_uv_trim) && cfg$stage1_uv_trim > 0)) {
     stop("stage1_uv_trim must be NA or a positive number, got: ", cfg$stage1_uv_trim)

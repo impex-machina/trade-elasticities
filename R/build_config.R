@@ -80,6 +80,8 @@ build_config <- function(opts) {
     # modes stay locked by tests/testthat/test-bw-weight-gaps.R.
     bw_lag = opts$bw_lag,
     stage2_gradient = opts$stage2_gradient %||% "numeric",
+    # patch 0068: domain of the Stage-2 log-ridge. Absent key == legacy.
+    stage2_ridge_domain = opts$stage2_ridge_domain %||% "legacy",
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
     stage1_cf_admissibility = opts$stage1_cf_admissibility %||% "legacy",
