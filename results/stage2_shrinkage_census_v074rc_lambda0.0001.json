@@ -1,0 +1,246 @@
+{
+  "meta": {
+    "n_rows_2b": 6832756,
+    "n_estimated": 5011193,
+    "n_goods_with_prior": 1240,
+    "shrink_wt_def": "legacy",
+    "timestamp": "2026-09-25 17:58:49 EDT",
+    "stage2b": "C:\\Users\\maxxj\\v074rc\\out_l00001.rds",
+    "stage2a": "data\\derived\\stage2a\\baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds",
+    "git_rev": "e7643c4"
+  },
+  "q1": {
+    "n_estimated_rows": 5011193,
+    "n_with_shrink_wt": 1740773,
+    "shrink_wt": {
+      "p10": 0.00032714,
+      "p25": 0.00413847,
+      "p50": 0.10566072,
+      "p75": 0.81808215,
+      "p90": 0.98283431
+    },
+    "shrink_wt_mean": 0.35557641,
+    "share_gt_0_9": 0.20394331,
+    "share_gt_0_95": 0.15726749,
+    "share_gt_0_99": 0.07938083,
+    "implied_data_share": {
+      "p10": 0.033752,
+      "p25": 0.30783501,
+      "p50": 0.94422292,
+      "p75": 0.99792648,
+      "p90": 0.9998364
+    },
+    "implied_data_share_mean": 0.69063365,
+    "implied_data_share_trade_weighted": 0.71903551,
+    "one_minus_shrink_wt_trade_weighted": 0.67661947,
+    "by_tier": [
+      {
+        "tier": 0,
+        "n": 95844,
+        "shrink_wt_median": 0.0179992,
+        "data_share_median": 0.99091867,
+        "data_share_trade_weighted": 0.79088181
+      },
+      {
+        "tier": 1,
+        "n": 1638793,
+        "shrink_wt_median": 0.11249916,
+        "data_share_median": 0.94039782,
+        "data_share_trade_weighted": 0.69094096
+      },
+      {
+        "tier": 2,
+        "n": 6136,
+        "shrink_wt_median": 0.5683662,
+        "data_share_median": 0.60299462,
+        "data_share_trade_weighted": 0.68049951
+      }
+    ],
+    "by_trade_rank": [
+      {
+        "rank_bin": "1",
+        "n": 103922,
+        "shrink_wt_median": 0.01613374,
+        "data_share_median": 0.99186753,
+        "data_share_trade_weighted": 0.73733692
+      },
+      {
+        "rank_bin": "2-3",
+        "n": 205597,
+        "shrink_wt_median": 0.02419916,
+        "data_share_median": 0.98775223,
+        "data_share_trade_weighted": 0.6957306
+      },
+      {
+        "rank_bin": "4-10",
+        "n": 500060,
+        "shrink_wt_median": 0.06816869,
+        "data_share_median": 0.96471292,
+        "data_share_trade_weighted": 0.71374573
+      },
+      {
+        "rank_bin": ">10",
+        "n": 931194,
+        "shrink_wt_median": 0.16929599,
+        "data_share_median": 0.90752411,
+        "data_share_trade_weighted": 0.72559301
+      }
+    ]
+  },
+  "q2": {
+    "unweighted": {
+      "n": 5011193,
+      "n_goods": 1240,
+      "n_cells": 210229,
+      "var_total": 5.44332834,
+      "share_good": 0.05162956,
+      "share_cell_within_good": 0.2239776,
+      "share_exporter_within_cell": 0.72439284
+    },
+    "trade_weighted": {
+      "n": 5011193,
+      "n_goods": 1240,
+      "n_cells": 210229,
+      "var_total": 4.84864292,
+      "share_good": 0.12315333,
+      "share_cell_within_good": 0.32112821,
+      "share_exporter_within_cell": 0.55571846
+    },
+    "tier1_only": {
+      "n": 4794841,
+      "n_goods": 1240,
+      "n_cells": 209326,
+      "var_total": 5.39850636,
+      "share_good": 0.05853824,
+      "share_cell_within_good": 0.24194323,
+      "share_exporter_within_cell": 0.69951853
+    },
+    "prior_only": {
+      "n": 5011193,
+      "n_goods": 1240,
+      "n_cells": 210229,
+      "var_total": 0.16211405,
+      "share_good": 1,
+      "share_cell_within_good": 1.47036291e-32,
+      "share_exporter_within_cell": 3.49809811e-33
+    }
+  },
+  "q3": {
+    "n_with_prior": 5011193,
+    "n_without_prior": 0,
+    "abs_dev": {
+      "p10": 0.01203648,
+      "p25": 0.04595727,
+      "p50": 0.22845267,
+      "p75": 1.0708703,
+      "p90": 3.42911392
+    },
+    "dev_signed": {
+      "p10": -2.4512286,
+      "p25": -0.40261633,
+      "p50": -0.002613,
+      "p75": 0.14712322,
+      "p90": 0.79753068
+    },
+    "share_within_1pct": 0.08554789,
+    "share_within_5pct": 0.26200667,
+    "share_within_20pct": 0.47825977,
+    "abs_dev_trade_weighted_mean": 0.94034291,
+    "by_tier": [
+      {
+        "tier": 0,
+        "n": 201531,
+        "abs_dev_median": 0.86781279,
+        "abs_dev_p90": 4.32186991,
+        "share_within_5pct": 0.05086066
+      },
+      {
+        "tier": 1,
+        "n": 4794841,
+        "abs_dev_median": 0.21095195,
+        "abs_dev_p90": 3.37093321,
+        "share_within_5pct": 0.27089949
+      },
+      {
+        "tier": 2,
+        "n": 14821,
+        "abs_dev_median": 0.23803103,
+        "abs_dev_p90": 3.26567558,
+        "share_within_5pct": 0.25612307
+      }
+    ],
+    "reference_rows": {
+      "n": 201531,
+      "abs_dev": {
+        "p10": 0.10301926,
+        "p25": 0.33428826,
+        "p50": 0.86781279,
+        "p75": 1.93477461,
+        "p90": 4.32186991
+      },
+      "share_within_1pct": 0.0113134
+    }
+  },
+  "q4": {
+    "n_cells_ge2": 208731,
+    "within_cell_sd_log_gamma": {
+      "p10": 0.26321619,
+      "p25": 0.97962854,
+      "p50": 2.03676008,
+      "p75": 3.1267031,
+      "p90": 4.36923939
+    },
+    "across_good_sd_prior": 0.42679204,
+    "sd_log_gamma_all_estimated": 2.33309439,
+    "ratio_median_within_cell_sd_to_prior_sd": 4.77225414
+  },
+  "q5": {
+    "n_cells": 210229,
+    "abs_dev": {
+      "p10": 0.04651548,
+      "p25": 0.15810957,
+      "p50": 0.5057712,
+      "p75": 1.13756769,
+      "p90": 1.96450244
+    },
+    "share_within_5pct": 0.10633167,
+    "share_within_20pct": 0.29010745
+  },
+  "q6": [
+    {
+      "s_bin": "<0.5",
+      "n": 1124807,
+      "abs_dev_median": 0.89022937,
+      "abs_dev_p90": 2.86324593,
+      "data_share_median": 0.99452588
+    },
+    {
+      "s_bin": "0.5-0.9",
+      "n": 260947,
+      "abs_dev_median": 2.38767299,
+      "abs_dev_p90": 5.3423502,
+      "data_share_median": 0.4041955
+    },
+    {
+      "s_bin": "0.9-0.95",
+      "n": 81252,
+      "abs_dev_median": 3.88702874,
+      "abs_dev_p90": 6.2978782,
+      "data_share_median": 0.1335335
+    },
+    {
+      "s_bin": "0.95-0.99",
+      "n": 135583,
+      "abs_dev_median": 4.73351652,
+      "abs_dev_p90": 6.65293148,
+      "data_share_median": 0.04930291
+    },
+    {
+      "s_bin": ">=0.99",
+      "n": 138184,
+      "abs_dev_median": 7.12021588,
+      "abs_dev_p90": 13.69455038,
+      "data_share_median": 0.00164608
+    }
+  ]
+}
