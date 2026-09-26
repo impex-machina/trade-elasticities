@@ -114,7 +114,10 @@ load_rcpp_objectives <- function(cpp_dir) {
                                      wt_imp, wt_exp,
                                      ln_gamma_prior, shrinkage_lambda,
                                      paper_exact_eq11 = FALSE,
-                                     ridge_all_coords = TRUE) {   # patch 0070: default all
+                                     ridge_all_coords = TRUE,     # patch 0070: default all
+                                     prior_form = 0L,             # patch 0071
+                                     import_constant = FALSE) {   # patch 0071
+      if (isTRUE(import_constant)) stop("pure-R fallback for het_obj_fixed_sigma does not implement import_constant; the Rcpp objective is required")
       d_full <- c(sigma, d)
       ssr <- het_obj(d_full, imp_Y, imp_X, exp_Y, exp_X,
                      exp_jmap, exp_sig_V, exp_gam_V, wt_imp, wt_exp,
@@ -122,6 +125,8 @@ load_rcpp_objectives <- function(cpp_dir) {
       if (ssr >= 1e12) return(1e12)
       if (shrinkage_lambda > 0 && !is.na(ln_gamma_prior)) {
         gam_vals <- d[d > (if (ridge_all_coords) 0 else 1e-5)]   # patch 0068
+        if (prior_form == 1L) { g <- exp(ln_gamma_prior); gam_vals <- d; ssr <- ssr + shrinkage_lambda * sum(((gam_vals - g) / g)^2); gam_vals <- numeric(0) }   # patch 0071 level
+        if (prior_form == 2L) { g <- exp(ln_gamma_prior); ssr <- ssr + shrinkage_lambda * sum((d / (1 + d) - g / (1 + g))^2); gam_vals <- numeric(0) }          # patch 0071 share
         if (length(gam_vals) > 0L) {
           ssr <- ssr + shrinkage_lambda * sum((log(gam_vals) - ln_gamma_prior)^2)
         }

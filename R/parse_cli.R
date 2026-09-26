@@ -197,6 +197,20 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
                    "dgamma_dsigma. Points and routing are identical. Default: %default"),
       metavar = "FORM"
     ),
+    optparse::make_option(c("--stage2-prior"), type = "character", default = "log", metavar = "FORM",
+      help = paste("Stage-2 shrinkage prior form (patch 0071): 'log' (ridge on ln gamma; v0.7.x),",
+                   "'level' (lambda ((gamma - g)/g)^2) or 'share' (lambda (s(gamma) - s(g))^2,",
+                   "s(x) = x/(1+x)); level/share admit gamma -> 0. Default: %default")),
+    optparse::make_option(c("--stage2-maxit"), type = "integer", default = 500L, metavar = "N",
+      help = "L-BFGS-B iteration cap for the Stage-2 cell fit (Nelder-Mead fallback gets 2N). Default: %default"),
+    optparse::make_option(c("--stage2-ref-export-moment"), type = "character", default = "off", metavar = "MODE",
+      help = "'on' adds the reference exporter's own Eq. (11) export row mapped to gamma_k (patch 0071). Default: %default"),
+    optparse::make_option(c("--stage2-import-constant"), type = "character", default = "off", metavar = "MODE",
+      help = "'on' concentrates an importer-exporter constant out of the import block (Soderbery fn. 14; patch 0071). Default: %default"),
+    optparse::make_option(c("--product-sample"), type = "double", default = 1, metavar = "FRAC",
+      help = "Keep a deterministic fraction of HS4 goods from the raw cache before prepare_data (exact for Stage 2; patch 0071). Default: %default"),
+    optparse::make_option(c("--product-seed"), type = "integer", default = 20260926L, metavar = "N",
+      help = "Seed for --product-sample. Default: %default"),
     optparse::make_option(
       c("--stage"),
       type = "character", default = "all",
@@ -287,6 +301,11 @@ validate_cli_opts <- function(opts, parser = NULL) {
     fail(sprintf("--stage2-se must be 'legacy', 'posterior' or 'sandwich', got: '%s'",
                  opts$stage2_se))
   }
+  if (!opts$stage2_prior %in% c("log", "level", "share")) fail(sprintf("--stage2-prior must be 'log', 'level' or 'share', got: '%s'", opts$stage2_prior))
+  if (!is.numeric(opts$stage2_maxit) || opts$stage2_maxit < 1) fail("--stage2-maxit must be a positive integer")
+  if (!opts$stage2_ref_export_moment %in% c("off", "on")) fail(sprintf("--stage2-ref-export-moment must be 'off' or 'on', got: '%s'", opts$stage2_ref_export_moment))
+  if (!opts$stage2_import_constant %in% c("off", "on")) fail(sprintf("--stage2-import-constant must be 'off' or 'on', got: '%s'", opts$stage2_import_constant))
+  if (!is.numeric(opts$product_sample) || opts$product_sample <= 0 || opts$product_sample > 1) fail("--product-sample must be in (0, 1]")
   if (!opts$stage2_ridge_domain %in% c("legacy", "all")) {
     fail(sprintf("--stage2-ridge-domain must be 'legacy' or 'all', got: '%s'",
                  opts$stage2_ridge_domain))

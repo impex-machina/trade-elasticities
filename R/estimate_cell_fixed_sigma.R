@@ -99,7 +99,9 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
                                     boundary_thresh = 0.01,
                                     plateau_thresh = 5.0,
                                     paper_exact_eq11 = FALSE,
-                                    se_form = "sandwich") {   # patch 0070: default sandwich
+                                    se_form = "sandwich",     # patch 0070: default sandwich
+                                    ln_gamma_prior = NA_real_, prior_form = 0L,   # patch 0071
+                                    import_constant = FALSE) {                    # patch 0071
   # (patch 0069) se_form selects the variance formula; J'WJ is the
   # Gauss-Newton Hessian of the HALF objective (SSR/2 + (lambda/2) sum
   # (ln d - ln g)^2), whose ridge curvature at the prior is lambda / d^2:
@@ -187,10 +189,20 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
     i <- j2
   }
   
+  # (patch 0071) concentrated import constant: demean the import block of the
+  # residuals and of J'WJ, and spend one df on it.
+  n_imp <- length(imp_Y_vec)
+  imp_const_on <- isTRUE(import_constant) && n_imp >= 2L
+  if (imp_const_on) {
+    wi <- jac$weights[seq_len(n_imp)]; ri <- jac$residuals[seq_len(n_imp)]
+    jac$residuals[seq_len(n_imp)] <- ri - sum(wi * ri) / sum(wi)
+    mb <- .import_block_means(rs, cs, vs, ws, n_imp, K)
+    JtWJ <- JtWJ - mb$sw * tcrossprod(mb$jbar)
+  }
   # sigma_hat^2 = weighted SSR / df (using df without prior penalty correction)
   SSR <- sum(jac$weights * jac$residuals^2)
   n_obs <- length(jac$residuals)
-  df_resid <- n_obs - K
+  df_resid <- n_obs - K - as.integer(imp_const_on)
   if (df_resid < 1L) {
     return(list(se = rep(NA_real_, K),
                 status = rep("insufficient_df", K),
@@ -203,9 +215,7 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
   H_prior <- matrix(0, K, K)
   if (shrinkage_lambda > 0) {
     for (k in seq_len(K)) {
-      if (d_hat[k] > 1e-8) {
-        H_prior[k, k] <- ridge_factor * shrinkage_lambda / d_hat[k]^2
-      }
+      H_prior[k, k] <- .ridge_curvature(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form, ridge_factor)[k]   # patch 0071
     }
   }
   
@@ -258,6 +268,8 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
                                   exp_sig_V, exp_gam_V, wt_imp_vec, wt_exp,
                                   shrinkage_lambda, delta = 1e-4,
                                   se_form = "sandwich",   # patch 0070: default sandwich
+                                  ln_gamma_prior = NA_real_, prior_form = 0L,   # patch 0071
+                                  import_constant = FALSE,
                                   paper_exact_eq11 = FALSE) {
   K  <- length(d_hat); na <- rep(NA_real_, K)
   if (!is.finite(sigma_val) || sigma_val <= 1) return(na)
@@ -279,15 +291,17 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
     for (a in seq_along(cc)) for (b in seq_along(cc))
       A[cc[a], cc[b]] <- A[cc[a], cc[b]] + ww * vv[a] * vv[b]
   }
-  if (shrinkage_lambda > 0)
-    for (k in seq_len(K)) if (d_hat[k] > 1e-8)
-      A[k, k] <- A[k, k] + (if (identical(se_form, "legacy")) 2 else 1) * shrinkage_lambda / d_hat[k]^2   # patch 0069
+  n_imp <- length(imp_Y_vec); imp_const_on <- isTRUE(import_constant) && n_imp >= 2L
+  if (imp_const_on) { mb <- .import_block_means(r, c, v, w, n_imp, K); A <- A - mb$sw * tcrossprod(mb$jbar) }   # patch 0071
+  diag(A) <- diag(A) + .ridge_curvature(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form,
+                                        if (identical(se_form, "legacy")) 2 else 1)   # patches 0069/0071
   jp <- JJ(sigma_val + delta); jm <- JJ(sigma_val - delta)
   if (is.null(jp) || is.null(jm) ||
       !identical(jp$status, "ok") || !identical(jm$status, "ok")) return(na)
   drds <- (jp$residuals - jm$residuals) / (2 * delta)
   g <- numeric(K)
   for (t in seq_along(r)) g[c[t]] <- g[c[t]] + w[r[t]] * v[t] * drds[r[t]]
+  if (imp_const_on) { wi <- w[seq_len(n_imp)]; drbar <- sum(wi * drds[seq_len(n_imp)]) / sum(wi); g <- g - mb$sw * mb$jbar * drbar }   # patch 0071
   as.numeric(tryCatch(-solve(A, g), error = function(e) na))
 }
 
@@ -332,7 +346,9 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
                                  exp_sig_V, exp_gam_V, wt_imp, wt_exp,
                                  ln_gamma_prior, shrinkage_lambda,
                                  paper_exact_eq11 = FALSE,
-                                 ridge_all_coords = TRUE) {   # patch 0070: default all
+                                 ridge_all_coords = TRUE,     # patch 0070: default all
+                                 prior_form = 0L,             # patch 0071: 0 log, 1 level, 2 share
+                                 import_constant = FALSE) {   # patch 0071: concentrated constant
   K <- length(d)
   if (sigma <= 1 || any(d <= 0)) return(rep(0, K))   # objective is a flat 1e12 there
   jac <- tryCatch(
@@ -344,6 +360,13 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
     error = function(e) NULL)
   if (is.null(jac) || !identical(jac$status, "ok")) return(rep(0, K))
   rs <- jac$jac_row + 1L; cs <- jac$jac_col + 1L
+  # (patch 0071) concentrated import constant: d/dd sum w (r - rbar)^2 =
+  # 2 sum w (r - rbar) dr/dd (the drbar/dd term vanishes since sum w (r - rbar) = 0)
+  n_imp <- length(imp_Y)
+  if (isTRUE(import_constant) && n_imp >= 2L) {
+    wi <- jac$weights[seq_len(n_imp)]; ri <- jac$residuals[seq_len(n_imp)]
+    jac$residuals[seq_len(n_imp)] <- ri - sum(wi * ri) / sum(wi)
+  }
   contrib <- 2 * jac$weights[rs] * jac$residuals[rs] * jac$jac_val
   g <- numeric(K)
   if (length(contrib)) {
@@ -351,10 +374,36 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
     g[as.integer(rownames(agg))] <- agg[, 1]
   }
   if (shrinkage_lambda > 0 && !is.na(ln_gamma_prior)) {
-    sel <- d > (if (ridge_all_coords) 0 else 1e-5)   # patch 0068: match the objective's domain
-    g[sel] <- g[sel] + 2 * shrinkage_lambda * (log(d[sel]) - ln_gamma_prior) / d[sel]
+    if (prior_form == 1L) {                                                     # patch 0071 level
+      gp <- exp(ln_gamma_prior); g <- g + 2 * shrinkage_lambda * (d - gp) / gp^2
+    } else if (prior_form == 2L) {                                              # patch 0071 share
+      gp <- exp(ln_gamma_prior); g <- g + 2 * shrinkage_lambda * (d / (1 + d) - gp / (1 + gp)) / (1 + d)^2
+    } else {
+      sel <- d > (if (ridge_all_coords) 0 else 1e-5)   # patch 0068: match the objective's domain
+      g[sel] <- g[sel] + 2 * shrinkage_lambda * (log(d[sel]) - ln_gamma_prior) / d[sel]
+    }
   }
   g
+}
+
+# (patch 0071) ridge curvature per prior form, half-objective units times
+# `factor` (2 under the legacy SE form, 1 otherwise): log lambda/d^2,
+# level lambda/g^2, share lambda/(1+d)^4 (Gauss-Newton: s'(d)^2).
+.ridge_curvature <- function(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form, factor) {
+  K <- length(d_hat); out <- numeric(K)
+  if (!(shrinkage_lambda > 0)) return(out)
+  if (prior_form == 1L) { gp <- exp(ln_gamma_prior); out[] <- factor * shrinkage_lambda / gp^2 }
+  else if (prior_form == 2L) out <- factor * shrinkage_lambda / (1 + d_hat)^4
+  else { ok <- d_hat > 1e-8; out[ok] <- factor * shrinkage_lambda / d_hat[ok]^2 }
+  out
+}
+# (patch 0071) weighted column means of the Jacobian over the import rows,
+# from the sparse triplets: J'WJ of the demeaned block = J'WJ - sw * Jbar Jbar'.
+.import_block_means <- function(rs, cs, vs, ws, n_imp, K) {
+  sel <- rs <= n_imp; sw <- sum(ws[seq_len(n_imp)])
+  jbar <- numeric(K)
+  if (any(sel)) { agg <- rowsum(ws[rs[sel]] * vs[sel], cs[sel]); jbar[as.integer(rownames(agg))] <- agg[, 1] / sw }
+  list(sw = sw, jbar = jbar)
 }
 
 
@@ -411,6 +460,11 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # key), "posterior", "legacy" (every release through v0.7.3). CLI
   # --stage2-se. Points, routing and tiers are identical across forms.
   se_form <- if (is.null(cfg$stage2_se)) "sandwich" else cfg$stage2_se
+  # patch 0071 (v0.8.0 experiment infrastructure; all default-off):
+  prior_code <- switch(if (is.null(cfg$stage2_prior)) "log" else cfg$stage2_prior, log = 0L, level = 1L, share = 2L)
+  stage2_maxit <- if (is.null(cfg$stage2_maxit)) 500L else as.integer(cfg$stage2_maxit)
+  ref_moment_on <- identical(cfg$stage2_ref_export_moment, "on")
+  imp_const_cfg <- identical(cfg$stage2_import_constant, "on")
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
@@ -528,6 +582,26 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
                     jmap = integer(0), sig_V = numeric(0),
                     gam_V = numeric(0), wt_exp = numeric(0), M = 0L)
   }
+  # (patch 0071) --stage2-ref-export-moment on: the reference exporter's own
+  # Eq. (11) hyperbola (Soderbery Fig. 1, Exports(s_ikg)) as one more export
+  # row, mapped to gamma_k (jmap = 2 -> column 0). Its row weight is the
+  # largest import-row weight (the reference is the largest exporter by
+  # construction). Without it gamma_k is identified only through the X3/X4
+  # cross-terms and the prior.
+  if (ref_moment_on) {
+    ref_mom <- tryCatch(build_export_moments(ref_exporter, focal_importer, all_dt, cfg, exp_lookup = exp_lookup),
+                        error = function(e) NULL)
+    if (!is.null(ref_mom) && isTRUE(ref_mom$M == 1L)) {
+      exp_mom <- list(exp_Y = c(ref_mom$exp_Y, exp_mom$exp_Y),
+                      exp_X = rbind(ref_mom$exp_X, exp_mom$exp_X),
+                      jmap  = c(2L, exp_mom$jmap),
+                      sig_V = c(ref_mom$sig_V, exp_mom$sig_V),
+                      gam_V = c(ref_mom$gam_V, exp_mom$gam_V),
+                      wt_exp = c(if (length(wt_imp_vec)) max(wt_imp_vec) else 1, exp_mom$wt_exp),
+                      M = exp_mom$M + 1L)
+    }
+  }
+  imp_const <- imp_const_cfg && exp_mom$M >= 2L   # identified only with >= 2 export rows
 
   # --- Optimization: gamma only ---
   gam_init <- cfg$gamma_start
@@ -556,7 +630,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
           shrinkage_lambda = shrinkage_lambda,
           paper_exact_eq11 = pe11,
           ridge_all_coords = ridge_all,
-          control = list(maxit = 500)),
+          prior_form = prior_code, import_constant = imp_const,   # patch 0071
+          control = list(maxit = stage2_maxit)),
     error = function(e) NULL)
 
   if (is.null(result) || result$convergence != 0) {
@@ -572,7 +647,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
             shrinkage_lambda = shrinkage_lambda,
             paper_exact_eq11 = pe11,
             ridge_all_coords = ridge_all,
-            control = list(maxit = 1000)),
+            prior_form = prior_code, import_constant = imp_const,   # patch 0071
+            control = list(maxit = 2L * stage2_maxit)),
       error = function(e) NULL)
   }
 
@@ -593,7 +669,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
       shrinkage_lambda = shrinkage_lambda,
       paper_exact_eq11 = pe11,
-      se_form = se_form
+      se_form = se_form,
+      ln_gamma_prior = ln_gamma_prior, prior_form = prior_code, import_constant = imp_const   # patch 0071
     )
     gamma_k_se     <- se_out$se[1]
     gamma_j_se     <- se_out$se[2:(J + 1)]
@@ -632,7 +709,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       exp_sig_V = exp_mom$sig_V, exp_gam_V = exp_mom$gam_V,
       wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
       shrinkage_lambda = shrinkage_lambda,
-      paper_exact_eq11 = pe11, se_form = se_form)
+      paper_exact_eq11 = pe11, se_form = se_form,
+      ln_gamma_prior = ln_gamma_prior, prior_form = prior_code, import_constant = imp_const)   # patch 0071
     se_prop_vec <- abs(dgds) * sigma_se_cell
   } else {
     dgds <- rep(NA_real_, length(d_hat)); se_prop_vec <- rep(NA_real_, length(d_hat))

@@ -119,6 +119,19 @@ cell_failure <- function(reason) {
 }
 
 
+#' Deterministic product subsample for local Stage-2 experiments (patch 0071).
+#' Every quantity in prepare_data() is within good, so subsetting the raw cache
+#' to the sampled goods BEFORE prepare_data() is exact for Stage 2. Returns the
+#' sorted vector of goods to keep; frac = 1 returns all goods.
+sample_products <- function(goods, frac, seed) {
+  goods <- sort(unique(as.character(goods)))
+  if (!is.finite(frac) || frac <= 0 || frac > 1) stop("product sample fraction must be in (0, 1]")
+  if (frac >= 1) return(goods)
+  n <- max(1L, as.integer(round(length(goods) * frac)))
+  set.seed(as.integer(seed))
+  sort(sample(goods, n))
+}
+
 #' Directly-estimated row predicate for a Stage-2 output (patch 0066,
 #' 2026-09-24 fresh-eyes audit). A row's gamma was produced by the
 #' optimizer iff its tier is 0/1/2 AND the cell was fitted: the all-Tier-3

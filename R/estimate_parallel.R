@@ -433,7 +433,8 @@ stage2_worker_fns <- c("estimate_product_fixed_sigma",
                        "het_obj_fixed_sigma",
                        # (patch 0040) previously missing: the SE pipeline
                        # and the opt-in analytic gradient.
-                       "compute_penalized_gn_se", "het_grad_fixed_sigma")
+                       "compute_penalized_gn_se", "het_grad_fixed_sigma",
+                       ".ridge_curvature", ".import_block_means", "sample_products")   # patch 0071
 
 #' Provision PSOCK workers for fixed-sigma Stage 2 estimation.
 #'
@@ -488,6 +489,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
   keys <- c("shrinkage_lambda", "bw_lag", "stage2_gradient", "paper_exact_eq11",
             "stage2_ridge_domain",   # patch 0068
             "stage2_se",             # patch 0069
+            "stage2_prior", "stage2_maxit", "stage2_ref_export_moment", "stage2_import_constant",   # patch 0071
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -508,6 +510,10 @@ stage2_psock_provision <- function(cl, cpp_dir,
   # config's rule): all / sandwich since v0.7.4.
   if (is.null(cfg$stage2_ridge_domain)) cfg$stage2_ridge_domain <- "all"
   if (is.null(cfg$stage2_se)) cfg$stage2_se <- "sandwich"
+  if (is.null(cfg$stage2_prior)) cfg$stage2_prior <- "log"                      # patch 0071: absent == off
+  if (is.null(cfg$stage2_maxit)) cfg$stage2_maxit <- 500L
+  if (is.null(cfg$stage2_ref_export_moment)) cfg$stage2_ref_export_moment <- "off"
+  if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "off"
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),

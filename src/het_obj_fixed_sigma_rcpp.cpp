@@ -25,6 +25,7 @@
 
 #include <Rcpp.h>
 #include <cmath>
+#include <vector>
 using namespace Rcpp;
 
 // [[Rcpp::export]]
@@ -38,7 +39,9 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
                                 double ln_gamma_prior,
                                 double shrinkage_lambda,
                                 bool paper_exact_eq11 = false,
-                                bool ridge_all_coords = true) {   // patch 0070: default all
+                                bool ridge_all_coords = true,     // patch 0070: default all
+                                int prior_form = 0,               // patch 0071: 0 log, 1 level, 2 share
+                                bool import_constant = false) {   // patch 0071: concentrated import-side constant
 
   // d[0] = gamma_k, d[1:J] = gamma_j
   // sigma is FIXED (not part of d)
@@ -63,6 +66,7 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
   // ===========================================================
 
   double SSR_imp = 0.0;
+  std::vector<double> imp_res(imp_Y.size(), 0.0);   // patch 0071
 
   // G6 FIX (v0.4.1 hotfix): bound the import loop by the ROW count, not the
   // parameter count. The validation harness (Test D) legitimately calls this
@@ -88,7 +92,18 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
                   ((gam_j - gam_k) * inv_1pgj / gam_k)                 * imp_X(j, 4);
 
     double resid = imp_Y[j] - pred;
+    imp_res[j] = resid;
     SSR_imp += wt_imp[j] * resid * resid;
+  }
+  // (patch 0071) --stage2-import-constant: the importer-exporter constant of
+  // Soderbery fn. 14, concentrated out of the import block as a weighted
+  // within-transformation: min_c sum_j w_j (r_j - c)^2 = sum_j w_j (r_j - rbar)^2
+  // with rbar the w-weighted mean of the import residuals. No extra parameter;
+  // costs one df. Applied only with >= 2 import rows (else it removes the block).
+  if (import_constant && N_imp >= 2) {
+    double sw = 0.0, swr = 0.0;
+    for (int j = 0; j < N_imp; j++) { sw += wt_imp[j]; swr += wt_imp[j] * imp_res[j]; }
+    if (sw > 0.0) { double rbar = swr / sw; SSR_imp -= sw * rbar * rbar; if (SSR_imp < 0.0) SSR_imp = 0.0; }
   }
 
   // ===========================================================
@@ -162,13 +177,21 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
   // at the 1e-6 floor, 13 log units below their prior (results/
   // stage2_shrinkage_census.json). See docs/methodology/stage2_country.md,
   // "Log-ridge domain".
+  // (patch 0071) --stage2-prior: 0 = log ridge lambda (ln d - ln g)^2 (v0.7.x);
+  // 1 = level ridge lambda ((d - g)/g)^2, finite at d = 0 (cost lambda);
+  // 2 = share ridge lambda (s(d) - s(g))^2 with s(x) = x/(1+x) in [0,1), finite
+  // at d = 0 (cost lambda s(g)^2). Forms 1-2 admit near-perfectly-elastic
+  // supply (gamma -> 0), which a prior on log gamma cannot at any lambda.
   const double ridge_floor = ridge_all_coords ? 0.0 : 1e-5;
   if (shrinkage_lambda > 0.0 && !std::isnan(ln_gamma_prior)) {
+    const double g = std::exp(ln_gamma_prior);
+    const double sg = g / (1.0 + g);
     for (int i = 0; i < d.size(); i++) {
-      if (d[i] > ridge_floor) {
-        double dev = std::log(d[i]) - ln_gamma_prior;
-        penalty += dev * dev;
-      }
+      double dev;
+      if (prior_form == 1)      { dev = (d[i] - g) / g; }
+      else if (prior_form == 2) { dev = d[i] / (1.0 + d[i]) - sg; }
+      else { if (!(d[i] > ridge_floor)) continue; dev = std::log(d[i]) - ln_gamma_prior; }
+      penalty += dev * dev;
     }
     penalty *= shrinkage_lambda;
   }

@@ -110,7 +110,12 @@ cat(sprintf("  Stage-1 Step-2 VCE: %s\n", opts$stage1_step2_vce))
 cat(sprintf("  Stage-1 UV trim:  %s\n", if (is.na(opts$stage1_uv_trim)) "off" else sprintf("|d ln p| < %.1f", opts$stage1_uv_trim)))
 cat(sprintf("  Stage-2 gradient: %s\n", opts$stage2_gradient))
 cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain)) "legacy" else opts$stage2_ridge_domain))
-cat(sprintf("  Stage-2 SE form: %s\n\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
+cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
+cat(sprintf("  Stage-2 prior: %s | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s\n\n",
+            if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_maxit)) 500L else opts$stage2_maxit,
+            if (is.null(opts$stage2_ref_export_moment)) "off" else opts$stage2_ref_export_moment,
+            if (is.null(opts$stage2_import_constant)) "off" else opts$stage2_import_constant,
+            if (is.null(opts$product_sample)) 1 else opts$product_sample))
 
 
 # ---- 3. Source library ----------------------------------------------------
@@ -186,6 +191,15 @@ if (file.exists(raw_cache_file)) {
 cat("Preparing country-level estimation data...\n")
 config_country <- config
 config_country$use_regions <- FALSE
+# (patch 0071) --product-sample FRAC --product-seed N: exact for Stage 2
+if (!is.null(opts$product_sample) && is.finite(opts$product_sample) && opts$product_sample < 1) {
+  data.table::setDT(raw_cache)
+  .keep <- sample_products(raw_cache$good, opts$product_sample, opts$product_seed)
+  .n_all <- data.table::uniqueN(raw_cache$good)
+  raw_cache <- raw_cache[good %in% .keep]
+  cat(sprintf("Product sample: %d of %d goods kept (frac %.4f, seed %d); %s obs\n\n",
+              length(.keep), .n_all, opts$product_sample, as.integer(opts$product_seed), format(nrow(raw_cache), big.mark = ",")))
+}
 prep_country <- prepare_data(config_country, raw_cache = raw_cache)
 dt_country <- prep_country$dt
 cat(sprintf("  Country data: %s obs\n\n",
