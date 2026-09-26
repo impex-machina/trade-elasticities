@@ -53,7 +53,7 @@ under another cleaning rule must say which rule.
 > formula"), `docs/methodology/v073_v074rc_compare_runs.md`,
 > `docs/results/stage2_shrinkage_census_v074rc*.md`,
 > `docs/results/stage2_lambda_curve_v074rc.md`.
-> Data revision: `<the 40-hex data revision from the upload>`. **v0.7.3 remains available pinned at
+> Data revision: `587b849f1e5733af8f4e8d261ab63759c4a60d3e`. **v0.7.3 remains available pinned at
 > revision `d4225cad88e68061b0af39e2917a26ee50db90ec`.**
 > **v0.7.3 (2026-09-24).** Validation-only release: **every point estimate,
 > routing field and gamma SE is identical to v0.7.2** (Stage 1: 280,649 cells,
