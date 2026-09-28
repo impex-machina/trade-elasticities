@@ -123,6 +123,28 @@ prepare_data <- function(cfg, raw_cache = NULL) {
   }
   } # end if/else raw_cache
 
+  # (patch 0072) The raw cache carries the year window it was built with
+  # (prepare_raw_data's minyear/maxyear). A narrower window on the CLI must
+  # still apply to a cached run; before this patch --minyear/--maxyear were
+  # printed in the run header and silently ignored whenever the cache was
+  # used, so any year-window experiment on the cache reproduced the full
+  # panel (v0.8.0 grid, 2026-09-28). Bit-preserving when the window equals
+  # the cache's.
+  if (!is.null(raw_cache)) {
+    n_before <- nrow(raw)
+    raw <- raw[year >= cfg$minyear]
+    if (!is.null(cfg$maxyear) && !is.na(cfg$maxyear)) raw <- raw[year <= cfg$maxyear]
+    if (nrow(raw) != n_before) {
+      cat(sprintf("  Year window applied to cache: keep %d-%s (%s obs dropped)\n", cfg$minyear,
+                  if (!is.null(cfg$maxyear) && !is.na(cfg$maxyear)) as.character(cfg$maxyear) else "max",
+                  format(n_before - nrow(raw), big.mark = ",")))
+      qlog$add(sprintf("Keep years %d-%s (window applied to cache)", cfg$minyear,
+                       if (!is.null(cfg$maxyear) && !is.na(cfg$maxyear)) as.character(cfg$maxyear) else "max"),
+               n_obs = nrow(raw), n_dropped = n_before - nrow(raw),
+               trade_value = sum(raw$cusval, na.rm = TRUE))
+    }
+  }
+
   # Regional aggregation
   if (cfg$use_regions) {
     rmap <- if (!is.null(cfg$custom_region_map)) cfg$custom_region_map else build_region_map()
