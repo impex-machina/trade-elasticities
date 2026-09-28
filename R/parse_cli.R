@@ -198,9 +198,14 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "FORM"
     ),
     optparse::make_option(c("--stage2-prior"), type = "character", default = "log", metavar = "FORM",
-      help = paste("Stage-2 shrinkage prior form (patch 0071): 'log' (ridge on ln gamma; v0.7.x),",
-                   "'level' (lambda ((gamma - g)/g)^2) or 'share' (lambda (s(gamma) - s(g))^2,",
-                   "s(x) = x/(1+x)); level/share admit gamma -> 0. Default: %default")),
+      help = paste("Stage-2 shrinkage prior form (patches 0071/0074): 'log' (ridge on ln gamma; shipped),",
+                   "'level' (lambda ((gamma - g)/g)^2), 'share' (lambda (s(gamma) - s(g))^2, s(x) = x/(1+x))",
+                   "or 'shiftlog' (lambda (ln(gamma + eps) - ln(g + eps))^2, finite curvature at 0). Default: %default")),
+    optparse::make_option(c("--stage2-prior-eps"), type = "double", default = 0.01, metavar = "EPS",
+      help = "Shift of the 'shiftlog' prior (patch 0074). Default: %default"),
+    optparse::make_option(c("--t-parity"), type = "character", default = "all", metavar = "MODE",
+      help = paste("Keep 'odd' or 'even' differenced observations (by t) after prepare_data, for same-period",
+                   "split-half experiments (patch 0074); 'all' keeps every observation. Default: %default")),
     optparse::make_option(c("--stage2-maxit"), type = "integer", default = 500L, metavar = "N",
       help = "L-BFGS-B iteration cap for the Stage-2 cell fit (Nelder-Mead fallback gets 2N). Default: %default"),
     optparse::make_option(c("--stage2-ref-export-moment"), type = "character", default = "on", metavar = "MODE",
@@ -301,7 +306,9 @@ validate_cli_opts <- function(opts, parser = NULL) {
     fail(sprintf("--stage2-se must be 'legacy', 'posterior' or 'sandwich', got: '%s'",
                  opts$stage2_se))
   }
-  if (!opts$stage2_prior %in% c("log", "level", "share")) fail(sprintf("--stage2-prior must be 'log', 'level' or 'share', got: '%s'", opts$stage2_prior))
+  if (!opts$stage2_prior %in% c("log", "level", "share", "shiftlog")) fail(sprintf("--stage2-prior must be 'log', 'level', 'share' or 'shiftlog', got: '%s'", opts$stage2_prior))
+  if (!is.numeric(opts$stage2_prior_eps) || opts$stage2_prior_eps <= 0) fail("--stage2-prior-eps must be positive")
+  if (!opts$t_parity %in% c("all", "odd", "even")) fail(sprintf("--t-parity must be 'all', 'odd' or 'even', got: '%s'", opts$t_parity))
   if (!is.numeric(opts$stage2_maxit) || opts$stage2_maxit < 1) fail("--stage2-maxit must be a positive integer")
   if (!opts$stage2_ref_export_moment %in% c("off", "on")) fail(sprintf("--stage2-ref-export-moment must be 'off' or 'on', got: '%s'", opts$stage2_ref_export_moment))
   if (!opts$stage2_import_constant %in% c("off", "on")) fail(sprintf("--stage2-import-constant must be 'off' or 'on', got: '%s'", opts$stage2_import_constant))

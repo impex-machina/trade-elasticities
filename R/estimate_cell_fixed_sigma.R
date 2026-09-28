@@ -101,7 +101,8 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
                                     paper_exact_eq11 = FALSE,
                                     se_form = "sandwich",     # patch 0070: default sandwich
                                     ln_gamma_prior = NA_real_, prior_form = 0L,   # patch 0071
-                                    import_constant = FALSE) {                    # patch 0071
+                                    import_constant = FALSE,                      # patch 0071
+                                    prior_eps = 0.01) {                           # patch 0074
   # (patch 0069) se_form selects the variance formula; J'WJ is the
   # Gauss-Newton Hessian of the HALF objective (SSR/2 + (lambda/2) sum
   # (ln d - ln g)^2), whose ridge curvature at the prior is lambda / d^2:
@@ -215,7 +216,7 @@ compute_penalized_gn_se <- function(d_hat, sigma_val,
   H_prior <- matrix(0, K, K)
   if (shrinkage_lambda > 0) {
     for (k in seq_len(K)) {
-      H_prior[k, k] <- .ridge_curvature(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form, ridge_factor)[k]   # patch 0071
+      H_prior[k, k] <- .ridge_curvature(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form, ridge_factor, prior_eps)[k]   # patches 0071/0074
     }
   }
   
@@ -269,7 +270,7 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
                                   shrinkage_lambda, delta = 1e-4,
                                   se_form = "sandwich",   # patch 0070: default sandwich
                                   ln_gamma_prior = NA_real_, prior_form = 0L,   # patch 0071
-                                  import_constant = FALSE,
+                                  import_constant = FALSE, prior_eps = 0.01,     # patches 0071/0074
                                   paper_exact_eq11 = FALSE) {
   K  <- length(d_hat); na <- rep(NA_real_, K)
   if (!is.finite(sigma_val) || sigma_val <= 1) return(na)
@@ -294,7 +295,7 @@ compute_dgamma_dsigma <- function(d_hat, sigma_val,
   n_imp <- length(imp_Y_vec); imp_const_on <- isTRUE(import_constant) && n_imp >= 2L
   if (imp_const_on) { mb <- .import_block_means(r, c, v, w, n_imp, K); A <- A - mb$sw * tcrossprod(mb$jbar) }   # patch 0071
   diag(A) <- diag(A) + .ridge_curvature(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form,
-                                        if (identical(se_form, "legacy")) 2 else 1)   # patches 0069/0071
+                                        if (identical(se_form, "legacy")) 2 else 1, prior_eps)   # patches 0069/0071/0074
   jp <- JJ(sigma_val + delta); jm <- JJ(sigma_val - delta)
   if (is.null(jp) || is.null(jm) ||
       !identical(jp$status, "ok") || !identical(jm$status, "ok")) return(na)
@@ -347,8 +348,9 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
                                  ln_gamma_prior, shrinkage_lambda,
                                  paper_exact_eq11 = FALSE,
                                  ridge_all_coords = TRUE,     # patch 0070: default all
-                                 prior_form = 0L,             # patch 0071: 0 log, 1 level, 2 share
-                                 import_constant = FALSE) {   # patch 0071: concentrated constant
+                                 prior_form = 0L,             # patch 0071: 0 log, 1 level, 2 share; 0074: 3 shiftlog
+                                 import_constant = FALSE,     # patch 0071: concentrated constant
+                                 prior_eps = 0.01) {          # patch 0074
   K <- length(d)
   if (sigma <= 1 || any(d <= 0)) return(rep(0, K))   # objective is a flat 1e12 there
   jac <- tryCatch(
@@ -378,6 +380,8 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
       gp <- exp(ln_gamma_prior); g <- g + 2 * shrinkage_lambda * (d - gp) / gp^2
     } else if (prior_form == 2L) {                                              # patch 0071 share
       gp <- exp(ln_gamma_prior); g <- g + 2 * shrinkage_lambda * (d / (1 + d) - gp / (1 + gp)) / (1 + d)^2
+    } else if (prior_form == 3L) {                                              # patch 0074 shiftlog
+      gp <- exp(ln_gamma_prior); g <- g + 2 * shrinkage_lambda * (log(d + prior_eps) - log(gp + prior_eps)) / (d + prior_eps)
     } else {
       sel <- d > (if (ridge_all_coords) 0 else 1e-5)   # patch 0068: match the objective's domain
       g[sel] <- g[sel] + 2 * shrinkage_lambda * (log(d[sel]) - ln_gamma_prior) / d[sel]
@@ -389,11 +393,12 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
 # (patch 0071) ridge curvature per prior form, half-objective units times
 # `factor` (2 under the legacy SE form, 1 otherwise): log lambda/d^2,
 # level lambda/g^2, share lambda/(1+d)^4 (Gauss-Newton: s'(d)^2).
-.ridge_curvature <- function(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form, factor) {
+.ridge_curvature <- function(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form, factor, prior_eps = 0.01) {
   K <- length(d_hat); out <- numeric(K)
   if (!(shrinkage_lambda > 0)) return(out)
   if (prior_form == 1L) { gp <- exp(ln_gamma_prior); out[] <- factor * shrinkage_lambda / gp^2 }
   else if (prior_form == 2L) out <- factor * shrinkage_lambda / (1 + d_hat)^4
+  else if (prior_form == 3L) out <- factor * shrinkage_lambda / (d_hat + prior_eps)^2   # patch 0074 shiftlog
   else { ok <- d_hat > 1e-8; out[ok] <- factor * shrinkage_lambda / d_hat[ok]^2 }
   out
 }
@@ -461,7 +466,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # --stage2-se. Points, routing and tiers are identical across forms.
   se_form <- if (is.null(cfg$stage2_se)) "sandwich" else cfg$stage2_se
   # patch 0071 (v0.8.0 experiment infrastructure; all default-off):
-  prior_code <- switch(if (is.null(cfg$stage2_prior)) "log" else cfg$stage2_prior, log = 0L, level = 1L, share = 2L)
+  prior_code <- switch(if (is.null(cfg$stage2_prior)) "log" else cfg$stage2_prior, log = 0L, level = 1L, share = 2L, shiftlog = 3L)
+  prior_eps  <- if (is.null(cfg$stage2_prior_eps)) 0.01 else as.numeric(cfg$stage2_prior_eps)   # patch 0074
   stage2_maxit <- if (is.null(cfg$stage2_maxit)) 500L else as.integer(cfg$stage2_maxit)
   ref_moment_on <- !identical(cfg$stage2_ref_export_moment, "off")   # patch 0073: absent == on (v0.8.0)
   imp_const_cfg <- !identical(cfg$stage2_import_constant, "off")     # patch 0073: absent == on (v0.8.0)
@@ -630,7 +636,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
           shrinkage_lambda = shrinkage_lambda,
           paper_exact_eq11 = pe11,
           ridge_all_coords = ridge_all,
-          prior_form = prior_code, import_constant = imp_const,   # patch 0071
+          prior_form = prior_code, import_constant = imp_const, prior_eps = prior_eps,   # patches 0071/0074
           control = list(maxit = stage2_maxit)),
     error = function(e) NULL)
 
@@ -647,7 +653,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
             shrinkage_lambda = shrinkage_lambda,
             paper_exact_eq11 = pe11,
             ridge_all_coords = ridge_all,
-            prior_form = prior_code, import_constant = imp_const,   # patch 0071
+            prior_form = prior_code, import_constant = imp_const, prior_eps = prior_eps,   # patches 0071/0074
             control = list(maxit = 2L * stage2_maxit)),
       error = function(e) NULL)
   }
@@ -670,7 +676,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       shrinkage_lambda = shrinkage_lambda,
       paper_exact_eq11 = pe11,
       se_form = se_form,
-      ln_gamma_prior = ln_gamma_prior, prior_form = prior_code, import_constant = imp_const   # patch 0071
+      ln_gamma_prior = ln_gamma_prior, prior_form = prior_code, import_constant = imp_const,   # patch 0071
+      prior_eps = prior_eps                                                                    # patch 0074
     )
     gamma_k_se     <- se_out$se[1]
     gamma_j_se     <- se_out$se[2:(J + 1)]
@@ -710,7 +717,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
       wt_imp_vec = wt_imp_vec, wt_exp = exp_mom$wt_exp,
       shrinkage_lambda = shrinkage_lambda,
       paper_exact_eq11 = pe11, se_form = se_form,
-      ln_gamma_prior = ln_gamma_prior, prior_form = prior_code, import_constant = imp_const)   # patch 0071
+      ln_gamma_prior = ln_gamma_prior, prior_form = prior_code, import_constant = imp_const,
+      prior_eps = prior_eps)   # patches 0071/0074
     se_prop_vec <- abs(dgds) * sigma_se_cell
   } else {
     dgds <- rep(NA_real_, length(d_hat)); se_prop_vec <- rep(NA_real_, length(d_hat))

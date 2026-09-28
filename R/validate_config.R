@@ -62,7 +62,9 @@ validate_config <- function(cfg) {
       !cfg$stage2_se %in% c("legacy", "posterior", "sandwich")) {
     stop("stage2_se must be 'legacy', 'posterior' or 'sandwich', got: ", cfg$stage2_se)
   }
-  if (!is.null(cfg$stage2_prior) && !cfg$stage2_prior %in% c("log", "level", "share")) stop("stage2_prior must be 'log', 'level' or 'share', got: ", cfg$stage2_prior)
+  if (!is.null(cfg$stage2_prior) && !cfg$stage2_prior %in% c("log", "level", "share", "shiftlog")) stop("stage2_prior must be 'log', 'level', 'share' or 'shiftlog', got: ", cfg$stage2_prior)
+  if (!is.null(cfg$stage2_prior_eps) && (!is.numeric(cfg$stage2_prior_eps) || cfg$stage2_prior_eps <= 0)) stop("stage2_prior_eps must be positive")
+  if (!is.null(cfg$t_parity) && !cfg$t_parity %in% c("all", "odd", "even")) stop("t_parity must be 'all', 'odd' or 'even', got: ", cfg$t_parity)
   if (!is.null(cfg$stage2_maxit) && (!is.numeric(cfg$stage2_maxit) || cfg$stage2_maxit < 1)) stop("stage2_maxit must be a positive integer")
   if (!is.null(cfg$stage2_ref_export_moment) && !cfg$stage2_ref_export_moment %in% c("off", "on")) stop("stage2_ref_export_moment must be 'off' or 'on', got: ", cfg$stage2_ref_export_moment)
   if (!is.null(cfg$stage2_import_constant) && !cfg$stage2_import_constant %in% c("off", "on")) stop("stage2_import_constant must be 'off' or 'on', got: ", cfg$stage2_import_constant)

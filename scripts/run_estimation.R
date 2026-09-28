@@ -111,11 +111,12 @@ cat(sprintf("  Stage-1 UV trim:  %s\n", if (is.na(opts$stage1_uv_trim)) "off" el
 cat(sprintf("  Stage-2 gradient: %s\n", opts$stage2_gradient))
 cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain)) "legacy" else opts$stage2_ridge_domain))
 cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
-cat(sprintf("  Stage-2 prior: %s | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s\n\n",
-            if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_maxit)) 500L else opts$stage2_maxit,
-            if (is.null(opts$stage2_ref_export_moment)) "off" else opts$stage2_ref_export_moment,
-            if (is.null(opts$stage2_import_constant)) "off" else opts$stage2_import_constant,
-            if (is.null(opts$product_sample)) 1 else opts$product_sample))
+cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
+            if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
+            if (is.null(opts$stage2_maxit)) 500L else opts$stage2_maxit,
+            if (is.null(opts$stage2_ref_export_moment)) "on" else opts$stage2_ref_export_moment,
+            if (is.null(opts$stage2_import_constant)) "on" else opts$stage2_import_constant,
+            if (is.null(opts$product_sample)) 1 else opts$product_sample, if (is.null(opts$t_parity)) "all" else opts$t_parity))
 
 
 # ---- 3. Source library ----------------------------------------------------
@@ -201,6 +202,17 @@ if (!is.null(opts$product_sample) && is.finite(opts$product_sample) && opts$prod
               length(.keep), .n_all, opts$product_sample, as.integer(opts$product_seed), format(nrow(raw_cache), big.mark = ",")))
 }
 prep_country <- prepare_data(config_country, raw_cache = raw_cache)
+# (patch 0074) --t-parity odd|even: keep half the differenced observations by t
+# parity, AFTER prepare_data (lags and shares already attached), for same-period
+# split-half experiments; the Stage-2a priors/lookups come from a full-panel 2a
+# table, so this is for --stage 2b passes.
+if (!is.null(opts$t_parity) && opts$t_parity != "all") {
+  .keep_par <- if (opts$t_parity == "odd") 1L else 0L
+  .n0 <- nrow(prep_country$dt)
+  prep_country$dt <- prep_country$dt[t %% 2L == .keep_par]
+  cat(sprintf("t-parity filter (%s): %s of %s differenced observations kept\n\n", opts$t_parity,
+              format(nrow(prep_country$dt), big.mark = ","), format(.n0, big.mark = ",")))
+}
 dt_country <- prep_country$dt
 cat(sprintf("  Country data: %s obs\n\n",
             format(nrow(dt_country), big.mark = ",")))

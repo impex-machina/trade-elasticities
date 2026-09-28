@@ -40,8 +40,9 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
                                 double shrinkage_lambda,
                                 bool paper_exact_eq11 = false,
                                 bool ridge_all_coords = true,     // patch 0070: default all
-                                int prior_form = 0,               // patch 0071: 0 log, 1 level, 2 share
-                                bool import_constant = false) {   // patch 0071: concentrated import-side constant
+                                int prior_form = 0,               // patch 0071: 0 log, 1 level, 2 share; patch 0074: 3 shiftlog
+                                bool import_constant = false,     // patch 0071: concentrated import-side constant
+                                double prior_eps = 0.01) {        // patch 0074: shift of the shiftlog prior
 
   // d[0] = gamma_k, d[1:J] = gamma_j
   // sigma is FIXED (not part of d)
@@ -190,6 +191,7 @@ double het_obj_fixed_sigma_rcpp(NumericVector d,
       double dev;
       if (prior_form == 1)      { dev = (d[i] - g) / g; }
       else if (prior_form == 2) { dev = d[i] / (1.0 + d[i]) - sg; }
+      else if (prior_form == 3) { dev = std::log(d[i] + prior_eps) - std::log(g + prior_eps); }   // patch 0074 shiftlog
       else { if (!(d[i] > ridge_floor)) continue; dev = std::log(d[i]) - ln_gamma_prior; }
       penalty += dev * dev;
     }
