@@ -107,3 +107,5 @@ results/stage2_dgp_summary_quick.json
 
 # per-series BW gap census: 183 MB, lives on S3 (v050rc_run_<date>/), not in git
 results/*_bw_gap_census_series.csv
+
+grid/
