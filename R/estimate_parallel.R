@@ -512,8 +512,8 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_se)) cfg$stage2_se <- "sandwich"
   if (is.null(cfg$stage2_prior)) cfg$stage2_prior <- "log"                      # patch 0071: absent == off
   if (is.null(cfg$stage2_maxit)) cfg$stage2_maxit <- 500L
-  if (is.null(cfg$stage2_ref_export_moment)) cfg$stage2_ref_export_moment <- "off"
-  if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "off"
+  if (is.null(cfg$stage2_ref_export_moment)) cfg$stage2_ref_export_moment <- "on"   # patch 0073
+  if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),

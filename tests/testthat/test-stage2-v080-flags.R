@@ -11,8 +11,9 @@
 #   3. the reference-exporter export row is accepted with jmap = 2 and the
 #      Jacobian places its entry in column 0;
 #   4. sample_products is deterministic and exact; CLI/validate/stamp carry
-#      the new fields; defaults are bit-preserving on the e2e fixture, and
-#      maxit / ref moment / import constant change the fit when switched on;
+#      the new fields; the defaults (patch 0073: log prior, maxit 500, both
+#      moments ON) are what an absent key means, and switching maxit / the
+#      moments / the prior away from them changes the fit;
 #   5. the reliability script recovers r = 1 on identical halves and lower
 #      on perturbed ones.
 # ============================================================================
@@ -100,16 +101,17 @@ test_that("sample_products, CLI, validate_config and the stamp carry the new fie
   o <- parse_cli(c("--data", fake, "--stage2-prior", "share", "--stage2-maxit", "2000", "--stage2-ref-export-moment", "on", "--stage2-import-constant", "on", "--product-sample", "0.02", "--product-seed", "5"))
   expect_identical(o$stage2_prior, "share"); expect_equal(o$stage2_maxit, 2000L); expect_identical(o$stage2_ref_export_moment, "on"); expect_identical(o$stage2_import_constant, "on"); expect_equal(o$product_sample, 0.02)
   d <- parse_cli(c("--data", fake)); expect_identical(d$stage2_prior, "log"); expect_equal(d$stage2_maxit, 500L); expect_equal(d$product_sample, 1)
+  expect_identical(d$stage2_ref_export_moment, "on"); expect_identical(d$stage2_import_constant, "on")   # patch 0073 defaults
   expect_error(parse_cli(c("--data", fake, "--stage2-prior", "flat")), "stage2-prior"); expect_error(parse_cli(c("--data", fake, "--product-sample", "1.5")), "product-sample")
   cfg <- make_synthetic_cfg(); dt <- make_synthetic_baci(seed = 42L)
   cfg_bad <- cfg; cfg_bad$stage2_prior <- "flat"; expect_error(validate_config(cfg_bad), "stage2_prior")
   cfg_x <- cfg; cfg_x$stage2_prior <- "level"; expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_x, dt)))
-  cfg_d <- cfg; cfg_d$stage2_prior <- "log"; cfg_d$stage2_maxit <- 500L; cfg_d$stage2_ref_export_moment <- "off"; cfg_d$stage2_import_constant <- "off"
+  cfg_d <- cfg; cfg_d$stage2_prior <- "log"; cfg_d$stage2_maxit <- 500L; cfg_d$stage2_ref_export_moment <- "on"; cfg_d$stage2_import_constant <- "on"
   expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_d, dt))
   run <- function(cfg) { r <- NULL; suppressMessages(suppressWarnings(capture.output(r <- estimate_all_fixed_sigma(cfg, ncores = 1L, prepared_dt = dt), type = "output"))); finalize_saved_output(r) }
   r_def <- run(cfg); expect_identical(r_def, run(cfg_d))
   for (nm in c("stage2_prior", "stage2_ref_export_moment", "stage2_import_constant", "stage2_maxit")) {
-    cfg_v <- cfg; cfg_v[[nm]] <- switch(nm, stage2_prior = "level", stage2_ref_export_moment = "on", stage2_import_constant = "on", stage2_maxit = 2L)
+    cfg_v <- cfg; cfg_v[[nm]] <- switch(nm, stage2_prior = "level", stage2_ref_export_moment = "off", stage2_import_constant = "off", stage2_maxit = 2L)
     r_v <- run(cfg_v)
     expect_setequal(names(r_v), names(r_def)); expect_false(identical(r_v$gamma, r_def$gamma), info = nm)
   }

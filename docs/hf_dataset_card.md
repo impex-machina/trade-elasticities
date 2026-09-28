@@ -32,6 +32,21 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.8.0 (2026-09-XX).** Stage-2 specification: the reference exporter's
+> own export-side moment (Soderbery's Exports(s_ikg)) and the importer-
+> exporter constant of his footnote 14 (concentrated out of the import
+> block) are now included; the shrinkage prior stays a log-ridge at
+> lambda = 0.1. On a 2% product subsample split 1995-2009 / 2010-2024 the
+> within-cell exporter component of gamma reproduces across halves at
+> r ~ 0.06-0.09 (rank 0.11-0.19) under every prior form tested, so the
+> ranking of exporters within an importer-product cell should not be read
+> as estimated; gamma's informative content is at the good and cell level
+> (docs/results/stage2_reliability_*.md). Stage 1 identical to v0.7.3 and
+> v0.7.4 (sha256-gated). The year window (--minyear/--maxyear) now applies
+> to cached runs (it was silently ignored before; production unaffected).
+> Numbers vs v0.7.4: <fill from the rc compare_runs at the card step>.
+> Data revision: `<fill at the card step after the HF upload>`. **v0.7.4 remains available pinned at
+> revision `587b849f1e5733af8f4e8d261ab63759c4a60d3e`.**
 > **v0.7.4 (2026-09-25).** Stage-2 correction: the log-ridge penalty on
 > gamma now applies to every coordinate. Through v0.7.3 it skipped
 > coordinates below 1e-5 while the optimizer bound was 1e-6, and 828,294 of

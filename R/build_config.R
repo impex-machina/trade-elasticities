@@ -84,11 +84,11 @@ build_config <- function(opts) {
     stage2_ridge_domain = opts$stage2_ridge_domain %||% "all",       # patch 0070: default all
     # patch 0069/0070: Stage-2 gamma variance formula. Absent key == sandwich (v0.7.4 default).
     stage2_se = opts$stage2_se %||% "sandwich",   # patch 0070: default sandwich
-    # patch 0071 (v0.8.0 experiment infrastructure; absent == off / v0.7.x behaviour)
+    # patch 0071/0073: absent == the v0.8.0 default (log prior, maxit 500, both moments on)
     stage2_prior = opts$stage2_prior %||% "log",
     stage2_maxit = opts$stage2_maxit %||% 500L,
-    stage2_ref_export_moment = opts$stage2_ref_export_moment %||% "off",
-    stage2_import_constant = opts$stage2_import_constant %||% "off",
+    stage2_ref_export_moment = opts$stage2_ref_export_moment %||% "on",    # patch 0073: v0.8.0 default
+    stage2_import_constant = opts$stage2_import_constant %||% "on",        # patch 0073: v0.8.0 default
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
     stage1_cf_admissibility = opts$stage1_cf_admissibility %||% "legacy",

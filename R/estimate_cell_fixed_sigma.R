@@ -463,8 +463,8 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # patch 0071 (v0.8.0 experiment infrastructure; all default-off):
   prior_code <- switch(if (is.null(cfg$stage2_prior)) "log" else cfg$stage2_prior, log = 0L, level = 1L, share = 2L)
   stage2_maxit <- if (is.null(cfg$stage2_maxit)) 500L else as.integer(cfg$stage2_maxit)
-  ref_moment_on <- identical(cfg$stage2_ref_export_moment, "on")
-  imp_const_cfg <- identical(cfg$stage2_import_constant, "on")
+  ref_moment_on <- !identical(cfg$stage2_ref_export_moment, "off")   # patch 0073: absent == on (v0.8.0)
+  imp_const_cfg <- !identical(cfg$stage2_import_constant, "off")     # patch 0073: absent == on (v0.8.0)
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the

@@ -242,6 +242,34 @@ On the shipped v0.7.3 tables (`results/stage2_shrinkage_census.json`, Block A co
 
 **What the clean table says about shrinkage (`docs/results/stage2_shrinkage_census_v074rc*.md`).** `var(log gamma)` falls from 25.6 to 0.69 and the nested decomposition is now economics: exporter-within-cell 60% of the variance unweighted, 40% trade-weighted; median within-cell sd of log gamma 0.64 against an across-good sd of the prior of 0.43. The heterogeneity sits where the data curvature is: rank-1 exporters have a median data share of 0.34 (`1 - gamma_shrink_wt` under the sandwich definition), rank > 10 exporters 0.03; the `gamma_shrink_wt >= 0.99` bin (30% of rows) is the prior to within 0.5%. Within-cell heterogeneity is therefore estimated for the large exporters and imputed for the tail — the accurate one-line description of the Stage-2b gamma. The full-universe lambda curve (`docs/results/stage2_lambda_curve_v074rc.md`) shows why lambda stays at 0.1 for now: below 0.01 the median row's distance from the prior barely moves (0.21 → 0.27) while the tails explode (p90 1.8 → 12.5; within-cell sd 1.05 → 5.7), the signature of noise amplification, and a population of ~140k rows heads toward gamma ≈ 0 — exporters whose moments say near-perfectly-elastic supply, which a prior on **log** gamma cannot represent at any lambda. The prior's form, the measurement-error treatment (fn. 14) and the reference-exporter export moment are the v0.8.0 questions, ahead of any lambda change.
 
+## v0.8.0: the prior's form, λ, the two omitted moments, and the reliability of within-cell heterogeneity (patches 0071–0073)
+
+Patch 0071 added the experiment infrastructure behind flags: `--stage2-prior {log|level|share}` (level = λ((γ−g)/g)², share = λ(s(γ)−s(g))² with s = γ/(1+γ); both finite at γ = 0), `--stage2-ref-export-moment` (the reference exporter's own Eq. (11) row, Soderbery's Exports(s_ikg), mapped to γ_k), `--stage2-import-constant` (Soderbery fn. 14's importer–exporter constant, concentrated out of the import block as a weighted within-transformation; one df), `--stage2-maxit`, and `--product-sample` (a deterministic subset of goods applied to the raw cache before `prepare_data()`, exact for Stage 2). Patch 0072 fixed `prepare_data()` applying `--minyear/--maxyear` only on the fresh-load path — on a cached run the window was printed in the header and ignored, which voided the grid's first split-half pass. Patch 0073 sets the v0.8.0 defaults.
+
+**The design grid** (`docs/results/stage2_reliability_{log,level,share}.md`; 2% product subsample, 25 goods, 152k rows / 113k directly estimated rows, one Stage-2a pass per prior form): every prior form × λ ∈ {0.1, 0.01, 0.001} × moments off/on on the full panel, and the halves 1995–2009 / 2010–2024 for the decision configurations. Full-panel results:
+
+| prior, λ | non-converged | γ ≤ 10⁻⁴ | γ ≥ 10 | `shrink_wt` p50 | within-cell sd | \|dev\| p50 / p90 | `opt_tariff` p50 |
+|---|---|---|---|---|---|---|---|
+| log 0.1, moments on (**shipped**) | 7.6% | 0 | 0 | 0.936 | 0.56 | 0.08 / 1.02 | 0.597 |
+| log 0.1, moments off (v0.7.4) | 7.8% | 0 | 0 | 0.941 | 0.60 | 0.08 / 1.10 | 0.571 |
+| log 0.01 / 0.001 | 22–23% / 47–48% | 0 | 1–2% | 0.77 / 0.33–0.41 | 1.0 / 1.4 | 0.21 / 1.7–2.2 | 0.57 / 0.51 |
+| level 0.1 (base / moments) | 0.5% / 0.7% | 7.4% / 6.2% | 0 | 0.92 | 2.5 / 2.2 | 0.11 / 2.3–1.9 | 0.454 / 0.490 |
+| level 0.01 / 0.001 | 1.1–1.4% / 3–4% | 11–12% / 15–16% | 0 / 0.4% | 0.59–0.64 / 0.16–0.20 | 4.0–4.3 / 4.9–5.0 | 0.43 / 12.9 ; 0.82–0.85 / 13 | 0.45–0.49 / 0.47–0.52 |
+| share 0.1 / 0.01 / 0.001 | 36% / 48–50% / 48–50% | 5–6% / 6–7% / 7–8% | 3–4% / 5–7% / 7–9% | 0.44–0.49 / 0.02–0.04 / ≤0.005 | 2.8–3.0 / 3.6–4.1 / 4.3–5.0 | 0.22 / 2.9–3.9 ; 0.23–0.24 / 6–9 ; 0.25–0.28 / 9–11 | 0.51–0.56 |
+
+**Split-half reliability** (within-cell-demeaned log γ, keys directly estimated in both halves, cells with ≥ 2 such keys; `analysis/stage2_reliability.R`):
+
+| configuration | keys | cells | Pearson r_within | rank ρ | r (raw log γ) |
+|---|---|---|---|---|---|
+| log 0.1, moments on | 61,300 | 3,540 | 0.091 | 0.110 | 0.297 |
+| level 0.1, base | 61,500 | 3,540 | 0.058 | 0.178 | 0.189 |
+| level 0.1, moments on | 61,600 | 3,540 | 0.060 | 0.192 | 0.176 |
+| level 0.01, moments on | 61,500 | 3,530 | 0.063 | 0.146 | 0.129 |
+
+**Reading.** The exporter-specific component of γ — an exporter's deviation from its cell mean — is reproduced across the two halves of the panel at r ≈ 0.06–0.09 (rank 0.11–0.19), for every prior form and λ; Spearman–Brown puts full-panel reliability at ~0.2–0.3 at best. The halves confound sampling noise with structural change between 1995–2009 and 2010–2024, so these are lower bounds, but nothing in the grid shows a signal that a looser prior releases: loosening λ raises within-cell dispersion without raising reliability (the noise-amplification signature of the v0.7.4 λ curve), and the `level` form's γ ≈ 0 population is not more reproducible than the log form's tilt. The informative content of the Stage-2b γ is at the good and cell level; the ranking of exporters within a cell is mostly not. That is the statement the paper should make, and the README's Known-limitations bullet makes it.
+
+**Decisions (patch 0073).** The prior stays `log` at λ = 0.1: `level` removes the non-convergence (0.5% vs 7.6%) but does so by sending 6–7% of rows to γ ≈ 0 with no gain in reliability, a 20% lower median `opt_tariff` and an unbounded 1/γ on those rows — assigning perfectly elastic supply to specific exporters that the data do not reproduce; `share` is bounded on both sides, so its upper tail runs away (3–9% of rows at γ ≥ 10) and half its cells hit `maxit`. Both moments go on as defaults: no cost anywhere, slightly less noise, `opt_tariff` +4–5% from the reference-exporter row, and two of Soderbery's specification terms restored. Ridge domain `all` and the sandwich SE stay. The 7–8% `non_converged` share under the log form is a stiffness artefact of the 1/γ ridge gradient and remains open (`--stage2-maxit` untested; a shifted-log prior, ln(γ + ε), is the candidate structural fix). A parity split of the differenced observations (odd/even t, same period, no drift) is the follow-up experiment that separates noise from structural change in the reliability number.
+
 ## Headline findings vs Soderbery (2018)
 
 From the 2026-05-14 SE-enabled heterogeneity report (retained in the local
