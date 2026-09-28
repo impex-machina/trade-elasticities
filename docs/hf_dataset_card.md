@@ -32,7 +32,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.8.0 (2026-09-XX).** Stage-2 specification: the reference exporter's
+> **v0.8.0 (2026-09-28).** Stage-2 specification: the reference exporter's
 > own export-side moment (Soderbery's Exports(s_ikg)) and the importer-
 > exporter constant of his footnote 14 (concentrated out of the import
 > block) are now included; the shrinkage prior stays a log-ridge at
@@ -44,8 +44,8 @@ under another cleaning rule must say which rule.
 > (docs/results/stage2_reliability_*.md). Stage 1 identical to v0.7.3 and
 > v0.7.4 (sha256-gated). The year window (--minyear/--maxyear) now applies
 > to cached runs (it was silently ignored before; production unaffected).
-> Numbers vs v0.7.4: <fill from the rc compare_runs at the card step>.
-> Data revision: `<fill at the card step after the HF upload>`. **v0.7.4 remains available pinned at
+> Numbers vs v0.7.4: opt_tariff median 0.723 -> 0.749 (cell median 0.617 -> 0.647); gamma median 0.665 -> 0.667; gamma_se finite 63.0% -> 63.4%; insufficient_df 0.5% -> 0.1%; non_converged 8.9% -> 9.0%; Stage 2a gamma_se now in the shipped sandwich form (median 0.156, was 0.524 legacy-form).
+> Data revision: `60aad7c0d0534fcdbcb602daddd7269542167789`. **v0.7.4 remains available pinned at
 > revision `587b849f1e5733af8f4e8d261ab63759c4a60d3e`.**
 > **v0.7.4 (2026-09-25).** Stage-2 correction: the log-ridge penalty on
 > gamma now applies to every coordinate. Through v0.7.3 it skipped
