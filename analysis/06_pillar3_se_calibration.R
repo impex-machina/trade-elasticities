@@ -20,7 +20,7 @@ if (isTRUE(RERUN_PILLARS)) {
 # within +/-7% (med_ratio in [0.93, 1.07]) across all regimes, while
 # sandwich under-covers without shrinkage and unp_gn over-covers with it.
 se_summary[, formula := factor(formula,
-  levels = c("unp_gn", "sandwich", "pen_gn"))]
+  levels = c("unp_gn", "sandwich", "pen_gn", "pen_sandwich"))]   # patch 0076
 
 fig <- ggplot(se_summary, aes(x = regime, y = med_ratio,
                               colour = formula, group = formula)) +

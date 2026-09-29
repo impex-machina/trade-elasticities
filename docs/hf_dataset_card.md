@@ -32,6 +32,16 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.8.2 (2026-09-XX).** Validation only: Pillar 3 (the standard-error
+> Monte Carlo) re-captured for the gamma_se form shipped since v0.7.4 -- the
+> sandwich with the ridge in lambda/gamma^2 units -- and extended with a
+> production-shrinkage regime (gamma_shrink_wt ~0.90, the shipped table's
+> median). The shipped SE's median ratio to the empirical sampling SD is
+> 0.98-1.03 across five regimes and 1.03 at production shrinkage, where the
+> pre-v0.7.4 formula gives 2.2. Estimates identical to v0.8.1 (only
+> validation/se_calibration_mc_*.csv change).
+> Data revision: `<fill at the card step after the HF upload>`. **v0.8.1 remains available pinned at
+> revision `0e3e446d0042268508e42414e95ad131f561ca11`.**
 > **v0.8.1 (2026-09-29).** The Stage-2 cell optimizer's iteration cap rises
 > from 500 to 5,000: on a 2% product subsample non-converged cells fall
 > from 7.6% to 1.5% of rows, the freed cells moving a little further from

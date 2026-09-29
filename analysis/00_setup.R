@@ -502,13 +502,18 @@ PILLAR3_SUMMARY_CSV <- "docs/methodology/se_calibration_mc_summary.csv"
 
 se_summary <- data.table::fread(PILLAR3_SUMMARY_CSV)
 
-# Reconciliation: 4 regimes x 3 formulas = 12 rows. Loud-fail if the
-# experimental design changes.
-stopifnot(nrow(se_summary) == 12L)
-stopifnot(all(c("unp_gn", "sandwich", "pen_gn") %in% se_summary$formula))
+# Reconciliation: 5 regimes x 4 formulas = 20 rows since patch 0076 (the
+# four original regimes plus prod-shrink; pen_sandwich = the shipped form).
+# Loud-fail if the experimental design changes.
+stopifnot(nrow(se_summary) == 20L)
+stopifnot(all(c("unp_gn", "sandwich", "pen_gn", "pen_sandwich") %in% se_summary$formula))
 
 pen_gn <- se_summary[formula == "pen_gn"]
-stopifnot(nrow(pen_gn) == 4L)  # one row per regime
+stopifnot(nrow(pen_gn) == 5L)  # one row per regime
+pen_sw <- se_summary[formula == "pen_sandwich"]
+stopifnot(nrow(pen_sw) == 5L)
+prod_sw <- pen_sw[grepl("prod-shrink", regime)]
+stopifnot(nrow(prod_sw) == 1L)
 
 pillar3_summary <- list(
   regimes = lapply(seq_len(nrow(se_summary)),
@@ -520,9 +525,21 @@ pillar3_summary <- list(
     pen_gn_pct_err_min      = min(pen_gn$pct_err),
     pen_gn_pct_err_max      = max(pen_gn$pct_err),
     pen_gn_pct_err_worst_abs = max(abs(pen_gn$pct_err))
+  ),
+  # patch 0076: the shipped form (sandwich with the ridge in half-objective
+  # units) across all regimes, and in the production-shrinkage regime alone
+  pen_sandwich_summary = list(
+    n_regimes             = nrow(pen_sw),
+    med_ratio_min         = min(pen_sw$med_ratio),
+    med_ratio_max         = max(pen_sw$med_ratio),
+    pct_err_worst_abs     = max(abs(pen_sw$pct_err)),
+    prod_med_ratio        = prod_sw$med_ratio,
+    prod_pct_err          = prod_sw$pct_err,
+    prod_shrink_wt_median = prod_sw$shrink_wt_median,
+    grid_shrink_wt_median = median(pen_sw[grepl("lambda=0.1", regime) & !grepl("prod-shrink", regime), shrink_wt_median])
   )
 )
-rm(se_summary, pen_gn)
+rm(se_summary, pen_gn, pen_sw, prod_sw)
 
 # --- Exporter-cluster bootstrap benchmark (patch 0064) ----------------------
 # Reads the manifest copy of the branch-tagged per-cell file (patch 0063) and

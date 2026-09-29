@@ -11,12 +11,21 @@
 #                                 A = sum w_i J_i J_i', B = sum w_i^2 r_i^2 J_i J_i'
 #   3. Penalized Gauss-Newton:    V = sigma_hat^2 * (J'WJ + 2 lambda diag(1/gamma^2))^{-1}
 #
-# Regimes (2x2 grid):
+#   4. Penalized sandwich (patch 0076; the form shipped since v0.7.4):
+#                                 V = sigma_hat^2 * A^{-1} (J'WJ) A^{-1},
+#                                 A = J'WJ + lambda diag(1/gamma^2)  (half-objective units)
+# Regimes (2x2 grid + one):
 #   - homoskedastic + shrinkage_lambda = 0       (the original SE testbed)
 #   - heteroskedastic + shrinkage_lambda = 0     (does sandwich win here?)
 #   - homoskedastic + shrinkage_lambda = 0.1     (production setting, homo noise)
 #   - heteroskedastic + shrinkage_lambda = 0.1   (production setting, hetero noise)
 #
+#   - heteroskedastic + lambda = 0.1 + design scaled by x_scale = 0.2
+#     ("prod-shrink", patch 0076): the data curvature J'WJ is ~1/25 of the
+#     grid's, so the ridge share of curvature matches the shipped table
+#     (median gamma_shrink_wt ~0.90 in lambda/gamma^2 units) instead of the
+#     ~0.33 of the original four regimes. Every summary row carries the
+#     regime's median shrink weight.
 # Expected outcome per memory of original findings:
 #   - Penalized GN:  ~5% calibration error vs empirical SD across replications
 #   - Sandwich:      ~30% UNDER-estimate (residual-Jacobian correlation at NLS optimum)
@@ -101,7 +110,30 @@ compute_ses <- function(residuals, J, weights, theta_hat, lambda) {
     se_pen_gn <- se_unp_gn
   }
 
+  # Penalized sandwich (patch 0076): the shipped gamma_se. A_half = J'WJ +
+  # lambda/theta^2 is the ridge curvature in the half-objective units of
+  # J'WJ; V = sigma_hat^2 A_half^{-1} J'WJ A_half^{-1} is the sampling
+  # variance of the penalized estimator (-> sigma_hat^2 (J'WJ)^{-1} as the
+  # data dominate, -> 0 as the prior does). shrink_wt = P/(J'WJ + P), the
+  # column the production table carries.
+  if (lambda > 0) {
+    P_half <- lambda / theta_hat^2
+    A_half <- A + diag(P_half)
+    Ai_half <- tryCatch(solve(A_half), error = function(e) NULL)
+    if (is.null(Ai_half)) {
+      se_pen_sandwich <- rep(NA_real_, K)
+    } else {
+      V_pen_sandwich <- sigma2_hat * (Ai_half %*% A %*% Ai_half)
+      se_pen_sandwich <- sqrt(pmax(0, diag(V_pen_sandwich)))
+    }
+    shrink_wt <- P_half / (diag(A) + P_half)
+  } else {
+    se_pen_sandwich <- se_unp_gn
+    shrink_wt <- rep(0, K)
+  }
+
   list(unp_gn = se_unp_gn, sandwich = se_sandwich, pen_gn = se_pen_gn,
+       pen_sandwich = se_pen_sandwich, shrink_wt = shrink_wt,
        sigma2_hat = sigma2_hat, df = df)
 }
 
@@ -155,7 +187,20 @@ cat("True sigma =", sigma_true, "\n\n")
 # REGIME DRIVER
 # =============================================================================
 
-run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
+run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1, x_scale = 1) {
+  # (patch 0076) x_scale rescales the design matrices for this regime; the
+  # true predicted moments are recomputed from the scaled design so the
+  # signal shrinks with it (data curvature J'WJ scales with x_scale^2).
+  imp_X_r <- imp_X * x_scale
+  exp_X_r <- exp_X * x_scale
+  jt <- het_residuals_and_jacobian_fixed_sigma_rcpp(
+    d = theta_true, sigma = sigma_true,
+    imp_Y = rep(0, J), imp_X = imp_X_r,
+    exp_Y = rep(0, N_exp), exp_X = exp_X_r,
+    exp_jmap = exp_jmap, exp_sig_V = exp_sig_V, exp_gam_V = exp_gam_V,
+    wt_imp = wt_imp_const, wt_exp = wt_exp_const)
+  pred_imp_true <- -jt$residuals[1:J]
+  pred_exp_true <- -jt$residuals[(J + 1):(J + N_exp)]
   cat(strrep("=", 70), "\n", sep = "")
   cat("REGIME: ", label, "  (hetero = ", hetero,
       ", lambda = ", shrinkage_lambda,
@@ -171,6 +216,8 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
   se_unp_gn     <- matrix(NA_real_, nrow = N_REPS, ncol = K)
   se_sandwich   <- matrix(NA_real_, nrow = N_REPS, ncol = K)
   se_pen_gn     <- matrix(NA_real_, nrow = N_REPS, ncol = K)
+  se_pen_sand   <- matrix(NA_real_, nrow = N_REPS, ncol = K)   # patch 0076
+  shrink_reps   <- rep(NA_real_, N_REPS)                        # patch 0076
   conv_codes    <- integer(N_REPS)
 
   # Prior for shrinkage (set to median of true gamma_j -- approximates what
@@ -195,8 +242,8 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
         par = theta_true,
         fn = het_obj_fixed_sigma_rcpp,
         sigma = sigma_true,
-        imp_Y = imp_Y_r, imp_X = imp_X,
-        exp_Y = exp_Y_r, exp_X = exp_X,
+        imp_Y = imp_Y_r, imp_X = imp_X_r,
+        exp_Y = exp_Y_r, exp_X = exp_X_r,
         exp_jmap = exp_jmap,
         exp_sig_V = exp_sig_V, exp_gam_V = exp_gam_V,
         wt_imp = wt_imp_const, wt_exp = wt_exp_const,
@@ -221,8 +268,8 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
     # 3. At theta_hat, compute residuals + Jacobian + SE candidates
     jac <- het_residuals_and_jacobian_fixed_sigma_rcpp(
       d = theta_hat, sigma = sigma_true,
-      imp_Y = imp_Y_r, imp_X = imp_X,
-      exp_Y = exp_Y_r, exp_X = exp_X,
+      imp_Y = imp_Y_r, imp_X = imp_X_r,
+      exp_Y = exp_Y_r, exp_X = exp_X_r,
       exp_jmap = exp_jmap,
       exp_sig_V = exp_sig_V, exp_gam_V = exp_gam_V,
       wt_imp = wt_imp_const, wt_exp = wt_exp_const
@@ -239,6 +286,8 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
       se_unp_gn[r, ]   <- ses$unp_gn
       se_sandwich[r, ] <- ses$sandwich
       se_pen_gn[r, ]   <- ses$pen_gn
+      se_pen_sand[r, ] <- ses$pen_sandwich          # patch 0076
+      shrink_reps[r]   <- median(ses$shrink_wt)     # patch 0076
     }
 
     setTxtProgressBar(pb, r)
@@ -262,24 +311,31 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
   med_unp_gn   <- apply(se_unp_gn,   2, median, na.rm = TRUE)
   med_sandwich <- apply(se_sandwich, 2, median, na.rm = TRUE)
   med_pen_gn   <- apply(se_pen_gn,   2, median, na.rm = TRUE)
+  med_pen_sand <- apply(se_pen_sand, 2, median, na.rm = TRUE)   # patch 0076
+  shrink_wt_median <- median(shrink_reps, na.rm = TRUE)         # patch 0076
 
   # Ratio: SE_formula / empirical_SD. 1.0 = perfectly calibrated.
   ratio_unp_gn   <- med_unp_gn   / emp_sd
   ratio_sandwich <- med_sandwich / emp_sd
   ratio_pen_gn   <- med_pen_gn   / emp_sd
+  ratio_pen_sand <- med_pen_sand / emp_sd   # patch 0076
 
   # Median-of-ratios across parameters as the headline calibration metric
   summary_df <- data.frame(
     regime    = label,
-    formula   = c("unp_gn", "sandwich", "pen_gn"),
+    formula   = c("unp_gn", "sandwich", "pen_gn", "pen_sandwich"),
     n_params  = K,
     med_ratio = c(median(ratio_unp_gn, na.rm = TRUE),
                   median(ratio_sandwich, na.rm = TRUE),
-                  median(ratio_pen_gn, na.rm = TRUE)),
+                  median(ratio_pen_gn, na.rm = TRUE),
+                  median(ratio_pen_sand, na.rm = TRUE)),
     mad_ratio = c(mad(ratio_unp_gn, na.rm = TRUE),
                   mad(ratio_sandwich, na.rm = TRUE),
-                  mad(ratio_pen_gn, na.rm = TRUE)),
-    pct_err   = NA_real_   # filled in next
+                  mad(ratio_pen_gn, na.rm = TRUE),
+                  mad(ratio_pen_sand, na.rm = TRUE)),
+    pct_err   = NA_real_,   # filled in next
+    shrink_wt_median = shrink_wt_median,   # patch 0076: regime characterisation
+    x_scale   = x_scale
   )
   summary_df$pct_err <- 100 * (summary_df$med_ratio - 1)
   cat("\n")
@@ -292,7 +348,8 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
     emp_sd = emp_sd,
     ratio_unp_gn = ratio_unp_gn,
     ratio_sandwich = ratio_sandwich,
-    ratio_pen_gn = ratio_pen_gn
+    ratio_pen_gn = ratio_pen_gn,
+    ratio_pen_sandwich = ratio_pen_sand   # patch 0076
   )
 
   invisible(list(summary = summary_df, per_param = per_param_df,
@@ -300,7 +357,7 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1) {
 }
 
 # =============================================================================
-# RUN ALL FOUR REGIMES
+# RUN ALL REGIMES (four original + prod-shrink, patch 0076)
 # =============================================================================
 
 results <- list(
@@ -311,7 +368,9 @@ results <- list(
   homo_shrink      = run_mc_regime("homo,   lambda=0.1", hetero = FALSE,
                                    shrinkage_lambda = 0.1),
   hetero_shrink    = run_mc_regime("hetero, lambda=0.1", hetero = TRUE,
-                                   shrinkage_lambda = 0.1)
+                                   shrinkage_lambda = 0.1),
+  prod_shrink      = run_mc_regime("hetero, lambda=0.1, prod-shrink", hetero = TRUE,
+                                   shrinkage_lambda = 0.1, x_scale = 0.2)    # patch 0076
 )
 
 # =============================================================================
