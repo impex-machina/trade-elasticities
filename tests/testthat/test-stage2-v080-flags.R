@@ -100,13 +100,13 @@ test_that("sample_products, CLI, validate_config and the stamp carry the new fie
   fake <- file.path(tempdir(), paste0("fake_baci_vf_", sample.int(1e6, 1))); dir.create(fake, showWarnings = FALSE); on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   o <- parse_cli(c("--data", fake, "--stage2-prior", "share", "--stage2-maxit", "2000", "--stage2-ref-export-moment", "on", "--stage2-import-constant", "on", "--product-sample", "0.02", "--product-seed", "5"))
   expect_identical(o$stage2_prior, "share"); expect_equal(o$stage2_maxit, 2000L); expect_identical(o$stage2_ref_export_moment, "on"); expect_identical(o$stage2_import_constant, "on"); expect_equal(o$product_sample, 0.02)
-  d <- parse_cli(c("--data", fake)); expect_identical(d$stage2_prior, "log"); expect_equal(d$stage2_maxit, 500L); expect_equal(d$product_sample, 1)
+  d <- parse_cli(c("--data", fake)); expect_identical(d$stage2_prior, "log"); expect_equal(d$stage2_maxit, 5000L); expect_equal(d$product_sample, 1)   # patch 0075 default
   expect_identical(d$stage2_ref_export_moment, "on"); expect_identical(d$stage2_import_constant, "on")   # patch 0073 defaults
   expect_error(parse_cli(c("--data", fake, "--stage2-prior", "flat")), "stage2-prior"); expect_error(parse_cli(c("--data", fake, "--product-sample", "1.5")), "product-sample")
   cfg <- make_synthetic_cfg(); dt <- make_synthetic_baci(seed = 42L)
   cfg_bad <- cfg; cfg_bad$stage2_prior <- "flat"; expect_error(validate_config(cfg_bad), "stage2_prior")
   cfg_x <- cfg; cfg_x$stage2_prior <- "level"; expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_x, dt)))
-  cfg_d <- cfg; cfg_d$stage2_prior <- "log"; cfg_d$stage2_maxit <- 500L; cfg_d$stage2_ref_export_moment <- "on"; cfg_d$stage2_import_constant <- "on"
+  cfg_d <- cfg; cfg_d$stage2_prior <- "log"; cfg_d$stage2_maxit <- 5000L; cfg_d$stage2_ref_export_moment <- "on"; cfg_d$stage2_import_constant <- "on"
   expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_d, dt))
   run <- function(cfg) { r <- NULL; suppressMessages(suppressWarnings(capture.output(r <- estimate_all_fixed_sigma(cfg, ncores = 1L, prepared_dt = dt), type = "output"))); finalize_saved_output(r) }
   r_def <- run(cfg); expect_identical(r_def, run(cfg_d))

@@ -113,7 +113,7 @@ cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain
 cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
-            if (is.null(opts$stage2_maxit)) 500L else opts$stage2_maxit,
+            if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
             if (is.null(opts$stage2_ref_export_moment)) "on" else opts$stage2_ref_export_moment,
             if (is.null(opts$stage2_import_constant)) "on" else opts$stage2_import_constant,
             if (is.null(opts$product_sample)) 1 else opts$product_sample, if (is.null(opts$t_parity)) "all" else opts$t_parity))

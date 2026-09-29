@@ -88,7 +88,7 @@ build_config <- function(opts) {
     stage2_prior = opts$stage2_prior %||% "log",
     stage2_prior_eps = opts$stage2_prior_eps %||% 0.01,   # patch 0074
     t_parity = opts$t_parity %||% "all",                   # patch 0074
-    stage2_maxit = opts$stage2_maxit %||% 500L,
+    stage2_maxit = opts$stage2_maxit %||% 5000L,   # patch 0075: v0.8.1 default (500 through v0.8.0)
     stage2_ref_export_moment = opts$stage2_ref_export_moment %||% "on",    # patch 0073: v0.8.0 default
     stage2_import_constant = opts$stage2_import_constant %||% "on",        # patch 0073: v0.8.0 default
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in

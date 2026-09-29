@@ -270,6 +270,22 @@ Patch 0071 added the experiment infrastructure behind flags: `--stage2-prior {lo
 
 **Decisions (patch 0073).** The prior stays `log` at λ = 0.1: `level` removes the non-convergence (0.5% vs 7.6%) but does so by sending 6–7% of rows to γ ≈ 0 with no gain in reliability, a 20% lower median `opt_tariff` and an unbounded 1/γ on those rows — assigning perfectly elastic supply to specific exporters that the data do not reproduce; `share` is bounded on both sides, so its upper tail runs away (3–9% of rows at γ ≥ 10) and half its cells hit `maxit`. Both moments go on as defaults: no cost anywhere, slightly less noise, `opt_tariff` +4–5% from the reference-exporter row, and two of Soderbery's specification terms restored. Ridge domain `all` and the sandwich SE stay. The 7–8% `non_converged` share under the log form is a stiffness artefact of the 1/γ ridge gradient and remains open (`--stage2-maxit` untested; a shifted-log prior, ln(γ + ε), is the candidate structural fix). A parity split of the differenced observations (odd/even t, same period, no drift) is the follow-up experiment that separates noise from structural change in the reliability number.
 
+### v0.8.1: same-period reliability, and the convergence cap (patches 0074–0075)
+
+The calendar split above confounds sampling noise with structural change between 1995–2009 and 2010–2024. Patch 0074 added `--t-parity odd|even`, which keeps one parity of the differenced observations after `prepare_data()` — two halves from the same period — and a shifted-log prior (`shiftlog`, λ(ln(γ+ε) − ln(g+ε))²) as a candidate fix for non-convergence. Results on the same 2% subsample (`docs/results/stage2_reliability_parity.md`):
+
+| configuration | keys | Pearson r_within | rank ρ | r (raw log γ) | non-converged (full panel) |
+|---|---|---|---|---|---|
+| shipped (log 0.1, moments on) | 85,200 | **0.298** | 0.321 | 0.461 | 7.6% (maxit 500) |
+| shipped, maxit 2000 / 5000 | — | — | — | — | 2.7% / 1.5% |
+| log 0.01 | 85,200 | 0.247 | 0.270 | 0.365 | 22% |
+| shiftlog ε 0.01 / 0.05 | 85,900 | 0.250 / 0.236 | 0.337 / 0.346 | 0.409 / 0.366 | 7.8% / 6.4% |
+| level 0.1 | 85,700 | 0.209 | 0.352 | 0.310 | 0.7% |
+
+**Reading.** Within a period the exporter-specific component of γ reproduces at r ≈ 0.30 (rank 0.32); Spearman–Brown to the full panel gives ≈ 0.46 / 0.49. So about half of the within-cell heterogeneity is signal, and the calendar split's 0.09 was mostly drift: exporter-specific γ is moderately identified as a period average and moves across periods. Loosening the prior still adds noise rather than signal (log 0.01: 0.25 / 0.27); the level and shifted priors trade Pearson for rank because of their near-zero populations; the shipped configuration stays. The non-convergence was mostly the iteration cap, not the prior's curvature at zero: the shifted prior barely moves it (7.8% / 6.4%), while `maxit` 2000 and 5000 take it to 2.7% and 1.5%, the freed cells moving a little further from the prior (`|dev|` p90 1.02 → 1.19, `opt_tariff` 0.597 → 0.603). The log ridge's curvature, 2λ/γ², spans three orders of magnitude across the coordinates of one cell, so L-BFGS-B is slow rather than stuck; a log-space reparameterisation (θ = ln γ, constant ridge curvature 2λ) is the structural alternative if the remaining 1.5% ever matters.
+
+**Decision (patch 0075).** `--stage2-maxit` default 5000 (500 reproduces v0.8.0 and earlier); prior, λ, moments, ridge domain and SE form unchanged. The README's Known-limitations bullet quotes the same-period numbers as the reliability of the shipped γ and the calendar split as the drift contrast.
+
 ## Headline findings vs Soderbery (2018)
 
 From the 2026-05-14 SE-enabled heterogeneity report (retained in the local

@@ -514,7 +514,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_prior)) cfg$stage2_prior <- "log"                      # patch 0071: absent == off
   if (is.null(cfg$stage2_prior_eps)) cfg$stage2_prior_eps <- 0.01               # patch 0074
   if (is.null(cfg$t_parity)) cfg$t_parity <- "all"                              # patch 0074
-  if (is.null(cfg$stage2_maxit)) cfg$stage2_maxit <- 500L
+  if (is.null(cfg$stage2_maxit)) cfg$stage2_maxit <- 5000L   # patch 0075
   if (is.null(cfg$stage2_ref_export_moment)) cfg$stage2_ref_export_moment <- "on"   # patch 0073
   if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
   parts <- list(
