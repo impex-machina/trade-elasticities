@@ -32,7 +32,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.8.1 (2026-09-XX).** The Stage-2 cell optimizer's iteration cap rises
+> **v0.8.1 (2026-09-29).** The Stage-2 cell optimizer's iteration cap rises
 > from 500 to 5,000: on a 2% product subsample non-converged cells fall
 > from 7.6% to 1.5% of rows, the freed cells moving a little further from
 > the good-level prior (opt_tariff cell median +1%). Same estimator, prior,
@@ -42,8 +42,8 @@ under another cleaning rule must say which rule.
 > r = 0.30 (rank 0.32; ~0.5 at full panel length), against 0.09 between
 > 1995-2009 and 2010-2024 -- about half the within-cell heterogeneity is
 > signal, and it is period-specific (docs/results/stage2_reliability_
-> parity.md). Numbers vs v0.8.0: <fill from the rc compare_runs at the card step>.
-> Data revision: `<fill at the card step after the HF upload>`. **v0.8.0 remains available pinned at
+> parity.md). Numbers vs v0.8.0: non_converged 9.0% -> 2.0%; gamma_se finite 63.4% -> 69.8% (median 0.173 -> 0.199); gamma median 0.667 -> 0.656; opt_tariff median 0.749 -> 0.760 (cell median 0.647 unchanged); gamma_shrink_wt median 0.923 -> 0.902; rows +988 (trim membership).
+> Data revision: `0e3e446d0042268508e42414e95ad131f561ca11`. **v0.8.0 remains available pinned at
 > revision `60aad7c0d0534fcdbcb602daddd7269542167789`.**
 > **v0.8.0 (2026-09-28).** Stage-2 specification: the reference exporter's
 > own export-side moment (Soderbery's Exports(s_ikg)) and the importer-
