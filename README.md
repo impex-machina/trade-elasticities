@@ -27,7 +27,7 @@ pipeline:
   Stage 2a regional priors, and penalized Gauss-Newton standard errors.
 
 Outputs cover 1,240 HS4 products across 233 importers and 233 exporters,
-producing 6,811,572 (importer, exporter, HS4) cell-level γ estimates with
+producing 6,812,560 (importer, exporter, HS4) cell-level γ estimates with
 standard errors. Stage 1 attempts σ estimation on 280,649 (importer, HS4)
 cells across 234 importers, returning an estimate for
 181,245 of them (one importer present at Stage 1 has no country-pair γ at Stage 2b after the minimum-destinations filter).
@@ -97,7 +97,7 @@ read the first rows:
 
 ```r
 s2b <- readRDS("data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds")
-nrow(s2b)            # 6811572
+nrow(s2b)            # 6812560
 head(s2b[, c("exporter", "importer", "good", "sigma",
              "gamma", "gamma_se", "gamma_se_status", "tier")], 5)
 ```
@@ -109,7 +109,7 @@ Columns:
 | `importer`, `exporter` | Numeric country codes (BACI/COMTRADE convention). |
 | `good` | **HS4 product code, stored as a character string with leading zeros** (e.g. `"0302"`, not `302`). Read it as character; coercing to integer drops the leading zero and silently mismatches chapters 01–09. |
 | `sigma` | Import-demand (substitution) elasticity for the (importer, product) cell, fixed from Stage 1 and constant within an `importer × good` cell (the same product carries a different σ for each importer). For 11.3% of rows this is a global-median fallback (σ ≈ 2.462) rather than a cell-specific estimate, and a further 7.9% sit at the cap value of 10 (see Known limitations). |
-| `gamma` | **Inverse export-supply elasticity** for the (importer, exporter, product) cell — the headline estimate, Soderbery's γ. Lower-bounded near 0 by the optimizer and **unbounded above** (extreme values are handled by the Stage 2a plateau fallback and the 0.5%-per-tail trim; see Known limitations). γ is the *inverse* of an elasticity: the implied export-supply elasticity is 1 / γ (median ≈ 1.499). Small γ means near-perfectly-elastic supply; large γ means strong importer market power. Most rows are shrunk toward a good-level prior — median `gamma_shrink_wt` 0.923, trade-weighted data share 0.237; see Known limitations. Since v0.7.4 the log-ridge applies to every coordinate, so no directly estimated row sits at the optimizer floor (v0.7.3 had 16.6% there). |
+| `gamma` | **Inverse export-supply elasticity** for the (importer, exporter, product) cell — the headline estimate, Soderbery's γ. Lower-bounded near 0 by the optimizer and **unbounded above** (extreme values are handled by the Stage 2a plateau fallback and the 0.5%-per-tail trim; see Known limitations). γ is the *inverse* of an elasticity: the implied export-supply elasticity is 1 / γ (median ≈ 1.524). Small γ means near-perfectly-elastic supply; large γ means strong importer market power. Most rows are shrunk toward a good-level prior — median `gamma_shrink_wt` 0.902, trade-weighted data share 0.261; see Known limitations. Since v0.7.4 the log-ridge applies to every coordinate, so no directly estimated row sits at the optimizer floor (v0.7.3 had 16.6% there). |
 | `gamma_se` | Sampling standard error of the shrinkage estimator for `gamma` (sandwich form `s² A⁻¹ J'WJ A⁻¹`, `A = J'WJ + λ/γ²`; v0.7.4). Read it together with `gamma_shrink_wt`: near 1, the estimate is mostly the good-level prior and a small `gamma_se` reflects that stability, not information about γ. |
 | `gamma_se_status` | `"ok"` when the SE is usable; other values flag degenerate cases. |
 | `gamma_se_total` | Standard error for `gamma` with Stage-1 σ uncertainty propagated in by the delta method: `sqrt(gamma_se² + (∂γ/∂σ · sigma_se)²)`. Populated only where `sigma_robust` is `TRUE`; `NA` otherwise (all Tier-3 cells, and any cell where σ-uncertainty could not be propagated stably). Where present, this is the wider, σ-aware SE; where `NA`, `gamma_se` (conditional on σ) is the only SE available. |
@@ -235,7 +235,7 @@ Stated forthrightly:
   -40.4% to 30.4% (negative at 8 of 12 grid points),
   so comparisons to Feenstra-GMM or Broda–Weinstein estimates should not
   assume the upward bias of that tradition.
-- **γ heterogeneity within a cell is mostly not reproducible; the informative content of γ is at the good and cell level.** The Stage-2 log-ridge (λ = 0.1) is strong relative to the data curvature of a time-averaged moment row: the median row keeps a data share of 0.077, the trade-weighted share is 0.237, and a cell's largest exporter keeps 0.382 against 0.028 for exporters ranked below tenth. On a 2% product subsample split into 1995–2009 and 2010–2024, an exporter's deviation from its cell mean is reproduced across the halves at r = 0.091 (rank ρ 0.110) under the shipped prior, and no better under a level-space prior that admits γ ≈ 0 (r = 0.060, ρ 0.192); loosening λ raises within-cell dispersion without raising reliability. So λ stays at 0.1 with the log prior, and the ranking of exporters within a cell should not be read as estimated. Since v0.8.0 the reference exporter's own export-side moment and Soderbery's importer–exporter constant (fn. 14, concentrated out) are included. Details and the full grid: `docs/methodology/stage2_country.md` ("v0.8.0"), `docs/results/stage2_reliability_*.md`, `docs/results/stage2_lambda_curve_v074rc.md`.
+- **γ heterogeneity within a cell is moderately reproducible as a period average, and it drifts across periods.** The Stage-2 log-ridge (λ = 0.1) is strong relative to the data curvature of a time-averaged moment row: the median row keeps a data share of 0.098, the trade-weighted share is 0.261, and a cell's largest exporter keeps 0.397 against 0.040 for exporters ranked below tenth. On a 2% product subsample, an exporter's deviation from its cell mean reproduces across odd- and even-year observations of the same period at r = 0.298 (rank ρ 0.321; ≈ 0.5 at full panel length by Spearman–Brown), but only at r = 0.091 between 1995–2009 and 2010–2024 — about half the within-cell heterogeneity is signal, and it is period-specific. Loosening λ or changing the prior's form adds noise rather than signal, so λ stays at 0.1 with the log prior. Since v0.8.0 the reference exporter's own export-side moment and Soderbery's importer–exporter constant (fn. 14, concentrated out) are included; since v0.8.1 the cell optimizer runs to 5,000 iterations (non-converged cells 9% → ~2%). Details and the grids: `docs/methodology/stage2_country.md` ("v0.8.0", "v0.8.1"), `docs/results/stage2_reliability_*.md`, `docs/results/stage2_lambda_curve_v074rc.md`.
 - **Estimator-provenance composition.** On the full universe, 28.0% of
   (importer, HS4) cells are identified at the HLIML interior; the rest fall
   to the Step 2 fallback, of which 5.0% of the full universe (14,172 cells)
@@ -282,9 +282,9 @@ Stated forthrightly:
 - **Standard errors: conditional on σ, with a robustness screen.** `gamma_se`
   is computed with σ held fixed at its Stage 1 value (a global-median fallback
   wherever Stage 1 did not identify σ), so it is conditional on σ. Only
-  63.4% of rows carry a clean cell-specific SE: 26.7% are Tier 3 cells
+  69.8% of rows carry a clean cell-specific SE: 26.7% are Tier 3 cells
   assigned the regional prior outright (no SE) and the remaining
-  9.8% are boundary, plateau, non-converged, or unflagged fits. The pipeline
+  3.4% are boundary, plateau, non-converged, or unflagged fits. The pipeline
   additionally propagates the Stage 1 σ uncertainty by the delta method into
   `gamma_se_total` and flags the result with a cell-level `sigma_robust` screen:
   σ̂ unclamped and with a finite SE, clear of the σ = 1 pole, and no γ SE in the
