@@ -46,16 +46,16 @@ test_that("CLI, validate_config and the checkpoint stamp carry stage2_fallback",
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
   expect_identical(parse_cli(c(base, "--stage2-fallback", "best"))$stage2_fallback, "best")
-  expect_identical(parse_cli(base)$stage2_fallback, "legacy")            # patch 0077 default
+  expect_identical(parse_cli(base)$stage2_fallback, "best")              # patch 0080 default (legacy through v0.8.2)
   expect_error(parse_cli(c(base, "--stage2-fallback", "worst")), "stage2-fallback")
   cfg <- make_synthetic_cfg(); dt <- make_synthetic_baci(seed = 42L)
   expect_silent(validate_config(cfg))
   cfg_bad <- cfg; cfg_bad$stage2_fallback <- "worst"
   expect_error(validate_config(cfg_bad), "stage2_fallback")
   cfg_best <- cfg; cfg_best$stage2_fallback <- "best"
-  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_best, dt)))
+  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_best, dt))   # absent key == best (patch 0080)
   cfg_leg <- cfg; cfg_leg$stage2_fallback <- "legacy"
-  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_leg, dt))   # absent key == legacy
+  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_leg, dt)))
 })
 
 test_that("no fallback on the converging fixture: no table, default identical to explicit legacy", {
@@ -116,4 +116,36 @@ test_that("forced fallback: legacy publishes the NM point, best publishes the be
   k <- c("importer", "good"); setkeyv(fb_leg, k); setkeyv(fb_best, k)
   expect_equal(fb_leg$lbfgsb_value, fb_best$lbfgsb_value)
   expect_equal(fb_leg$nm_value, fb_best$nm_value)
+  # (patch 0080) an absent key is 'best': the default run equals the explicit best run
+  r_def <- .fb_run(cfg, dt)
+  expect_identical(finalize_saved_output(r_def), finalize_saved_output(r_best))
+})
+
+test_that("the fallback census script summarises a fallback table (patch 0080)", {
+  .fb_setup()
+  skip_if_not_installed("jsonlite")
+  script <- file.path(locate_source_dir(), "..", "analysis", "stage2_fallback_census.R")
+  skip_if_not(file.exists(script))
+  td <- tempfile("fbc_"); dir.create(td)
+  on.exit(unlink(td, recursive = TRUE), add = TRUE)
+  fb <- data.table(importer = c("4", "8", "12", "16", "20"), good = "0101", J = c(5L, 12L, 40L, 7L, 9L), M = c(2L, 6L, 20L, 3L, 4L),
+                   lbfgsb_convergence = c(1L, 1L, 1L, NA_integer_, 1L), lbfgsb_value = c(1.0, 2.0, 3.0, NA_real_, 4.0),
+                   nm_convergence = c(1L, 0L, 1L, 1L, 0L), nm_value = c(1.1, 2.4, 2.9, 5.0, 4.4),
+                   chosen = c("lbfgsb", "lbfgsb", "nelder_mead", "nelder_mead", "lbfgsb"), rule = "best")
+  csv <- file.path(td, "fb.csv"); fwrite(fb, csv)
+  js <- file.path(td, "c.json"); md <- file.path(td, "c.md")
+  rs <- file.path(R.home("bin"), "Rscript")
+  out <- suppressWarnings(system2(rs, c(shQuote(script), "--csv", shQuote(csv), "--label", "test", "--out", shQuote(js), "--md", shQuote(md)),
+                                  stdout = TRUE, stderr = TRUE))
+  expect_true(file.exists(js), info = paste(out, collapse = "\n"))
+  j <- jsonlite::fromJSON(js)
+  expect_equal(j$n_cells, 5L)
+  expect_equal(j$n_comparable, 4L)                 # one L-BFGS-B error row
+  expect_equal(j$n_nm_worse, 3L)                   # 1.1 > 1, 2.4 > 2, 4.4 > 4
+  expect_equal(j$n_nm_better, 1L)                  # 2.9 < 3
+  expect_equal(j$n_nm_converged, 2L)               # nm code 0 on two cells
+  expect_equal(j$n_relabel_ok_to_nonconverged, 2L) # both of those have the L-BFGS-B point better
+  expect_equal(j$n_lbfgsb_error, 1L)
+  expect_equal(j$chosen$lbfgsb, 3L)
+  expect_true(any(grepl("Nelder", readLines(md))))
 })

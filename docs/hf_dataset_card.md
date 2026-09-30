@@ -32,6 +32,25 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.8.3 (2026-09-XX).** Two Stage-2 fixes from the 2026-09-29 audit,
+> both bit-preserving under the previous rule (`--stage2-fallback legacy`,
+> `--stage2b-prior-source all` reproduce v0.8.2). (1) A cell whose
+> L-BFGS-B fit reaches the 5,000-iteration cap now publishes the better of
+> its two optimizer results; through v0.8.2 the Nelder-Mead restart was
+> published unconditionally, and on a 2% product subsample it was the worse
+> point on 123 of the 138 such cells. Where the restart had reported
+> convergence at a stalled point, the row now reads non_converged where
+> v0.8.2 read ok. The run's fallback table records both outcomes per cell
+> (`docs/results/stage2_fallback_census.md`). (2) The Stage-2b good-level
+> prior and the Eq. (11) reference-destination gamma_V are medians over
+> directly estimated Stage-2a rows; through v0.8.2 they included Stage 2a's
+> own Tier-3 imputations (6.8% of rows), which moved the prior by more than
+> 5% on 78 of 1,240 goods and gamma_V by more than 5% on 18% of (region,
+> good) cells (`docs/results/stage2a_prior_rows_census.md`). Stage 1
+> identical to v0.7.3-v0.8.2 (sha256-gated); Stage 2a differs from v0.8.2
+> only on its fallback cells. Numbers vs v0.8.2: <fill from the rc compare_runs at the card step>.
+> Data revision: `<fill at the card step after the HF upload>`. **v0.8.2 remains available pinned at
+> revision `7f85c8c31c4d2f8dcd3f8d4b848634f4217278c6`.**
 > **v0.8.2 (2026-09-29).** Validation only: Pillar 3 (the standard-error
 > Monte Carlo) re-captured for the gamma_se form shipped since v0.7.4 -- the
 > sandwich with the ridge in lambda/gamma^2 units -- and extended with a

@@ -243,6 +243,20 @@ bootstrap_clause <- function(bs) {
   )
 }
 
+# (patch 0080) Optimizer-fallback clause for the gamma-heterogeneity bullet,
+# driven by results/stage2_fallback_census.json (emitted by
+# analysis/stage2_fallback_census.R from the rc run's universe fallback table);
+# empty when the JSON is absent, so the README is byte-identical at apply.
+# The template reads it with r[["stage2_fallback_census"]] (exact): r$... would
+# partial-match any other results/*.json whose name extends it.
+fallback_clause <- function(fc) {
+  if (is.null(fc) || is.null(fc[["n_cells"]])) return("")
+  pc <- function(x) sprintf("%.0f%%", 100 * x)
+  sprintf(" On the shipped table %s cells reached that cap; the restart's objective was higher than the discarded point on %s of them (%s), and it had reported convergence on %s, rows that v0.8.2 labelled `ok` at a stalled point (`docs/results/stage2_fallback_census.md`).",
+          format_int(fc[["n_cells"]] + 0L), format_int(fc[["n_nm_worse"]] + 0L), pc(fc[["share_nm_worse"]]),
+          format_int(fc[["n_nm_converged"]] + 0L))
+}
+
 boundary_phrase <- function(rs, n_cells, es = NULL) {
   bt <- rs[["boundary_total"]]
   if (is.null(bt) || !is.finite(bt) || bt == 0) return("")
@@ -305,6 +319,7 @@ render_env$beyond_inf_phrase <- beyond_inf_phrase
 render_env$sigma_bias_sign_phrase <- sigma_bias_sign_phrase
 render_env$step2_vce_clause <- step2_vce_clause        # patch 0064
 render_env$bootstrap_clause <- bootstrap_clause        # patch 0064
+render_env$fallback_clause <- fallback_clause          # patch 0080
 render_env$manifest_n_files <- manifest_n_files
 
 rendered <- tryCatch(

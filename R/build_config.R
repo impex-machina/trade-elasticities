@@ -91,10 +91,10 @@ build_config <- function(opts) {
     stage2_maxit = opts$stage2_maxit %||% 5000L,   # patch 0075: v0.8.1 default (500 through v0.8.0)
     stage2_ref_export_moment = opts$stage2_ref_export_moment %||% "on",    # patch 0073: v0.8.0 default
     stage2_import_constant = opts$stage2_import_constant %||% "on",        # patch 0073: v0.8.0 default
-    # patch 0077: Nelder-Mead fallback rule; absent key == legacy (<= v0.8.2 reproducer).
-    stage2_fallback = opts$stage2_fallback %||% "legacy",
-    # patch 0079: Stage-2a rows behind the 2b priors; absent key == all (<= v0.8.2 reproducer).
-    stage2b_prior_source = opts$stage2b_prior_source %||% "all",
+    # patch 0077/0080: Nelder-Mead fallback rule; absent key == best (v0.8.3 default; legacy = <= v0.8.2 reproducer).
+    stage2_fallback = opts$stage2_fallback %||% "best",
+    # patch 0079/0080: Stage-2a rows behind the 2b priors; absent key == estimated (v0.8.3 default; all = <= v0.8.2 reproducer).
+    stage2b_prior_source = opts$stage2b_prior_source %||% "estimated",
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
     stage1_cf_admissibility = opts$stage1_cf_admissibility %||% "legacy",

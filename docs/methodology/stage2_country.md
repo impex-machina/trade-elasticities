@@ -301,19 +301,36 @@ no SE) at its cap, or 0 (`ok`, SE computed at the NM point) when the
 simplex collapsed. Nothing in the shipped table records which optimizer
 produced a row.
 
-`--stage2-fallback {legacy|best}` (config `stage2_fallback`,
-checkpoint-stamped): `legacy` (default, and the rule for an absent key)
-reproduces every release through v0.8.2; `best` keeps whichever of the two
-results has the lower objective (ties → L-BFGS-B), so a fallback can only
-improve on the L-BFGS-B point. Under either rule the run writes
+`--stage2-fallback {best|legacy}` (config `stage2_fallback`,
+checkpoint-stamped): `best` (default from v0.8.3, patch 0080, and the rule
+for an absent key) keeps whichever of the two results has the lower
+objective (ties → L-BFGS-B), so a fallback can only improve on the L-BFGS-B
+point; `legacy` reproduces every release through v0.8.2. Under either rule
+the run writes
 `<prefix>_stage2_fallbacks.csv` (beside the checkpoint file) with one row
 per fallback cell — `lbfgsb_value`, `lbfgsb_convergence`, `nm_value`,
 `nm_convergence`, `chosen`, `rule` — and prints the counts, so a single
 Stage-2b pass (a `--product-sample 0.02` pass suffices) is the census of how
 many shipped rows carry an NM point and by how much its objective exceeds
-the discarded one. The default flips at the next data release once that
-census is on record; `tests/testthat/test-stage2-fallback.R` locks both
-rules on the e2e fixture. The homogeneous (single-γ) estimator in
+the discarded one. `analysis/stage2_fallback_census.R` summarises such a
+table (`results/stage2_fallback_census.json`, read by the README's clause,
+and `docs/results/stage2_fallback_census.md`).
+
+**Census (2026-09-29, 2% product subsample, `te_grid\fallback_legacy`,
+`docs/results/stage2_fallback_subsample_census.md`).** 138 of the fitted
+cells reached the 5,000-iteration cap and ran the restart; legacy published
+the restart on all 138, and on 123 of them (89%) its objective was higher
+than the L-BFGS-B point it replaced — the restart starts from the prior and
+its 10,000 evaluations in J + 1 dimensions do not reach the point 5,000
+L-BFGS-B iterations reached. Scaled to the universe that is roughly 6,800
+cells. The decision (patch 0080) is `best` as the v0.8.3 default: it never
+publishes a worse point than legacy, and where the restart had "converged"
+(simplex collapse, code 0) while the L-BFGS-B point was better, the row
+publishes that point with its own code and reads `non_converged` where
+v0.8.2 read `ok` at a stalled point — a truthful relabelling, sized by the
+universe census from the v0.8.3 rc pass. `tests/testthat/
+test-stage2-fallback.R` locks both rules on the e2e fixture. The
+homogeneous (single-γ) estimator in
 `estimate_cell_homogeneous.R` has the same fallback shape; it is not on the
 production path and is left as is.
 
@@ -330,18 +347,31 @@ echoed back through Stage 2a, and γ_V likewise. `is_estimated_row()`, the
 patch-0066 predicate the trim and `opt_tariff` already apply, was not
 applied here.
 
-`--stage2b-prior-source {all|estimated}` (config `stage2b_prior_source`,
-checkpoint-stamped): `all` (default, and the rule for an absent key)
-reproduces the runner through v0.8.2; `estimated` restricts both medians to
-directly estimated Stage-2a rows (`stage2b_priors_from_regional()` in
-`R/iteration_helpers.R`). A good with no estimated Stage-2a row then has no
-prior (the cell falls to the existing no-prior path) instead of silently
-inheriting the imputed value. Starting values (`init_from_regional`) are
-unchanged by the rule. `analysis/stage2a_prior_rows_census.R` measures the
-shift on a shipped Stage-2a table without re-estimating anything
-(`results/stage2a_prior_rows_census.json`,
-`docs/results/stage2a_prior_rows_census.md`); the decision rule and the
-flip belong to the next data release (Stage 2b-only rerun).
+`--stage2b-prior-source {estimated|all}` (config `stage2b_prior_source`,
+checkpoint-stamped): `estimated` (default from v0.8.3, patch 0080, and the
+rule for an absent key) restricts both medians to directly estimated
+Stage-2a rows (`stage2b_priors_from_regional()` in
+`R/iteration_helpers.R`); `all` reproduces the runner through v0.8.2. A
+good with no estimated Stage-2a row then has no prior (the cell falls to
+the existing no-prior path) instead of silently inheriting the imputed
+value. Starting values (`init_from_regional`) are unchanged by the rule.
+`analysis/stage2a_prior_rows_census.R` measures the shift on a shipped
+Stage-2a table without re-estimating anything.
+
+**Census (2026-09-29, the shipped v0.8.2 Stage-2a table,
+`docs/results/stage2a_prior_rows_census.md`).** 422,418 rows with γ > 0, of
+which 28,750 (6.8%) are imputed (28,478 Tier 3 plus 272 early-return
+reference rows), spread across every good. The good-level prior barely
+moves — median γ 0.647 → 0.644, |Δ ln prior| 0.3% at the median and 3% at
+p90, 78 goods above 5% and 19 above 20%, signed shift symmetric — but the
+γ_V lookup does: |Δ ln γ_V| exceeds 5% on 18.4% of the 25,212 (region, good)
+cells and 20% on 7.2%; 280 cells have no estimated row and fall to
+`gamma_V_default`. At γ_V ≈ 0.64 a 20% shift moves the Eq. (11)
+pass-through γ_V/(1 + γ_V) from about 0.39 to 0.44, roughly 10% on the
+export-row coefficients of a Tier-1 exporter whose reference destination
+sits in one of those cells. The decision (patch 0080) is `estimated` as the
+v0.8.3 default. Because patch 0077's fallback rule applies to Stage 2a
+cells as well, v0.8.3 is a Stage 2a + 2b release with Stage 1 reused.
 
 The same patch hardens the library's reads of `cfg$stage2_prior` to exact
 matching (`cfg[["stage2_prior"]]`): R's `$` partial-matches list names, so

@@ -519,8 +519,8 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_maxit)) cfg$stage2_maxit <- 5000L   # patch 0075
   if (is.null(cfg$stage2_ref_export_moment)) cfg$stage2_ref_export_moment <- "on"   # patch 0073
   if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
-  if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "legacy"                   # patch 0077: absent == legacy
-  if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "all"                   # patch 0079: absent == all
+  if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "best"                     # patch 0080: absent == best (v0.8.3)
+  if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "estimated"       # patch 0080: absent == estimated (v0.8.3)
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),

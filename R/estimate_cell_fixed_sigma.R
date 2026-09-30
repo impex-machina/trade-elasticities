@@ -471,15 +471,16 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   stage2_maxit <- if (is.null(cfg$stage2_maxit)) 5000L else as.integer(cfg$stage2_maxit)   # patch 0075: absent == 5000 (v0.8.1)
   ref_moment_on <- !identical(cfg$stage2_ref_export_moment, "off")   # patch 0073: absent == on (v0.8.0)
   imp_const_cfg <- !identical(cfg$stage2_import_constant, "off")     # patch 0073: absent == on (v0.8.0)
-  # patch 0077: rule for the Nelder-Mead fallback. "legacy" (every release
-  # through v0.8.2, and the rule for an absent key) lets the NM result REPLACE
-  # the L-BFGS-B result whatever its objective value; "best" keeps whichever of
-  # the two has the lower objective (ties -> L-BFGS-B). Either way the cell
+  # patch 0077/0080: rule for the Nelder-Mead fallback. "best" (v0.8.3
+  # default, and the rule for an absent key) keeps whichever of the two
+  # results has the lower objective (ties -> L-BFGS-B); "legacy" (every
+  # release through v0.8.2) lets the NM result REPLACE the L-BFGS-B result
+  # whatever its objective value. Either way the cell
   # records both outcomes (attr "fallback"), collected by
   # estimate_product_fixed_sigma() -> estimate_all_fixed_sigma() into
   # <prefix>_stage2_fallbacks.csv, so a run can be censused for cells whose
   # published point is the NM one. CLI --stage2-fallback.
-  fb_rule <- if (is.null(cfg$stage2_fallback)) "legacy" else cfg$stage2_fallback
+  fb_rule <- if (is.null(cfg$stage2_fallback)) "best" else cfg$stage2_fallback
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the

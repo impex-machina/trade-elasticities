@@ -80,7 +80,8 @@ test_that("CLI, validate_config and the checkpoint stamp carry stage2b_prior_sou
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
   expect_identical(parse_cli(c(base, "--stage2b-prior-source", "estimated"))$stage2b_prior_source, "estimated")
-  expect_identical(parse_cli(base)$stage2b_prior_source, "all")
+  expect_identical(parse_cli(base)$stage2b_prior_source, "estimated")   # patch 0080 default (all through v0.8.2)
+  expect_identical(build_config(parse_cli(base))$stage2b_prior_source, "estimated")
   expect_error(parse_cli(c(base, "--stage2b-prior-source", "some")), "stage2b-prior-source")
   opts <- parse_cli(c(base, "--stage2b-prior-source", "estimated"))
   expect_identical(build_config(opts)$stage2b_prior_source, "estimated")
@@ -89,9 +90,9 @@ test_that("CLI, validate_config and the checkpoint stamp carry stage2b_prior_sou
   cfg_bad <- cfg; cfg_bad$stage2b_prior_source <- "some"
   expect_error(validate_config(cfg_bad), "stage2b_prior_source")
   cfg_est <- cfg; cfg_est$stage2b_prior_source <- "estimated"
-  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_est, dt)))
+  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_est, dt))   # absent key == estimated (patch 0080)
   cfg_all <- cfg; cfg_all$stage2b_prior_source <- "all"
-  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_all, dt))   # absent key == all
+  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_all, dt)))
 })
 
 test_that("the census script runs on a synthetic Stage-2a table", {
