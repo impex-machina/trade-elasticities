@@ -491,6 +491,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_se",             # patch 0069
             "stage2_prior", "stage2_maxit", "stage2_ref_export_moment", "stage2_import_constant",   # patch 0071
             "stage2_prior_eps", "t_parity",   # patch 0074
+            "stage2_fallback",                # patch 0077
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -517,6 +518,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_maxit)) cfg$stage2_maxit <- 5000L   # patch 0075
   if (is.null(cfg$stage2_ref_export_moment)) cfg$stage2_ref_export_moment <- "on"   # patch 0073
   if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
+  if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "legacy"                   # patch 0077: absent == legacy
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),
@@ -727,6 +729,23 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   failure_info <- unlist(lapply(results_list, function(r) attr(r, "failures")),
                          recursive = FALSE)
   if (is.null(failure_info)) failure_info <- list()
+  # (patch 0077) cells whose L-BFGS-B fit did not converge and ran the
+  # Nelder-Mead fallback: both objective values, both convergence codes and
+  # which point was published, one row per cell. Written beside the checkpoint
+  # file; the run's census of the fallback is this table.
+  fallback_info <- rbindlist(unlist(lapply(results_list, function(r) attr(r, "fallbacks")),
+                                    recursive = FALSE), fill = TRUE)
+  fallback_file <- paste0(build_output_prefix(cfg), "_stage2_fallbacks.csv")
+  if (nrow(fallback_info) > 0L) {
+    fwrite(fallback_info, fallback_file)
+    cat(sprintf("  Optimizer fallback: %s cells ran Nelder-Mead after L-BFGS-B did not converge; NM point published on %s, NM objective higher than L-BFGS-B's on %s (rule '%s'); table: %s\n",
+                format(nrow(fallback_info), big.mark = ","),
+                format(sum(fallback_info$chosen == "nelder_mead"), big.mark = ","),
+                format(sum(fallback_info$nm_value > fallback_info$lbfgsb_value, na.rm = TRUE), big.mark = ","),
+                if (is.null(cfg$stage2_fallback)) "legacy" else cfg$stage2_fallback, fallback_file))
+  } else if (file.exists(fallback_file)) {
+    file.remove(fallback_file)   # a stale table from an earlier run must not survive a clean one
+  }
 
   output <- rbindlist(results_list, fill = TRUE)
   n_raw <- nrow(output)
@@ -807,6 +826,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     n_failed = n_products - n_succeeded, t_elapsed = t_elapsed,
     ncores = ncores, rcpp_loaded = .het_obj_fs_rcpp_loaded,
     trim_pct = trim_pct,
+    fallback_info = fallback_info,   # patch 0077
     trim_bounds = if (exists("sig_lo")) list(
       sig_lo=sig_lo, sig_hi=sig_hi, gam_lo=gam_lo, gam_hi=gam_hi) else NULL,
     n_pre_trim = n_raw, n_trimmed = n_trim_total,

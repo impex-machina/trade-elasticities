@@ -471,6 +471,15 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   stage2_maxit <- if (is.null(cfg$stage2_maxit)) 5000L else as.integer(cfg$stage2_maxit)   # patch 0075: absent == 5000 (v0.8.1)
   ref_moment_on <- !identical(cfg$stage2_ref_export_moment, "off")   # patch 0073: absent == on (v0.8.0)
   imp_const_cfg <- !identical(cfg$stage2_import_constant, "off")     # patch 0073: absent == on (v0.8.0)
+  # patch 0077: rule for the Nelder-Mead fallback. "legacy" (every release
+  # through v0.8.2, and the rule for an absent key) lets the NM result REPLACE
+  # the L-BFGS-B result whatever its objective value; "best" keeps whichever of
+  # the two has the lower objective (ties -> L-BFGS-B). Either way the cell
+  # records both outcomes (attr "fallback"), collected by
+  # estimate_product_fixed_sigma() -> estimate_all_fixed_sigma() into
+  # <prefix>_stage2_fallbacks.csv, so a run can be censused for cells whose
+  # published point is the NM one. CLI --stage2-fallback.
+  fb_rule <- if (is.null(cfg$stage2_fallback)) "legacy" else cfg$stage2_fallback
 
   # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
   # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
@@ -622,7 +631,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   d_start <- rep(gam_init, J + 1)  # gamma_k + J gamma_j
   lower_bounds <- rep(1e-6, J + 1)
 
-  result <- tryCatch(
+  result_lb <- tryCatch(
     optim(par = d_start, fn = het_obj_fixed_sigma, gr = grad_fn,
           method = "L-BFGS-B",
           lower = lower_bounds, upper = rep(Inf, J + 1),
@@ -639,9 +648,11 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
           prior_form = prior_code, import_constant = imp_const, prior_eps = prior_eps,   # patches 0071/0074
           control = list(maxit = stage2_maxit)),
     error = function(e) NULL)
+  result <- result_lb
+  fallback_rec <- NULL
 
-  if (is.null(result) || result$convergence != 0) {
-    result <- tryCatch(
+  if (is.null(result_lb) || result_lb$convergence != 0) {
+    result_nm <- tryCatch(
       optim(par = d_start, fn = het_obj_fixed_sigma, method = "Nelder-Mead",
             sigma = sigma_val,
             imp_Y = imp_Y_vec, imp_X = imp_X_mat,
@@ -656,6 +667,27 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
             prior_form = prior_code, import_constant = imp_const, prior_eps = prior_eps,   # patches 0071/0074
             control = list(maxit = 2L * stage2_maxit)),
       error = function(e) NULL)
+    # (patch 0077) Through v0.8.2 the NM result replaced the L-BFGS-B result
+    # unconditionally. NM restarts from d_start (not from the L-BFGS-B point)
+    # with 2 x maxit function evaluations in J + 1 dimensions, so on a cell
+    # that reached the L-BFGS-B cap it typically returns a point with a HIGHER
+    # objective than the one it discards, and a convergence code of its own
+    # (0 when the simplex collapsed, 1 at its cap) that then labels the row.
+    # "best" keeps the lower objective; "legacy" reproduces the old rule
+    # exactly (including optimizer_failed when NM errored).
+    chosen <- if (fb_rule == "best") {
+      if (is.null(result_nm)) "lbfgsb"
+      else if (is.null(result_lb)) "nelder_mead"
+      else if (result_lb$value <= result_nm$value) "lbfgsb" else "nelder_mead"
+    } else "nelder_mead"
+    result <- if (chosen == "lbfgsb") result_lb else result_nm
+    fallback_rec <- data.table(
+      importer = focal_importer, good = g_code, J = J, M = exp_mom$M,
+      lbfgsb_convergence = if (is.null(result_lb)) NA_integer_ else as.integer(result_lb$convergence),
+      lbfgsb_value       = if (is.null(result_lb)) NA_real_ else result_lb$value,
+      nm_convergence     = if (is.null(result_nm)) NA_integer_ else as.integer(result_nm$convergence),
+      nm_value           = if (is.null(result_nm)) NA_real_ else result_nm$value,
+      chosen = chosen, rule = fb_rule)
   }
 
   if (is.null(result)) return(cell_failure("optimizer_failed"))
@@ -778,6 +810,9 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     est_dt <- rbindlist(list(est_dt, t3_dt))
   }
 
+  # (patch 0077) both optimizer outcomes on a cell that fell back; NULL otherwise.
+  # Read by estimate_product_fixed_sigma() BEFORE the avg_trade join drops it.
+  if (!is.null(fallback_rec)) data.table::setattr(est_dt, "fallback", fallback_rec)
   est_dt
 }
 
@@ -785,7 +820,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
 #' Estimate gamma for all importers of one product with fixed sigma + tiers.
 estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
   t0 <- proc.time()["elapsed"]
-  results_g <- list(); failures_g <- list()
+  results_g <- list(); failures_g <- list(); fallbacks_g <- list()   # patch 0077
   n_cells <- 0L; n_ok <- 0L; n_skipped <- 0L
 
   imp_stats <- dt_g[, .(n_exp = uniqueN(exporter),
@@ -814,6 +849,8 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
       next
     }
     if (!is.null(est)) {
+      fb <- attr(est, "fallback")                                       # patch 0077
+      if (!is.null(fb)) fallbacks_g[[length(fallbacks_g) + 1L]] <- fb
       est[, good := g]
       trade_wt <- dt_g[importer == imp,
                        .(avg_trade = mean(cusval, na.rm = TRUE)), by = exporter]
@@ -859,6 +896,7 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
     attr(out, "timing") <- list(product=g, seconds=elapsed,
                                 cells=n_cells, succeeded=n_ok, skipped=n_skipped)
     attr(out, "failures") <- failures_g
+    attr(out, "fallbacks") <- fallbacks_g                                # patch 0077
     out
   } else NULL
 }

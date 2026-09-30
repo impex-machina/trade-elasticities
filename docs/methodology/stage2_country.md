@@ -286,6 +286,37 @@ The calendar split above confounds sampling noise with structural change between
 
 **Decision (patch 0075).** `--stage2-maxit` default 5000 (500 reproduces v0.8.0 and earlier); prior, λ, moments, ridge domain and SE form unchanged. The README's Known-limitations bullet quotes the same-period numbers as the reliability of the shipped γ and the calendar split as the drift contrast.
 
+### Optimizer fallback: which point a non-converged cell publishes (patch 0077)
+
+When L-BFGS-B returns a non-zero convergence code (almost always the
+iteration cap), `estimate_importer_product_fixed_sigma()` re-runs the cell
+with Nelder–Mead. Through v0.8.2 the NM result then *replaced* the L-BFGS-B
+result unconditionally. NM restarts from `d_start` (the prior-scale start,
+not the L-BFGS-B point) with `2 × maxit` function evaluations in J + 1
+dimensions, so on a cell that exhausted 5,000 L-BFGS-B iterations it returns
+a point with a higher objective than the one it discards — on a structural
+synthetic cell with J = 80 it has not left the starting point after its
+budget — and its own convergence code labels the row: 1 (`non_converged`,
+no SE) at its cap, or 0 (`ok`, SE computed at the NM point) when the
+simplex collapsed. Nothing in the shipped table records which optimizer
+produced a row.
+
+`--stage2-fallback {legacy|best}` (config `stage2_fallback`,
+checkpoint-stamped): `legacy` (default, and the rule for an absent key)
+reproduces every release through v0.8.2; `best` keeps whichever of the two
+results has the lower objective (ties → L-BFGS-B), so a fallback can only
+improve on the L-BFGS-B point. Under either rule the run writes
+`<prefix>_stage2_fallbacks.csv` (beside the checkpoint file) with one row
+per fallback cell — `lbfgsb_value`, `lbfgsb_convergence`, `nm_value`,
+`nm_convergence`, `chosen`, `rule` — and prints the counts, so a single
+Stage-2b pass (a `--product-sample 0.02` pass suffices) is the census of how
+many shipped rows carry an NM point and by how much its objective exceeds
+the discarded one. The default flips at the next data release once that
+census is on record; `tests/testthat/test-stage2-fallback.R` locks both
+rules on the e2e fixture. The homogeneous (single-γ) estimator in
+`estimate_cell_homogeneous.R` has the same fallback shape; it is not on the
+production path and is left as is.
+
 ## Headline findings vs Soderbery (2018)
 
 From the 2026-05-14 SE-enabled heterogeneity report (retained in the local

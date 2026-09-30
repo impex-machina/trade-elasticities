@@ -111,6 +111,7 @@ cat(sprintf("  Stage-1 UV trim:  %s\n", if (is.na(opts$stage1_uv_trim)) "off" el
 cat(sprintf("  Stage-2 gradient: %s\n", opts$stage2_gradient))
 cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain)) "legacy" else opts$stage2_ridge_domain))
 cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
+cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "legacy" else opts$stage2_fallback))   # patch 0077
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,

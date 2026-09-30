@@ -68,6 +68,7 @@ validate_config <- function(cfg) {
   if (!is.null(cfg$stage2_maxit) && (!is.numeric(cfg$stage2_maxit) || cfg$stage2_maxit < 1)) stop("stage2_maxit must be a positive integer")
   if (!is.null(cfg$stage2_ref_export_moment) && !cfg$stage2_ref_export_moment %in% c("off", "on")) stop("stage2_ref_export_moment must be 'off' or 'on', got: ", cfg$stage2_ref_export_moment)
   if (!is.null(cfg$stage2_import_constant) && !cfg$stage2_import_constant %in% c("off", "on")) stop("stage2_import_constant must be 'off' or 'on', got: ", cfg$stage2_import_constant)
+  if (!is.null(cfg$stage2_fallback) && !cfg$stage2_fallback %in% c("legacy", "best")) stop("stage2_fallback must be 'legacy' or 'best', got: ", cfg$stage2_fallback)   # patch 0077
   if (!is.null(cfg$stage2_ridge_domain) &&
       !cfg$stage2_ridge_domain %in% c("legacy", "all")) {
     stop("stage2_ridge_domain must be 'legacy' or 'all', got: ", cfg$stage2_ridge_domain)

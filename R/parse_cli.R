@@ -208,6 +208,8 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
                    "split-half experiments (patch 0074); 'all' keeps every observation. Default: %default")),
     optparse::make_option(c("--stage2-maxit"), type = "integer", default = 5000L, metavar = "N",
       help = "L-BFGS-B iteration cap for the Stage-2 cell fit (Nelder-Mead fallback gets 2N); 500 reproduces v0.8.0 and earlier. Default: %default"),
+    optparse::make_option(c("--stage2-fallback"), type = "character", default = "legacy", metavar = "RULE",
+      help = "Stage-2 Nelder-Mead fallback rule when L-BFGS-B does not converge: 'legacy' (the NM result replaces the L-BFGS-B result whatever its objective; every release through v0.8.2) or 'best' (keep the lower objective of the two). Either way <prefix>_stage2_fallbacks.csv records both outcomes per cell (patch 0077). Default: %default"),
     optparse::make_option(c("--stage2-ref-export-moment"), type = "character", default = "on", metavar = "MODE",
       help = "'on' (v0.8.0 default) adds the reference exporter's own Eq. (11) export row mapped to gamma_k; 'off' reproduces v0.7.x. Default: %default"),
     optparse::make_option(c("--stage2-import-constant"), type = "character", default = "on", metavar = "MODE",
@@ -312,6 +314,7 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!is.numeric(opts$stage2_maxit) || opts$stage2_maxit < 1) fail("--stage2-maxit must be a positive integer")
   if (!opts$stage2_ref_export_moment %in% c("off", "on")) fail(sprintf("--stage2-ref-export-moment must be 'off' or 'on', got: '%s'", opts$stage2_ref_export_moment))
   if (!opts$stage2_import_constant %in% c("off", "on")) fail(sprintf("--stage2-import-constant must be 'off' or 'on', got: '%s'", opts$stage2_import_constant))
+  if (!opts$stage2_fallback %in% c("legacy", "best")) fail(sprintf("--stage2-fallback must be 'legacy' or 'best', got: '%s'", opts$stage2_fallback))   # patch 0077
   if (!is.numeric(opts$product_sample) || opts$product_sample <= 0 || opts$product_sample > 1) fail("--product-sample must be in (0, 1]")
   if (!opts$stage2_ridge_domain %in% c("legacy", "all")) {
     fail(sprintf("--stage2-ridge-domain must be 'legacy' or 'all', got: '%s'",
