@@ -317,6 +317,41 @@ rules on the e2e fixture. The homogeneous (single-γ) estimator in
 `estimate_cell_homogeneous.R` has the same fallback shape; it is not on the
 production path and is left as is.
 
+### Which Stage-2a rows the Stage-2b priors are medians over (patch 0079)
+
+`country_priors` (the good-level `ln_gamma_prior` that the Stage-2b
+log-ridge pulls toward) and `gam_V_regional` (the reference-destination
+γ_V lookup of Eq. (11)) are medians over the Stage-2a table. Through v0.8.2
+the runner took them over every Stage-2a row with a positive γ — including
+the Tier-3 rows Stage 2a itself imputed at the Stage-1 good-level prior and
+the all-Tier-3 early-return reference rows (`convergence` −1) — so where
+those rows were numerous the country prior was partly the Stage-1 prior
+echoed back through Stage 2a, and γ_V likewise. `is_estimated_row()`, the
+patch-0066 predicate the trim and `opt_tariff` already apply, was not
+applied here.
+
+`--stage2b-prior-source {all|estimated}` (config `stage2b_prior_source`,
+checkpoint-stamped): `all` (default, and the rule for an absent key)
+reproduces the runner through v0.8.2; `estimated` restricts both medians to
+directly estimated Stage-2a rows (`stage2b_priors_from_regional()` in
+`R/iteration_helpers.R`). A good with no estimated Stage-2a row then has no
+prior (the cell falls to the existing no-prior path) instead of silently
+inheriting the imputed value. Starting values (`init_from_regional`) are
+unchanged by the rule. `analysis/stage2a_prior_rows_census.R` measures the
+shift on a shipped Stage-2a table without re-estimating anything
+(`results/stage2a_prior_rows_census.json`,
+`docs/results/stage2a_prior_rows_census.md`); the decision rule and the
+flip belong to the next data release (Stage 2b-only rerun).
+
+The same patch hardens the library's reads of `cfg$stage2_prior` to exact
+matching (`cfg[["stage2_prior"]]`): R's `$` partial-matches list names, so
+on a hand-built config that omits `stage2_prior` but carries
+`stage2_prior_eps` (patch 0074) the old read returned the ε value and the
+prior-form `switch()` then selected nothing. `build_config()` always sets
+both keys, so no CLI run was affected; harnesses and tests that rely on
+absent-key defaults were one edit away from it. New config keys should not
+extend an existing key's name.
+
 ## Headline findings vs Soderbery (2018)
 
 From the 2026-05-14 SE-enabled heterogeneity report (retained in the local

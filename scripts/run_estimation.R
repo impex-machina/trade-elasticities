@@ -112,6 +112,7 @@ cat(sprintf("  Stage-2 gradient: %s\n", opts$stage2_gradient))
 cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain)) "legacy" else opts$stage2_ridge_domain))
 cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "legacy" else opts$stage2_fallback))   # patch 0077
+cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "all" else opts$stage2b_prior_source))   # patch 0079
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
@@ -490,11 +491,18 @@ cat(sprintf("  CSV: %s_fixed_sigma.csv\n\n", out_base_regional))
 #  STAGE 2b PRIORS (built from Stage 2a output)
 # ===========================================================================
 
-country_priors <- regional_clean[, .(
-  ln_gamma_prior = median(log(gamma), na.rm = TRUE)
-), by = good]
+# (patch 0079) --stage2b-prior-source {all|estimated}: which Stage-2a rows the
+# good-level prior and the reference-destination gamma_V are medians over.
+# "all" (default; every release through v0.8.2) includes the Tier-3 rows
+# Stage 2a imputed at the Stage-1 prior; "estimated" uses directly estimated
+# rows only (is_estimated_row()). See stage2b_priors_from_regional().
+prior_rows_rule <- if (is.null(opts$stage2b_prior_source)) "all" else opts$stage2b_prior_source
+s2b_priors <- stage2b_priors_from_regional(regional_clean, rows = prior_rows_rule)
+country_priors <- s2b_priors$country_priors
 
-cat(sprintf("Stage 2b priors (from Stage 2a): %d products, median gamma=%.3f\n\n",
+cat(sprintf("Stage 2b priors (from Stage 2a, rows = %s: %s of %s rows): %d products, median gamma=%.3f\n\n",
+            prior_rows_rule,
+            format(s2b_priors$n_rows_used, big.mark = ","), format(s2b_priors$n_rows_all, big.mark = ","),
             nrow(country_priors),
             exp(median(country_priors$ln_gamma_prior))))
 
@@ -547,8 +555,7 @@ if (should_run("2b", opts, paths)) {
     config_2b$sigma_V_lookup <- sigma_clean[, .(importer = as.character(importer), good, sigma)]
 
     rmap_2b <- build_region_map()
-    gam_V_regional <- regional_clean[, .(gamma = median(gamma, na.rm = TRUE)),
-                                       by = .(region = importer, good)]
+    gam_V_regional <- s2b_priors$gam_V_regional   # patch 0079: same row rule as the prior
     country_codes_2b <- unique(as.integer(dt_country$importer))
     cty_to_region <- data.table(
       cty_code = country_codes_2b,

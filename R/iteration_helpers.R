@@ -30,6 +30,38 @@ update_defaults_from_results <- function(cfg, results, pass = 1L) {
 }
 
 
+#' Stage-2b good-level priors and reference-destination gamma_V from the
+#' Stage-2a table (patch 0077 fresh-eyes audit #4, delivered as patch 0079).
+#'
+#' Through v0.8.2 the runner took `median(log(gamma))` by good and
+#' `median(gamma)` by (region, good) over EVERY Stage-2a row with a positive
+#' gamma -- including the Tier-3 rows Stage 2a itself imputed at the Stage-1
+#' good-level prior (convergence -1) and the all-Tier-3 early-return
+#' reference rows -- so the country prior partly echoed the Stage-1 prior
+#' back through Stage 2a. `rows = "estimated"` restricts both medians to
+#' directly estimated Stage-2a rows (`is_estimated_row()`, the patch-0066
+#' predicate the trim and opt_tariff already use); `rows = "all"` reproduces
+#' the runner's rule through v0.8.2 bit for bit. Starting values
+#' (init_from_regional) are not touched by this rule.
+#'
+#' @param regional_clean Stage-2a rows with !is.na(sigma), !is.na(gamma), gamma > 0.
+#' @param rows "all" (<= v0.8.2) or "estimated".
+#' @return list(country_priors = (good, ln_gamma_prior),
+#'              gam_V_regional = (region, good, gamma), n_rows_used, n_rows_all).
+stage2b_priors_from_regional <- function(regional_clean, rows = c("all", "estimated")) {
+  rows <- match.arg(rows)
+  src <- if (rows == "estimated") {
+    if (!all(c("tier", "convergence") %in% names(regional_clean)))
+      stop("stage2b_priors_from_regional(rows = 'estimated') needs tier and convergence columns")
+    regional_clean[is_estimated_row(tier, convergence)]
+  } else regional_clean
+  list(
+    country_priors = src[, .(ln_gamma_prior = median(log(gamma), na.rm = TRUE)), by = good],
+    gam_V_regional = src[, .(gamma = median(gamma, na.rm = TRUE)), by = .(region = importer, good)],
+    n_rows_used = nrow(src), n_rows_all = nrow(regional_clean), rows = rows)
+}
+
+
 #' Initialize country-level starting values from regional estimates.
 #'
 #' Creates a lookup table mapping (region, product) -> (sigma, gamma)

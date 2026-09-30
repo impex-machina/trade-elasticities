@@ -466,7 +466,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # --stage2-se. Points, routing and tiers are identical across forms.
   se_form <- if (is.null(cfg$stage2_se)) "sandwich" else cfg$stage2_se
   # patch 0071 (v0.8.0 experiment infrastructure; all default-off):
-  prior_code <- switch(if (is.null(cfg$stage2_prior)) "log" else cfg$stage2_prior, log = 0L, level = 1L, share = 2L, shiftlog = 3L)
+  prior_code <- switch(if (is.null(cfg[["stage2_prior"]])) "log" else cfg[["stage2_prior"]], log = 0L, level = 1L, share = 2L, shiftlog = 3L)
   prior_eps  <- if (is.null(cfg$stage2_prior_eps)) 0.01 else as.numeric(cfg$stage2_prior_eps)   # patch 0074
   stage2_maxit <- if (is.null(cfg$stage2_maxit)) 5000L else as.integer(cfg$stage2_maxit)   # patch 0075: absent == 5000 (v0.8.1)
   ref_moment_on <- !identical(cfg$stage2_ref_export_moment, "off")   # patch 0073: absent == on (v0.8.0)

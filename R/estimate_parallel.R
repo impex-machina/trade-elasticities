@@ -492,6 +492,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_prior", "stage2_maxit", "stage2_ref_export_moment", "stage2_import_constant",   # patch 0071
             "stage2_prior_eps", "t_parity",   # patch 0074
             "stage2_fallback",                # patch 0077
+            "stage2b_prior_source",              # patch 0079 (the prior tables are fingerprinted too)
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -512,13 +513,14 @@ stage2_psock_provision <- function(cl, cpp_dir,
   # config's rule): all / sandwich since v0.7.4.
   if (is.null(cfg$stage2_ridge_domain)) cfg$stage2_ridge_domain <- "all"
   if (is.null(cfg$stage2_se)) cfg$stage2_se <- "sandwich"
-  if (is.null(cfg$stage2_prior)) cfg$stage2_prior <- "log"                      # patch 0071: absent == off
+  if (is.null(cfg[["stage2_prior"]])) cfg[["stage2_prior"]] <- "log"                      # patch 0071: absent == off
   if (is.null(cfg$stage2_prior_eps)) cfg$stage2_prior_eps <- 0.01               # patch 0074
   if (is.null(cfg$t_parity)) cfg$t_parity <- "all"                              # patch 0074
   if (is.null(cfg$stage2_maxit)) cfg$stage2_maxit <- 5000L   # patch 0075
   if (is.null(cfg$stage2_ref_export_moment)) cfg$stage2_ref_export_moment <- "on"   # patch 0073
   if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
   if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "legacy"                   # patch 0077: absent == legacy
+  if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "all"                   # patch 0079: absent == all
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),
