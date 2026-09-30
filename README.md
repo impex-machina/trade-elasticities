@@ -242,12 +242,15 @@ Stated forthrightly:
   are clamped at the σ/ω caps and report the cap, not an estimate; a further 19.7% (55,240 cells) are constrained boundary HLIML optima -- 15,578 on the ω floor, 7,259 at the σ cap, 32,403 at the ω cap -- routed where the closed-form HLIML point was inadmissible and Step 2 supplied no admissible ω (`final_source == "hliml_boundary"`; SEs from the HNCS sandwich projected onto the edge on 54,594 of them (σ on the ω edges, ω on the σ-cap edge); `edge_se_status` names the 646 where the projected curvature was not usable). 93.7% of cells fail the
   Stock-Yogo weak-instrument threshold at the strict 10% maximal-size
   critical value this pipeline screens at. At Grant-Soderbery (2024)'s own
-  25% rule of thumb, 38.6% of evaluated cells pass the
-  weak-instrument screen, 58.1% pass the Sargan
-  overidentification test (conventional p > 0.2), and 23.5% pass both --
-  the joint credibility screen of the G&S protocol. Per-cell flags
-  (`stockyogo_pass_gs25`, `sargan_pass`, `gs_pass_both`) ship in the Stage 1
-  output so either threshold can be applied downstream. Conditional on `status == "ok"`
+  25% rule of thumb, 38.6% of the 181,224 evaluated cells pass the
+  weak-instrument screen, and 58.1% of the 177,140 cells with an
+  overidentified Step-2 fit pass its Sargan test (conventional p > 0.2). The
+  joint credibility screen of the G&S protocol pairs the 25% weak-instrument
+  rule with the HLIML-residual overidentification statistic J_h, which exists
+  only on the interior-HLIML cells: of the 78,522 cells where both are
+  defined, 23.5% pass both. Per-cell flags
+  (`stockyogo_pass_gs25`, `sargan_pass`, `sargan_pass_gs`, `gs_pass_both`) ship
+  in the Stage 1 output so either threshold can be applied downstream. Conditional on `status == "ok"`
   the interior rate rises to 43.3%; both framings appear in the methodology
   write-up. Headline σ medians are reported on the canonical 1,240 HS4
   universe.

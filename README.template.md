@@ -242,12 +242,15 @@ Stated forthrightly:
   are clamped at the σ/ω caps and report the cap, not an estimate{{boundary_phrase(r$stage1$routing_summary, req(r$stage1, "n_cells"), r$stage1$edge_se)}}. {{format_pct(req(r$stage1, "sy_fails"), req(r$stage1, "sy_evaluated"))}} of cells fail the
   Stock-Yogo weak-instrument threshold at the strict 10% maximal-size
   critical value this pipeline screens at. At Grant-Soderbery (2024)'s own
-  25% rule of thumb, {{format_pct(req(r$stage1, "sy_pass_gs25"), req(r$stage1, "sy_gs25_evaluated"))}} of evaluated cells pass the
-  weak-instrument screen, {{format_pct(req(r$stage1, "sargan_passes"), req(r$stage1, "sargan_evaluated"))}} pass the Sargan
-  overidentification test (conventional p > 0.2), and {{format_pct(req(r$stage1, "gs_both_passes"), req(r$stage1, "gs_both_evaluated"))}} pass both --
-  the joint credibility screen of the G&S protocol. Per-cell flags
-  (`stockyogo_pass_gs25`, `sargan_pass`, `gs_pass_both`) ship in the Stage 1
-  output so either threshold can be applied downstream. Conditional on `status == "ok"`
+  25% rule of thumb, {{format_pct(req(r$stage1, "sy_pass_gs25"), req(r$stage1, "sy_gs25_evaluated"))}} of the {{format_int(req(r$stage1, "sy_gs25_evaluated"))}} evaluated cells pass the
+  weak-instrument screen, and {{format_pct(req(r$stage1, "sargan_passes"), req(r$stage1, "sargan_evaluated"))}} of the {{format_int(req(r$stage1, "sargan_evaluated"))}} cells with an
+  overidentified Step-2 fit pass its Sargan test (conventional p > 0.2). The
+  joint credibility screen of the G&S protocol pairs the 25% weak-instrument
+  rule with the HLIML-residual overidentification statistic J_h, which exists
+  only on the interior-HLIML cells: of the {{format_int(req(r$stage1, "gs_both_evaluated"))}} cells where both are
+  defined, {{format_pct(req(r$stage1, "gs_both_passes"), req(r$stage1, "gs_both_evaluated"))}} pass both. Per-cell flags
+  (`stockyogo_pass_gs25`, `sargan_pass`, `sargan_pass_gs`, `gs_pass_both`) ship
+  in the Stage 1 output so either threshold can be applied downstream. Conditional on `status == "ok"`
   the interior rate rises to {{format_pct(req(r$stage1$provenance_rates$interior_conditional_on_ok, "numerator"), req(r$stage1$provenance_rates$interior_conditional_on_ok, "denominator"))}}; both framings appear in the methodology
   write-up. Headline σ medians are reported on the canonical {{format_int(req(r$stage1, "n_products"))}} HS4
   universe.
