@@ -1,0 +1,97 @@
+{
+  "meta": {
+    "stage2a": "data/derived/stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds",
+    "git_rev": "588d198",
+    "timestamp": "2026-09-29 22:15:09 EDT"
+  },
+  "composition": {
+    "n_rows_clean": 422418,
+    "n_estimated": 393668,
+    "n_imputed": 28750,
+    "share_imputed": 0.06806055,
+    "by_tier": [
+      {
+        "tier": 0,
+        "n": 24766,
+        "share": 0.05862913,
+        "imputed": 272
+      },
+      {
+        "tier": 1,
+        "n": 368678,
+        "share": 0.87278004,
+        "imputed": 0
+      },
+      {
+        "tier": 2,
+        "n": 496,
+        "share": 0.00117419,
+        "imputed": 0
+      },
+      {
+        "tier": 3,
+        "n": 28478,
+        "share": 0.06741663,
+        "imputed": 28478
+      }
+    ],
+    "n_goods": 1240,
+    "n_goods_with_imputed": 1240,
+    "n_goods_all_imputed": 0
+  },
+  "prior_shift": {
+    "n_goods": 1240,
+    "n_goods_no_estimated_rows": 0,
+    "median_gamma_all": 0.64670658,
+    "median_gamma_est": 0.64383347,
+    "d_ln_quantiles": {
+      "p5": -0.03099917,
+      "p10": -0.01314391,
+      "p25": -0.00040209,
+      "p50": 0.00108318,
+      "p75": 0.00528549,
+      "p90": 0.01824856,
+      "p95": 0.02971813
+    },
+    "abs_d_ln_quantiles": {
+      "p5": 0.00011672,
+      "p10": 0.00030208,
+      "p25": 0.000924,
+      "p50": 0.00335644,
+      "p75": 0.01156429,
+      "p90": 0.03004931,
+      "p95": 0.06168849
+    },
+    "share_abs_gt_1pct": 0.27177419,
+    "share_abs_gt_5pct": 0.06290323,
+    "share_abs_gt_20pct": 0.01532258,
+    "share_identical": 0.00322581
+  },
+  "gamma_V_shift": {
+    "n_region_goods": 25212,
+    "n_without_estimated": 280,
+    "median_all": 0.6384956,
+    "median_est": 0.63525429,
+    "d_ln_quantiles": {
+      "p5": -0.18924838,
+      "p10": -0.05888213,
+      "p25": -3.38694209e-06,
+      "p50": 0,
+      "p75": 0.00218044,
+      "p90": 0.03190466,
+      "p95": 0.09111723
+    },
+    "abs_d_ln_quantiles": {
+      "p5": 0,
+      "p10": 0,
+      "p25": 0,
+      "p50": 0.00104173,
+      "p75": 0.02481951,
+      "p90": 0.13518849,
+      "p95": 0.2899023
+    },
+    "share_abs_gt_5pct": 0.18446174,
+    "share_abs_gt_20pct": 0.07227659,
+    "share_identical": 0.4061046
+  }
+}
