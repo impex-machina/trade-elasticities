@@ -95,6 +95,8 @@ build_config <- function(opts) {
     stage2_fallback = opts$stage2_fallback %||% "best",
     # patch 0079/0080: Stage-2a rows behind the 2b priors; absent key == estimated (v0.8.3 default; all = <= v0.8.2 reproducer).
     stage2b_prior_source = opts$stage2b_prior_source %||% "estimated",
+    # patch 0083: tail-trim semantics; absent key == legacy (<= v0.8.3 reproducer).
+    stage2_trim = opts$stage2_trim %||% "legacy",
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
     stage1_cf_admissibility = opts$stage1_cf_admissibility %||% "legacy",

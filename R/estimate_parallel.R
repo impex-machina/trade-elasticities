@@ -493,6 +493,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_prior_eps", "t_parity",   # patch 0074
             "stage2_fallback",                # patch 0077
             "stage2b_prior_source",              # patch 0079 (the prior tables are fingerprinted too)
+            "stage2_trim",                       # patch 0083
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -521,6 +522,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
   if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "best"                     # patch 0080: absent == best (v0.8.3)
   if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "estimated"       # patch 0080: absent == estimated (v0.8.3)
+  if (is.null(cfg$stage2_trim)) cfg$stage2_trim <- "legacy"                           # patch 0083: absent == legacy
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),
@@ -760,8 +762,26 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   # The bounds are then applied to all rows.
   n_trim_total <- 0L
   trim_pct <- cfg$tail_trim_pct
+  # (patch 0083) --stage2-trim: "legacy" (every release through v0.8.3, and
+  # the rule for an absent key) takes the sigma bounds as 0.5%-per-tail
+  # quantiles over ROWS, although sigma is a cell-level quantity, so the
+  # sigma trim removes whole cells by a row count; "v2" takes them over CELLS
+  # (one sigma per (importer, good)) so the cell drop is deliberate, and
+  # retires the Stage-2a plateau replacement (run_estimation.R). The gamma
+  # trim is a row quantile under both. Under both modes the rows the trim
+  # removes are recorded (run_meta$trimmed_rows and
+  # <prefix>_stage2_trimmed.csv beside the fallback table), so the removal is
+  # no longer silent.
+  trim_mode <- if (is.null(cfg$stage2_trim)) "legacy" else cfg$stage2_trim
+  trimmed_rows <- NULL
+  trim_rec <- function(d, reason) {
+    cols <- intersect(c("importer", "exporter", "good", "sigma", "gamma", "tier", "convergence"), names(d))
+    out <- d[, ..cols]; out[, reason := reason]; out
+  }
   if (!is.na(trim_pct) && trim_pct > 0) {
     n_b <- nrow(output)
+    na_rows <- output[is.na(sigma) | is.na(gamma)]
+    if (nrow(na_rows)) trimmed_rows <- trim_rec(na_rows, "na_sigma_or_gamma")
     output <- output[!is.na(sigma) & !is.na(gamma)]
 
     if ("tier" %in% names(output)) {
@@ -778,17 +798,43 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
       trim_src <- output
     }
 
-    sig_lo <- quantile(trim_src$sigma, trim_pct, na.rm = TRUE)
-    sig_hi <- quantile(trim_src$sigma, 1 - trim_pct, na.rm = TRUE)
+    if (trim_mode == "v2") {
+      cell_sig <- unique(trim_src[, .(importer, good, sigma)])
+      sig_lo <- quantile(cell_sig$sigma, trim_pct, na.rm = TRUE)
+      sig_hi <- quantile(cell_sig$sigma, 1 - trim_pct, na.rm = TRUE)
+    } else {
+      sig_lo <- quantile(trim_src$sigma, trim_pct, na.rm = TRUE)
+      sig_hi <- quantile(trim_src$sigma, 1 - trim_pct, na.rm = TRUE)
+    }
     gam_lo <- quantile(trim_src$gamma, trim_pct, na.rm = TRUE)
     gam_hi <- quantile(trim_src$gamma, 1 - trim_pct, na.rm = TRUE)
-    output <- output[sigma >= sig_lo & sigma <= sig_hi &
-                     gamma >= gam_lo & gamma <= gam_hi]
+    keep <- output$sigma >= sig_lo & output$sigma <= sig_hi &
+            output$gamma >= gam_lo & output$gamma <= gam_hi
+    if (any(!keep)) {
+      dropped <- output[!keep]
+      reason <- fifelse(dropped$sigma < sig_lo, "sigma_lo",
+                fifelse(dropped$sigma > sig_hi, "sigma_hi",
+                fifelse(dropped$gamma < gam_lo, "gamma_lo", "gamma_hi")))
+      trimmed_rows <- rbindlist(list(trimmed_rows, trim_rec(dropped, reason)), use.names = TRUE, fill = TRUE)
+    }
+    output <- output[keep]
     n_trim_total <- n_b - nrow(output)
-    cat(sprintf("  Trimmed: %s rows (%.1f%% each tail)\n",
-                format(n_trim_total, big.mark = ","), 100 * trim_pct))
+    cat(sprintf("  Trimmed: %s rows (%.1f%% each tail; sigma bounds over %s)\n",
+                format(n_trim_total, big.mark = ","), 100 * trim_pct,
+                if (trim_mode == "v2") "cells" else "rows"))
     cat(sprintf("    Sigma kept: [%.2f, %.2f]  Gamma kept: [%.3f, %.3f]\n",
                 sig_lo, sig_hi, gam_lo, gam_hi))
+    if (!is.null(trimmed_rows)) {
+      rs <- table(trimmed_rows$reason)
+      cat(sprintf("    Removed by reason: %s\n", paste(sprintf("%s=%s", names(rs), format(as.integer(rs), big.mark = ",")), collapse = " ")))
+    }
+  }
+  trim_file <- paste0(build_output_prefix(cfg), "_stage2_trimmed.csv")
+  if (!is.null(trimmed_rows) && nrow(trimmed_rows) > 0L) {
+    fwrite(trimmed_rows, trim_file)
+    cat(sprintf("    Trimmed rows recorded: %s\n", trim_file))
+  } else if (file.exists(trim_file)) {
+    file.remove(trim_file)
   }
 
   # Ensure tier column exists
@@ -839,6 +885,8 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     n_failed = n_products - n_succeeded, t_elapsed = t_elapsed,
     ncores = ncores, rcpp_loaded = .het_obj_fs_rcpp_loaded,
     trim_pct = trim_pct,
+    trim_mode = trim_mode,           # patch 0083
+    trimmed_rows = trimmed_rows,     # patch 0083
     fallback_info = fallback_info,   # patch 0077
     trim_bounds = if (exists("sig_lo")) list(
       sig_lo=sig_lo, sig_hi=sig_hi, gam_lo=gam_lo, gam_hi=gam_hi) else NULL,

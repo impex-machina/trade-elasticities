@@ -398,6 +398,34 @@ estimate is touched; the cell-level opt_tariff median moves 0.649 → 0.638
 on the v0.8.3 Stage-2b table. `tests/testthat/test-opt-tariff-published-rows.R`
 locks the definition, the idempotence, and the script.
 
+### Trim semantics and the record of removed rows (patch 0083)
+
+`estimate_all_fixed_sigma()` trims 0.5% per tail on σ and on γ before the
+table is written. σ is a cell-level quantity, so a σ trim removes whole
+cells, but through v0.8.3 its bounds were row quantiles: how many cells
+went was set by a row count, and a hair's shift in the bounds (the v0.8.3
+rc moved 68 rows relative to v0.8.2) changed membership silently. The
+Stage-2a plateau replacement (γ > 20 → the Stage-1 prior; v0.3.0 B6) ran
+after the trim and imputed 983 rows that then read as estimated downstream
+— they entered the Stage-2b prior medians under either prior-source rule —
+while rows above the γ bound were dropped instead: a row at 25 became the
+prior, a row at 40 vanished.
+
+`--stage2-trim {legacy|v2}` (config `stage2_trim`, checkpoint-stamped):
+`legacy` (default, and the rule for an absent key) reproduces every release
+through v0.8.3; `v2` takes the σ bounds as quantiles over cells (one σ per
+(importer, good)), so the cell drop is a deliberate 0.5%-of-cells rule, and
+retires the plateau replacement (the log ridge bounds γ and the γ tail trim
+handles the extremes). The γ trim is a row quantile under both. Under
+**both** modes the rows the trim removes are recorded — `run_meta$trimmed_rows`
+and `<prefix>_stage2_trimmed.csv` beside the fallback table, with the
+bound each row violated — so the removal is no longer silent and a release
+can census it. Membership is the only difference between the modes: rows
+present under both carry identical values. The flag-instead-of-delete
+design (a `trimmed` column carried through the analysis layer) is the v0.9
+schema item. `tests/testthat/test-stage2-trim.R` locks the record, the
+legacy arithmetic, and the v2 semantics on the e2e fixture.
+
 The same patch hardens the library's reads of `cfg$stage2_prior` to exact
 matching (`cfg[["stage2_prior"]]`): R's `$` partial-matches list names, so
 on a hand-built config that omits `stage2_prior` but carries

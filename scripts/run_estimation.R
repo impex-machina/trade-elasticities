@@ -113,6 +113,7 @@ cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain
 cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "best" else opts$stage2_fallback))   # patch 0077/0080
 cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source))   # patch 0079/0080
+cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts$stage2_trim)) "legacy" else opts$stage2_trim))   # patch 0083
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
@@ -391,7 +392,8 @@ if (should_run("2a", opts, paths)) {
     cat("========== STAGE 2a: REGIONAL GAMMA (fixed sigma, light shrinkage) ==========\n")
     cat(sprintf("  Shrinkage lambda=%g (ridge pull toward Stage-1 good-level priors)\n",
                 lambda_2a))
-    cat("  Plateau fallback: gamma > 20 replaced by Feenstra anchor\n\n")
+    cat(if (identical(opts$stage2_trim, "v2")) "  Plateau fallback: off under --stage2-trim v2 (the gamma tail trim handles the extremes)\n\n"
+        else "  Plateau fallback: gamma > 20 replaced by Feenstra anchor\n\n")
 
     config_2a <- config_regional
     config_2a$shrinkage_lambda <- lambda_2a
@@ -427,6 +429,13 @@ if (should_run("2a", opts, paths)) {
     #       after replacement (they were previously left at values derived
     #       from the replaced gamma).
     # The prior itself is now omega-scale (B5).
+    # (patch 0083) the plateau replacement is a level-ridge-era rule (v0.3.0 B6):
+    # under the log ridge gamma is bounded and the tail trim handles the
+    # extremes, and the rows it imputes at the Stage-1 prior read as estimated
+    # downstream (they entered the Stage-2b prior medians). Off under v2.
+    if (identical(opts$stage2_trim, "v2")) {
+      cat("  Plateau fallback: off under --stage2-trim v2\n")
+    } else {
     plateau_threshold <- 20
     has_tier <- "tier" %in% names(regional_results)
     plateau_idx <- if (has_tier) {
@@ -467,6 +476,7 @@ if (should_run("2a", opts, paths)) {
                     format(ot$n_changed, big.mark = ",")))
       }
     }
+    }   # patch 0083: end of the legacy plateau block
 
     saveRDS(finalize_saved_output(regional_results), regional_file)
   }
