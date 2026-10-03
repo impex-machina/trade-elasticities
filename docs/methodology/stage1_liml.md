@@ -230,3 +230,35 @@ shipped interior cells have an inadmissible global optimum (BFGS had stopped
 at a non-minimising interior point); under `closed` they fall to the Step-2
 cascade. The realised v0.6.0 tables come from the rc run
 (`docs/v060_rc_runbook.md`), not from this projection.
+
+## The sigma cap as a parameter (patch 0084)
+
+`sigma_start_cap` (10 in every release through v0.8.3) is one number behind
+three things: the closed-form HLIML admissibility (`sigma < cap`), the σ
+edge of the boundary box, and the Step-2 clamp (a Step-2 σ at or above it
+is published at the cap, adjust 4, with no SE). The 2026-09-29 census of the
+shipped Stage-1 table (`docs/results/stage1_sigma_cap_census.md`) found it
+censoring a continuous right tail: half of the 10,809 adjust-4 cells have an
+uncapped Step-2 σ ≤ 20 and 80% ≤ 50, the closed-form HLIML agrees on the
+magnitude (median 18.6 vs 20.0), only 10% exceed 100, and 18,068 cells sit
+at exactly 10 against 1,049 interior cells in (8, 10) — the interior
+population is truncated by the same number, since a closed-form point at
+σ = 15 is declared inadmissible and routed to Step 2. On an adjust-4 cell the
+published ω was computed at the uncapped σ and sits beside σ = 10, not a
+point of the inversion, and enters the Stage-2a priors when interior.
+
+`--stage1-sigma-cap N` (default 10, bit-preserving) threads the cap through
+`run_stage1_liml(sigma_cap)` to `estimate_cell_liml(sigma_start_cap)`; it
+touches only cells it binds on (`tests/testthat/test-stage1-sigma-cap.R`:
+a σ = 3 panel is identical under 10 and 50 in everything published; a
+σ = 20 panel is published at 10 as adjust 4 under the old cap and as an
+interior estimate near 20 with an SE under 50). Two companions for the
+experiment: `--stage2-sigma-fallback-pin X` holds the Stage-2 fallback σ at
+a given value (the clean-cell median moves when cells gain estimates, and
+11% of Stage-2b rows carry it), and `--stage1-capped-omega drop` keeps a
+σ-capped cell's ω out of the Stage-2a priors. The experiment is one rc at
+cap 50 in the v0.9 session, read by provenance class (cells whose Stage-1 σ
+changed, fallback rows, everything else); shipping it would carry the
+validation debt listed in the v0.8.3 audit (parity reliability on the
+cap-50 Stage-1 table, the bootstrap-SE census, the trim sensitivity set,
+and the template prose "cap value 10").

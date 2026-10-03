@@ -71,6 +71,9 @@ validate_config <- function(cfg) {
   if (!is.null(cfg$stage2_fallback) && !cfg$stage2_fallback %in% c("legacy", "best")) stop("stage2_fallback must be 'legacy' or 'best', got: ", cfg$stage2_fallback)   # patch 0077
   if (!is.null(cfg$stage2b_prior_source) && !cfg$stage2b_prior_source %in% c("all", "estimated")) stop("stage2b_prior_source must be 'all' or 'estimated', got: ", cfg$stage2b_prior_source)   # patch 0079
   if (!is.null(cfg$stage2_trim) && !cfg$stage2_trim %in% c("legacy", "v2")) stop("stage2_trim must be 'legacy' or 'v2', got: ", cfg$stage2_trim)   # patch 0083
+  if (!is.null(cfg$stage1_sigma_cap) && !(is.finite(cfg$stage1_sigma_cap) && cfg$stage1_sigma_cap > 1)) stop("stage1_sigma_cap must be a number > 1, got: ", cfg$stage1_sigma_cap)   # patch 0084
+  if (!is.null(cfg$stage1_capped_omega) && !cfg$stage1_capped_omega %in% c("keep", "drop")) stop("stage1_capped_omega must be 'keep' or 'drop', got: ", cfg$stage1_capped_omega)   # patch 0084
+  if (!is.null(cfg$stage2_sigma_fallback_pin) && !is.na(cfg$stage2_sigma_fallback_pin) && !(is.finite(cfg$stage2_sigma_fallback_pin) && cfg$stage2_sigma_fallback_pin > 1)) stop("stage2_sigma_fallback_pin must be NA or a number > 1, got: ", cfg$stage2_sigma_fallback_pin)   # patch 0084
   if (!is.null(cfg$stage2_ridge_domain) &&
       !cfg$stage2_ridge_domain %in% c("legacy", "all")) {
     stop("stage2_ridge_domain must be 'legacy' or 'all', got: ", cfg$stage2_ridge_domain)

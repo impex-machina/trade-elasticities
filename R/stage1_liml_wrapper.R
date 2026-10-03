@@ -71,7 +71,17 @@ run_stage1_liml <- function(baci_dt,
                             negative_omega = "reject",
                             edge_se = "hncs",
                             uv_outlier_threshold = NA_real_,
-                            step2_vce = "kclass") {
+                            step2_vce = "kclass",
+                            sigma_cap = 10) {
+  # sigma_cap (patch 0084): estimate_cell_liml()'s sigma_start_cap, which is
+  # the ONE number behind the closed-form HLIML admissibility (sigma < cap),
+  # the sigma edge of the boundary box, and the Step-2 clamp (a Step-2 sigma
+  # at or above it is published AT the cap, adjust 4). 10 reproduces every
+  # release through v0.8.3. The 2026-09-29 census of the shipped Stage-1
+  # table (docs/results/stage1_sigma_cap_census.md) found the cap censoring a
+  # continuous right tail -- half of the adjust-4 cells have an uncapped
+  # Step-2 sigma <= 20 and 80% <= 50, with the closed-form HLIML agreeing on
+  # the magnitude -- which is what --stage1-sigma-cap is for.
   # step2_vce (patch 0061; default "kclass" from v0.7.3, patch 0064):
   # sandwich behind the Step-2 SEs, "kclass" (k-class meat) or "legacy" (OLS
   # meat, the reproducer of tables shipped through v0.7.2); see
@@ -98,6 +108,7 @@ run_stage1_liml <- function(baci_dt,
     cat(sprintf("Stage 1 LIML driver starting.\n"))
     cat(sprintf("  Input panel: %d rows\n", nrow(baci_dt)))
     cat(sprintf("  n_cores: %d\n", n_cores))
+    cat(sprintf("  sigma cap: %g\n", sigma_cap))                        # patch 0084
   }
   
   # Identify cells
@@ -177,6 +188,7 @@ run_stage1_liml <- function(baci_dt,
     
     fit <- tryCatch(
       estimate_cell_liml(prep$moments, ref_exporter = prep$ref_exporter,
+                         sigma_start_cap = sigma_cap,                    # patch 0084
                          hliml_method = hliml_method,
                          cf_admissibility = cf_admissibility,
                          negative_omega = negative_omega,

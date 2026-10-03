@@ -166,6 +166,31 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "THRESH"
     ),
     optparse::make_option(
+      c("--stage1-sigma-cap"),
+      type = "double", default = 10,
+      help = paste("Stage-1 sigma cap (estimate_cell_liml's sigma_start_cap):",
+                   "closed-form HLIML admissibility, the sigma edge of the",
+                   "boundary box and the Step-2 clamp. 10 reproduces every",
+                   "release through v0.8.3 (patch 0084). Default: %default"),
+      metavar = "CAP"
+    ),
+    optparse::make_option(
+      c("--stage1-capped-omega"),
+      type = "character", default = "keep",
+      help = paste("Whether a sigma-capped Stage-1 cell's omega enters the",
+                   "Stage-2a good-level priors: 'keep' (through v0.8.3) or",
+                   "'drop' (patch 0084). Default: %default"),
+      metavar = "RULE"
+    ),
+    optparse::make_option(
+      c("--stage2-sigma-fallback-pin"),
+      type = "double", default = NA_real_,
+      help = paste("Pin the Stage-2 fallback sigma (the clean-cell median)",
+                   "to this value, for experiments that change the clean-cell",
+                   "population (patch 0084). Default: computed"),
+      metavar = "SIGMA"
+    ),
+    optparse::make_option(
       c("--stage2-gradient"),
       type = "character", default = "numeric",
       help = paste("Stage 2 L-BFGS-B gradient: 'numeric' (optim's finite",
@@ -321,6 +346,9 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_fallback %in% c("legacy", "best")) fail(sprintf("--stage2-fallback must be 'legacy' or 'best', got: '%s'", opts$stage2_fallback))   # patch 0077
   if (!opts$stage2b_prior_source %in% c("all", "estimated")) fail(sprintf("--stage2b-prior-source must be 'all' or 'estimated', got: '%s'", opts$stage2b_prior_source))   # patch 0079
   if (!opts$stage2_trim %in% c("legacy", "v2")) fail(sprintf("--stage2-trim must be 'legacy' or 'v2', got: '%s'", opts$stage2_trim))   # patch 0083
+  if (!(is.finite(opts$stage1_sigma_cap) && opts$stage1_sigma_cap > 1)) fail(sprintf("--stage1-sigma-cap must be a number > 1, got: '%s'", opts$stage1_sigma_cap))   # patch 0084
+  if (!opts$stage1_capped_omega %in% c("keep", "drop")) fail(sprintf("--stage1-capped-omega must be 'keep' or 'drop', got: '%s'", opts$stage1_capped_omega))   # patch 0084
+  if (!is.na(opts$stage2_sigma_fallback_pin) && !(is.finite(opts$stage2_sigma_fallback_pin) && opts$stage2_sigma_fallback_pin > 1)) fail(sprintf("--stage2-sigma-fallback-pin must be a number > 1 or omitted, got: '%s'", opts$stage2_sigma_fallback_pin))   # patch 0084
   if (!is.numeric(opts$product_sample) || opts$product_sample <= 0 || opts$product_sample > 1) fail("--product-sample must be in (0, 1]")
   if (!opts$stage2_ridge_domain %in% c("legacy", "all")) {
     fail(sprintf("--stage2-ridge-domain must be 'legacy' or 'all', got: '%s'",

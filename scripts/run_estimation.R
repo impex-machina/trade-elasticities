@@ -107,6 +107,9 @@ cat(sprintf("  Stage-1 CF rule:  %s\n", opts$stage1_cf_admissibility))
 cat(sprintf("  Stage-1 neg-omega: %s\n", opts$stage1_negative_omega))
 cat(sprintf("  Stage-1 edge SE:  %s\n", opts$stage1_edge_se))
 cat(sprintf("  Stage-1 Step-2 VCE: %s\n", opts$stage1_step2_vce))
+cat(sprintf("  Stage-1 sigma cap: %g | capped-cell omega in priors: %s | sigma fallback pin: %s\n",   # patch 0084
+            opts$stage1_sigma_cap, opts$stage1_capped_omega,
+            if (is.na(opts$stage2_sigma_fallback_pin)) "none" else format(opts$stage2_sigma_fallback_pin, digits = 17)))
 cat(sprintf("  Stage-1 UV trim:  %s\n", if (is.na(opts$stage1_uv_trim)) "off" else sprintf("|d ln p| < %.1f", opts$stage1_uv_trim)))
 cat(sprintf("  Stage-2 gradient: %s\n", opts$stage2_gradient))
 cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain)) "legacy" else opts$stage2_ridge_domain))
@@ -285,6 +288,7 @@ if (should_run("1", opts, paths)) {
       edge_se          = opts$stage1_edge_se,             # patch 0049
       uv_outlier_threshold = opts$stage1_uv_trim,         # patch 0057 (NA = off)
       step2_vce        = opts$stage1_step2_vce,           # patch 0061
+      sigma_cap        = opts$stage1_sigma_cap,           # patch 0084 (10 = <= v0.8.3)
       verbose       = TRUE
     )
     
@@ -324,6 +328,15 @@ if (should_run("1", opts, paths)) {
 
 sigma_clean <- sigma_estimates[!is.na(sigma) & sigma > 1 & convergence == 0]
 sigma_fallback <- median(sigma_clean$sigma, na.rm = TRUE)
+# (patch 0084) --stage2-sigma-fallback-pin: hold the fallback sigma at a given
+# value instead of the clean-cell median, so an experiment that changes the
+# clean-cell population (a different Stage-1 cap) does not also move the
+# sigma of every fallback row through the median. NA (default) = computed.
+if (!is.null(opts$stage2_sigma_fallback_pin) && !is.na(opts$stage2_sigma_fallback_pin)) {
+  cat(sprintf("  sigma fallback pinned: %.17g (computed median would be %.17g)\n",
+              opts$stage2_sigma_fallback_pin, sigma_fallback))
+  sigma_fallback <- opts$stage2_sigma_fallback_pin
+}
 
 cat(sprintf("\nStage 1: %s clean cells (of %s)\n",
             format(nrow(sigma_clean), big.mark = ","),
@@ -350,6 +363,18 @@ feenstra_gamma_clean <- sigma_clean[!is.na(gamma) & gamma > 0 &
                                       adjust != 5L &
                                       !(omega_floored %in% TRUE) &
                                       !(omega_capped %in% TRUE)]
+# (patch 0084) --stage1-capped-omega drop: a sigma-capped cell (adjust 4, or a
+# boundary optimum on the sigma edge) has no sigma estimate, and on an
+# adjust-4 cell the published omega was computed at the UNCAPPED Step-2 sigma
+# and sits beside sigma = cap -- not a point of the inversion. Under "drop"
+# such cells' omega stays out of the Stage-2a priors; "keep" (default) is
+# the rule through v0.8.3.
+if (identical(opts$stage1_capped_omega, "drop") && "sigma_capped" %in% names(feenstra_gamma_clean)) {
+  n_before <- nrow(feenstra_gamma_clean)
+  feenstra_gamma_clean <- feenstra_gamma_clean[!(sigma_capped %in% TRUE)]
+  cat(sprintf("  Capped-cell omega dropped from the Stage-2a priors: %s of %s cells\n",
+              format(n_before - nrow(feenstra_gamma_clean), big.mark = ","), format(n_before, big.mark = ",")))
+}
 feenstra_priors <- feenstra_gamma_clean[, .(
   ln_gamma_prior = median(log(gamma), na.rm = TRUE)
 ), by = good]

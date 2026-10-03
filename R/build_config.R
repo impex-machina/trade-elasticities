@@ -109,6 +109,10 @@ build_config <- function(opts) {
     stage1_step2_vce = opts$stage1_step2_vce %||% "kclass",
     # patch 0057: Stage-2's unit-value trim applied inside Stage 1 (NA = off).
     stage1_uv_trim = if (is.null(opts$stage1_uv_trim)) NA_real_ else opts$stage1_uv_trim,
+    # patch 0084: Stage-1 sigma cap (10 = <= v0.8.3), capped-cell omega rule, fallback pin (NA = computed)
+    stage1_sigma_cap = opts$stage1_sigma_cap %||% 10,
+    stage1_capped_omega = opts$stage1_capped_omega %||% "keep",
+    stage2_sigma_fallback_pin = if (is.null(opts$stage2_sigma_fallback_pin)) NA_real_ else opts$stage2_sigma_fallback_pin,
 
     # --- Across-exporter weighting (methodological) ---
     exporter_weight     = "trade_value",
