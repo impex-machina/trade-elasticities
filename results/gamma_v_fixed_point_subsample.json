@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "pass1": "C:\\Users\\maxxj\\te_grid\\gv_pass1\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "pass2": "C:\\Users\\maxxj\\te_grid\\gv_pass2\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "pass3": "C:\\Users\\maxxj\\te_grid\\gv_pass3\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "git_rev": "86117a7",
+    "timestamp": "2026-10-03 13:08:06 EDT"
+  },
+  "steps": [
+    {
+      "label": "1->2",
+      "n_shared": 151766,
+      "n_tier1": 104085,
+      "abs_dlng_p50": 0.00108095,
+      "abs_dlng_p90": 0.0537674,
+      "abs_dlng_p99": 0.6515566,
+      "abs_dlng_max": 5.29291238,
+      "share_below_1e3": 0.49148292,
+      "share_below_1e2": 0.75329779,
+      "gamma_median_a": 0.55679538,
+      "gamma_median_b": 0.55678275,
+      "opt_tariff_median_a": 0.66909999,
+      "opt_tariff_median_b": 0.66617218
+    },
+    {
+      "label": "2->3",
+      "n_shared": 151832,
+      "n_tier1": 104287,
+      "abs_dlng_p50": 0.00014456,
+      "abs_dlng_p90": 0.01216688,
+      "abs_dlng_p99": 0.24368399,
+      "abs_dlng_max": 5.45629937,
+      "share_below_1e3": 0.70387488,
+      "share_below_1e2": 0.88906575,
+      "gamma_median_a": 0.55678275,
+      "gamma_median_b": 0.55678275,
+      "opt_tariff_median_a": 0.66617218,
+      "opt_tariff_median_b": 0.66556597
+    }
+  ],
+  "contraction_ratio_p50": 0.13373267
+}

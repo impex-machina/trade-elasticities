@@ -1,0 +1,27 @@
+{
+  "meta": {
+    "pass1": "C:\\Users\\maxxj\\te_grid\\gv_pass1\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "pass2": "C:\\Users\\maxxj\\te_grid\\pc_panel\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "pass3": {},
+    "git_rev": "86117a7",
+    "timestamp": "2026-10-03 13:08:24 EDT"
+  },
+  "steps": [
+    {
+      "label": "1->2",
+      "n_shared": 151830,
+      "n_tier1": 103963,
+      "abs_dlng_p50": 0.00013667,
+      "abs_dlng_p90": 0.01021057,
+      "abs_dlng_p99": 0.2171354,
+      "abs_dlng_max": 4.56457864,
+      "share_below_1e3": 0.72229543,
+      "share_below_1e2": 0.89886787,
+      "gamma_median_a": 0.55679538,
+      "gamma_median_b": 0.55678275,
+      "opt_tariff_median_a": 0.66909999,
+      "opt_tariff_median_b": 0.67111703
+    }
+  ],
+  "contraction_ratio_p50": null
+}
