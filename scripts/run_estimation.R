@@ -458,16 +458,13 @@ if (should_run("2a", opts, paths)) {
         if ("gamma_se_status" %in% names(regional_results))
           regional_results[repl_idx, gamma_se_status := "plateau_fallback"]
 
-        # Recompute optimal tariffs for every cell touched by a replacement.
-        touched <- unique(regional_results[repl_idx, .(importer, good)])
-        regional_results[touched, on = .(importer, good), `:=`(
-          opt_tariff = {
-            est <- is_estimated_row(tier, convergence)   # patch 0066
-            if (any(est)) optimal_tariff(gamma[est], sigma[est][1], avg_trade[est])
-            else NA_real_
-          },
-          opt_tariff_all = optimal_tariff(gamma, sigma[1], avg_trade)
-        ), by = .EACHI]
+        # Recompute optimal tariffs after the replacement -- for every cell,
+        # through the published-row definition (patch 0081; only the touched
+        # cells can change, since estimate_all_fixed_sigma() already applied
+        # the same function after the trim).
+        ot <- recompute_opt_tariff(regional_results)
+        cat(sprintf("  Plateau fallback: opt_tariff recomputed over published rows, %s cells changed\n",
+                    format(ot$n_changed, big.mark = ",")))
       }
     }
 

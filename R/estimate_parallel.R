@@ -794,6 +794,17 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   # Ensure tier column exists
   if (!"tier" %in% names(output)) output[, tier := NA_integer_]
 
+  # (patch 0081) opt_tariff / opt_tariff_all over the rows the table publishes.
+  # The cell estimator computed them before the trim; recompute for every
+  # cell now that the trim has run, so no cell statistic depends on rows the
+  # table does not carry. Idempotent when nothing was trimmed.
+  if (all(c("avg_trade", "convergence", "opt_tariff", "opt_tariff_all") %in% names(output))) {
+    ot <- recompute_opt_tariff(output)
+    cat(sprintf("  opt_tariff recomputed over published rows: %s of %s cells changed (cells with opt_tariff above their max gamma: %s -> %s)\n",
+                format(ot$n_changed, big.mark = ","), format(ot$n_cells, big.mark = ","),
+                format(ot$n_above_gmax_before, big.mark = ","), format(ot$n_above_gmax_after, big.mark = ",")))
+  }
+
   # Retain avg_trade so downstream recomputations (e.g. plateau fallback
   # in run_estimation.R) can re-weight optimal tariffs without re-reading
   # the full data.

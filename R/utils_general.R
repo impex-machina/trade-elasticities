@@ -147,6 +147,56 @@ is_estimated_row <- function(tier, convergence) {
 }
 
 
+#' Recompute opt_tariff / opt_tariff_all for every (importer, good) cell over
+#' the rows PRESENT in `dt` -- the published-row definition (patch 0081).
+#'
+#' Through v0.8.2 each cell's opt_tariff was computed inside the cell
+#' estimator from all of the cell's rows, BEFORE estimate_all_fixed_sigma()'s
+#' 0.5%-per-tail trim removed rows, and only cells touched by the Stage-2a
+#' plateau replacement were ever recomputed afterwards. A cell statistic
+#' therefore depended on rows the table does not publish: on the shipped
+#' v0.8.2 Stage-2b table 27,797 cells (12.0%) carried a value that differs
+#' from the published-row value (median relative difference 19.5%, p90 162%)
+#' and 1,571 cells stated an optimal tariff above every gamma they publish,
+#' which a trade-weighted mean of published gamma cannot do; Stage 2a: 1,766
+#' cells (7.0%), 126 impossible. This function is now called once for every
+#' cell after the trim (estimate_all_fixed_sigma) and again after the
+#' Stage-2a plateau replacement (run_estimation.R), and
+#' scripts/recompute_opt_tariff.R applies it to an existing table. It is
+#' idempotent: on a table whose values already satisfy the definition it
+#' changes nothing.
+#'
+#' @param dt data.table with importer, good, gamma, sigma, avg_trade, tier,
+#'   convergence, opt_tariff, opt_tariff_all; modified by reference.
+#' @return invisibly, list(n_cells, n_changed, n_above_gmax_before,
+#'   n_above_gmax_after, median_before, median_after) at the cell level.
+recompute_opt_tariff <- function(dt) {
+  need <- c("importer", "good", "gamma", "sigma", "avg_trade", "tier", "convergence",
+            "opt_tariff", "opt_tariff_all")
+  miss <- setdiff(need, names(dt))
+  if (length(miss)) stop("recompute_opt_tariff(): missing columns: ", paste(miss, collapse = ", "))
+  cell_view <- function(d) d[, .(ot = opt_tariff[1], ota = opt_tariff_all[1],
+                                 gmax = suppressWarnings(max(gamma, na.rm = TRUE))), by = .(importer, good)]
+  before <- cell_view(dt)
+  dt[, `:=`(
+    opt_tariff = {
+      est <- is_estimated_row(tier, convergence)
+      if (any(est)) optimal_tariff(gamma[est], sigma[est][1], avg_trade[est]) else NA_real_
+    },
+    opt_tariff_all = optimal_tariff(gamma, sigma[1], avg_trade)
+  ), by = .(importer, good)]
+  after <- cell_view(dt)
+  dif <- function(a, b) !((is.na(a) & is.na(b)) | (!is.na(a) & !is.na(b) & abs(a - b) <= 1e-9 * pmax(abs(a), 1)))
+  invisible(list(
+    n_cells = nrow(after),
+    n_changed = sum(dif(before$ot, after$ot) | dif(before$ota, after$ota)),
+    n_above_gmax_before = sum(before$ot > before$gmax + 1e-9, na.rm = TRUE),
+    n_above_gmax_after  = sum(after$ot > after$gmax + 1e-9, na.rm = TRUE),
+    median_before = median(before$ot, na.rm = TRUE),
+    median_after  = median(after$ot, na.rm = TRUE)))
+}
+
+
 #' Trade-weighted optimal tariff across exporters within a cell.
 #' Returns NA if no exporter has a valid (positive) gamma and trade value.
 optimal_tariff <- function(gamma, sigma, trade_values = NULL) {

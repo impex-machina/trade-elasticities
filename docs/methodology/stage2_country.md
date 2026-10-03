@@ -373,6 +373,31 @@ sits in one of those cells. The decision (patch 0080) is `estimated` as the
 v0.8.3 default. Because patch 0077's fallback rule applies to Stage 2a
 cells as well, v0.8.3 is a Stage 2a + 2b release with Stage 1 reused.
 
+### opt_tariff over the published rows (patch 0081)
+
+The cell estimator computes `opt_tariff` and `opt_tariff_all` from all of
+a cell's rows, before `estimate_all_fixed_sigma()`'s 0.5%-per-tail trim
+removes rows, and through v0.8.2 only the Stage-2a cells touched by the
+plateau replacement were ever recomputed afterwards (over the trimmed
+table). A cell statistic therefore depended on rows the table does not
+publish, and the v0.8.3-rc gate found it: with every γ bit-identical, 66
+Stage-2a cells differed from v0.8.2 in opt_tariff only, because a hair's
+shift in the global trim bounds changed which rows the plateau recompute
+saw — DEU × 6216 at 86.9 in v0.8.2 with no published γ above 8.78.
+Censused on the shipped v0.8.2 tables (`ot_census.txt` in the rc record):
+Stage 2b, 27,797 of 231,386 cells (12.0%) carry a value that differs from
+the published-row value, median relative difference 19.5%, p90 162%, and
+1,571 cells state a tariff above every γ they publish (impossible for a
+trade-weighted mean of published γ); Stage 2a, 1,766 cells (7.0%), 126
+impossible. `recompute_opt_tariff()` (`R/utils_general.R`) now runs for
+every cell after the trim and again after the Stage-2a plateau
+replacement, and `scripts/recompute_opt_tariff.R` applies the same
+function to an existing table and prints the census, which is how the
+v0.8.3 tables were corrected from the rc run without re-estimation. No
+estimate is touched; the cell-level opt_tariff median moves 0.649 → 0.638
+on the v0.8.3 Stage-2b table. `tests/testthat/test-opt-tariff-published-rows.R`
+locks the definition, the idempotence, and the script.
+
 The same patch hardens the library's reads of `cfg$stage2_prior` to exact
 matching (`cfg[["stage2_prior"]]`): R's `$` partial-matches list names, so
 on a hand-built config that omits `stage2_prior` but carries

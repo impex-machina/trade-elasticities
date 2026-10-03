@@ -46,9 +46,16 @@ under another cleaning rule must say which rule.
 > directly estimated Stage-2a rows; through v0.8.2 they included Stage 2a's
 > own Tier-3 imputations (6.8% of rows), which moved the prior by more than
 > 5% on 78 of 1,240 goods and gamma_V by more than 5% on 18% of (region,
-> good) cells (`docs/results/stage2a_prior_rows_census.md`). Stage 1
-> identical to v0.7.3-v0.8.2 (sha256-gated); Stage 2a differs from v0.8.2
-> only on its fallback cells. Numbers vs v0.8.2: <fill from the rc compare_runs at the card step>.
+> good) cells (`docs/results/stage2a_prior_rows_census.md`). (3) opt_tariff
+> and opt_tariff_all are computed over the rows each cell publishes;
+> through v0.8.2 they were computed before the 0.5% tail trim, so 27,797
+> Stage-2b cells (12%) carried a value that included trimmed rows (median
+> relative difference 19.5%) and 1,571 cells stated a tariff above every
+> gamma they publish; corrected on the rc tables by
+> scripts/recompute_opt_tariff.R without re-estimation. Stage 1 identical
+> to v0.7.3-v0.8.2 (regenerated on the v0.8.3 box, byte-identical,
+> sha256-gated); Stage 2a differs from v0.8.2 on its 398 fallback cells
+> and in opt_tariff only elsewhere. Numbers vs v0.8.2: <fill from the rc compare_runs at the card step>.
 > Data revision: `<fill at the card step after the HF upload>`. **v0.8.2 remains available pinned at
 > revision `7f85c8c31c4d2f8dcd3f8d4b848634f4217278c6`.**
 > **v0.8.2 (2026-09-29).** Validation only: Pillar 3 (the standard-error
