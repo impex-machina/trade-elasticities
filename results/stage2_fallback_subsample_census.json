@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "csv": "C:\\Users\\maxxj\\te_grid\\fallback_legacy\\baci_hs92_v202601_elast_country_hs4_stage2_fallbacks.csv",
+    "label": "subsample",
+    "rules": "legacy",
+    "git_rev": "924b734",
+    "timestamp": "2026-10-02 21:03:15 EDT"
+  },
+  "n_cells": 138,
+  "n_comparable": 138,
+  "n_lbfgsb_error": 0,
+  "n_nm_error": 0,
+  "n_nm_worse": 123,
+  "share_nm_worse": 0.89130435,
+  "n_nm_better": 15,
+  "n_tie": 0,
+  "excess_quantiles": {
+    "p10": -1.67501194e-07,
+    "p25": 0.00488098,
+    "p50": 0.07980336,
+    "p75": 0.33302731,
+    "p90": 0.7071509,
+    "p99": 1.56627268
+  },
+  "excess_quantiles_where_worse": {
+    "p10": 0.00220215,
+    "p25": 0.01967001,
+    "p50": 0.10398461,
+    "p75": 0.36596651,
+    "p90": 0.85759153,
+    "p99": 1.57072645
+  },
+  "n_nm_converged": 77,
+  "n_relabel_ok_to_nonconverged": 63,
+  "chosen": {
+    "lbfgsb": 0,
+    "nelder_mead": 138
+  },
+  "J_quantiles": {
+    "p10": 3,
+    "p50": 17,
+    "p90": 49.2,
+    "p100": 88
+  },
+  "M_quantiles": {
+    "p10": 4,
+    "p50": 18,
+    "p90": 49.5,
+    "p100": 89
+  }
+}
