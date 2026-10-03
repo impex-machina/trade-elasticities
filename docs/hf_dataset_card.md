@@ -32,7 +32,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.8.3 (2026-09-XX).** Two Stage-2 fixes from the 2026-09-29 audit,
+> **v0.8.3 (2026-10-02).** Two Stage-2 fixes from the 2026-09-29 audit,
 > both bit-preserving under the previous rule (`--stage2-fallback legacy`,
 > `--stage2b-prior-source all` reproduce v0.8.2). (1) A cell whose
 > L-BFGS-B fit reaches the 5,000-iteration cap now publishes the better of
@@ -55,8 +55,8 @@ under another cleaning rule must say which rule.
 > scripts/recompute_opt_tariff.R without re-estimation. Stage 1 identical
 > to v0.7.3-v0.8.2 (regenerated on the v0.8.3 box, byte-identical,
 > sha256-gated); Stage 2a differs from v0.8.2 on its 398 fallback cells
-> and in opt_tariff only elsewhere. Numbers vs v0.8.2: <fill from the rc compare_runs at the card step>.
-> Data revision: `<fill at the card step after the HF upload>`. **v0.8.2 remains available pinned at
+> and in opt_tariff only elsewhere. Numbers vs v0.8.2: gamma median 0.656 unchanged (1/gamma median 1.524 -> 1.525); opt_tariff row-level median 0.760 -> 0.751 (cell-level 0.647 -> 0.638), net of the two rule changes and the opt_tariff correction; gamma_se_status ok 69.8% -> 69.5% and non_converged 2.0% -> 2.3% (2,768 cells that v0.8.2 labelled ok at a stalled restart now read non_converged); sigma_robust 23.6% -> 23.7%; rows 6,812,560 -> 6,813,953. Optimizer fallback: 7,295 Stage-2b cells reached the cap, the restart was the worse point on 6,274 (86%) and had reported convergence on 3,672; 398 Stage-2a cells. opt_tariff recomputed over published rows on 25,894 Stage-2b cells (11.2%; 1,528 had been above every gamma they publish) and 1,651 Stage-2a cells (125). Stage 1 regenerated on the v0.8.3 box and byte-identical to the shipped file (sha256 591d3bde...). The shipped summary.rds and summary.txt were written before the opt_tariff correction; the tables and the README reflect it.
+> Data revision: `60be1e6bae2a575ec1af2094beb7f542a120f812`. **v0.8.2 remains available pinned at
 > revision `7f85c8c31c4d2f8dcd3f8d4b848634f4217278c6`.**
 > **v0.8.2 (2026-09-29).** Validation only: Pillar 3 (the standard-error
 > Monte Carlo) re-captured for the gamma_se form shipped since v0.7.4 -- the
