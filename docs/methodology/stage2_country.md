@@ -426,6 +426,37 @@ design (a `trimmed` column carried through the analysis layer) is the v0.9
 schema item. `tests/testthat/test-stage2-trim.R` locks the record, the
 legacy arithmetic, and the v2 semantics on the e2e fixture.
 
+### Exporter-specific γ_V for Eq. (11), and the export-side period count (patch 0085)
+
+Eq. (11)'s reference-destination supply parameter is exporter j's own γ at
+V; through v0.8.3 the pipeline used the (region(V), good) median from Stage
+2a as a proxy (and a single global default at Stage 2a). The structural
+DGP harness passes the true γ_V, so it cannot see the proxy.
+`--stage2-gamma-v-source table` with `--stage2-gamma-v-table PATH` takes
+γ_jV from a previous Stage-2b country table where (V, j, good) is a
+directly estimated, converged row, and falls back to the regional median
+(then the default) where it is absent; the run meta and the log report how
+many export rows resolved each way. `regional` (default) reproduces every
+release through v0.8.3. The table is subset to the product and keyed on
+(importer, exporter) once per product, so each lookup is a binary search.
+Because the exporter-specific value comes from a previous pass, the system
+is solved by iteration; `analysis/gamma_v_fixed_point.R` measures the step
+between consecutive passes on the Tier-1 rows the iteration touches and,
+with three passes, the contraction ratio — a ratio well below 1 says one
+exporter-specific pass is enough for the published table, near 1 says the
+proxy should stay. Rows outside Tier 1 move only through the joint fit of
+their cell.
+
+`--stage2-export-period-count panel` makes the Broda–Weinstein T of an
+export-side row the pair's `period_count` (counted before the differencing
+filters), the definition the import side already uses; `rows` (default,
+through v0.8.3) is the post-filter row count, so the T^{3/2} factor was
+computed on two definitions. Both are default-off experiment flags for the
+v0.9 session. `tests/testthat/test-stage2-gamma-v.R`: an exporter table
+equal to the regional values reproduces the regional run bit for bit; a
+different table changes only cells with export rows; the census script
+recovers a known contraction ratio.
+
 The same patch hardens the library's reads of `cfg$stage2_prior` to exact
 matching (`cfg[["stage2_prior"]]`): R's `$` partial-matches list names, so
 on a hand-built config that omits `stage2_prior` but carries

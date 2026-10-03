@@ -97,6 +97,10 @@ build_config <- function(opts) {
     stage2b_prior_source = opts$stage2b_prior_source %||% "estimated",
     # patch 0083: tail-trim semantics; absent key == legacy (<= v0.8.3 reproducer).
     stage2_trim = opts$stage2_trim %||% "legacy",
+    # patch 0085: gamma_V source (regional = <= v0.8.3), its table, and the export-side BW period count (rows = <= v0.8.3)
+    stage2_gamma_v_source = opts$stage2_gamma_v_source %||% "regional",
+    stage2_gamma_v_table = opts$stage2_gamma_v_table %||% "",
+    stage2_export_period_count = opts$stage2_export_period_count %||% "rows",
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
     stage1_cf_admissibility = opts$stage1_cf_admissibility %||% "legacy",

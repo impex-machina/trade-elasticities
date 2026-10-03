@@ -494,6 +494,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_fallback",                # patch 0077
             "stage2b_prior_source",              # patch 0079 (the prior tables are fingerprinted too)
             "stage2_trim",                       # patch 0083
+            "stage2_gamma_v_source", "stage2_export_period_count",   # patch 0085
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -502,7 +503,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "use_regions")
   tabs <- c("sigma_lookup", "shrinkage_priors", "sigma_V_lookup",
             "gamma_V_lookup", "sigma_se_lookup", "sigma_adjust_lookup",
-            "regional_starts")
+            "regional_starts", "gamma_V_exporter_lookup")   # patch 0085
   tab_fp <- function(x) {
     if (is.data.frame(x)) {
       num <- vapply(x, function(col) if (is.numeric(col))
@@ -523,6 +524,8 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "best"                     # patch 0080: absent == best (v0.8.3)
   if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "estimated"       # patch 0080: absent == estimated (v0.8.3)
   if (is.null(cfg$stage2_trim)) cfg$stage2_trim <- "legacy"                           # patch 0083: absent == legacy
+  if (is.null(cfg$stage2_gamma_v_source)) cfg$stage2_gamma_v_source <- "regional"      # patch 0085: absent == regional
+  if (is.null(cfg$stage2_export_period_count)) cfg$stage2_export_period_count <- "rows" # patch 0085: absent == rows
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),
@@ -739,6 +742,17 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   # file; the run's census of the fallback is this table.
   fallback_info <- rbindlist(unlist(lapply(results_list, function(r) attr(r, "fallbacks")),
                                     recursive = FALSE), fill = TRUE)
+  # (patch 0085) how the export rows' gamma_V was resolved across cells
+  gv_info <- rbindlist(unlist(lapply(results_list, function(r) attr(r, "gamma_v_resolution")),
+                              recursive = FALSE), fill = TRUE)
+  gv_totals <- if (nrow(gv_info) > 0L) list(exporter = sum(gv_info$n_exporter), regional = sum(gv_info$n_regional),
+                                            default = sum(gv_info$n_default)) else list(exporter = 0L, regional = 0L, default = 0L)
+  if (nrow(gv_info) > 0L) {
+    cat(sprintf("  gamma_V on export rows: exporter-specific %s | regional median %s | default %s (source: %s)\n",
+                format(gv_totals$exporter, big.mark = ","), format(gv_totals$regional, big.mark = ","),
+                format(gv_totals$default, big.mark = ","),
+                if (is.null(cfg$gamma_V_exporter_lookup)) "regional" else "table"))
+  }
   fallback_file <- paste0(build_output_prefix(cfg), "_stage2_fallbacks.csv")
   if (nrow(fallback_info) > 0L) {
     fwrite(fallback_info, fallback_file)
@@ -886,6 +900,9 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     ncores = ncores, rcpp_loaded = .het_obj_fs_rcpp_loaded,
     trim_pct = trim_pct,
     trim_mode = trim_mode,           # patch 0083
+    gamma_v_resolution = gv_totals,  # patch 0085
+    gamma_v_resolution_cells = gv_info,
+    export_period_count = if (is.null(cfg$stage2_export_period_count)) "rows" else cfg$stage2_export_period_count,
     trimmed_rows = trimmed_rows,     # patch 0083
     fallback_info = fallback_info,   # patch 0077
     trim_bounds = if (exists("sig_lo")) list(

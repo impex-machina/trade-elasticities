@@ -117,6 +117,9 @@ cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" els
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "best" else opts$stage2_fallback))   # patch 0077/0080
 cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source))   # patch 0079/0080
 cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts$stage2_trim)) "legacy" else opts$stage2_trim))   # patch 0083
+cat(sprintf("  Stage-2 gamma_V source: %s%s | export period count: %s\n",   # patch 0085
+            opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
+            opts$stage2_export_period_count))
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
@@ -597,6 +600,18 @@ if (should_run("2b", opts, paths)) {
                             allow.cartesian = TRUE)
     config_2b$gamma_V_lookup <- gam_V_country[, .(
       importer = as.character(cty_code), good, gamma)]
+    # (patch 0085) --stage2-gamma-v-source table: exporter-specific gamma_V from a
+    # previous Stage-2b pass (directly estimated, converged rows), used ahead
+    # of the regional median where (V, j, good) is present.
+    if (identical(opts$stage2_gamma_v_source, "table")) {
+      gv_tab <- readRDS(opts$stage2_gamma_v_table); setDT(gv_tab)
+      gv_tab <- gv_tab[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0,
+                       .(importer = as.character(importer), exporter = as.character(exporter),
+                         good = as.character(good), gamma)]
+      config_2b$gamma_V_exporter_lookup <- gv_tab
+      cat(sprintf("  gamma_V source: exporter-specific table, %s usable rows from %s (regional median where absent)\n",
+                  format(nrow(gv_tab), big.mark = ","), opts$stage2_gamma_v_table))
+    }
 
     config_2b <- init_from_regional(config_2b, regional_results)
 

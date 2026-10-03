@@ -235,6 +235,12 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "L-BFGS-B iteration cap for the Stage-2 cell fit (Nelder-Mead fallback gets 2N); 500 reproduces v0.8.0 and earlier. Default: %default"),
     optparse::make_option(c("--stage2-fallback"), type = "character", default = "best", metavar = "RULE",
       help = "Stage-2 Nelder-Mead fallback rule when L-BFGS-B does not converge: 'best' (v0.8.3 default, patch 0080: keep the lower objective of the two) or 'legacy' (the NM result replaces the L-BFGS-B result whatever its objective; reproduces every release through v0.8.2). Either way <prefix>_stage2_fallbacks.csv records both outcomes per cell (patch 0077). Default: %default"),
+    optparse::make_option(c("--stage2-gamma-v-source"), type = "character", default = "regional", metavar = "SRC",
+      help = "Where Eq. (11)'s reference-destination gamma_V comes from at Stage 2b: 'regional' (the Stage-2a regional median; every release through v0.8.3) or 'table' (exporter-specific gamma_jV from the Stage-2b table given by --stage2-gamma-v-table, regional median where absent; patch 0085). Default: %default"),
+    optparse::make_option(c("--stage2-gamma-v-table"), type = "character", default = "", metavar = "PATH",
+      help = "A previous Stage-2b country table (.rds) for --stage2-gamma-v-source table (patch 0085)."),
+    optparse::make_option(c("--stage2-export-period-count"), type = "character", default = "rows", metavar = "MODE",
+      help = "The Broda-Weinstein T of an export-side row: 'rows' (post-filter row count; every release through v0.8.3) or 'panel' (the pair's period_count, the import side's definition; patch 0085). Default: %default"),
     optparse::make_option(c("--stage2-trim"), type = "character", default = "legacy", metavar = "MODE",
       help = "Stage-2 tail-trim semantics: 'legacy' (sigma bounds as row quantiles although sigma is cell-level; Stage-2a plateau replacement on; every release through v0.8.3) or 'v2' (sigma bounds over cells, plateau replacement off; patch 0083). Both record the removed rows in <prefix>_stage2_trimmed.csv. Default: %default"),
     optparse::make_option(c("--stage2b-prior-source"), type = "character", default = "estimated", metavar = "ROWS",
@@ -346,6 +352,9 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_fallback %in% c("legacy", "best")) fail(sprintf("--stage2-fallback must be 'legacy' or 'best', got: '%s'", opts$stage2_fallback))   # patch 0077
   if (!opts$stage2b_prior_source %in% c("all", "estimated")) fail(sprintf("--stage2b-prior-source must be 'all' or 'estimated', got: '%s'", opts$stage2b_prior_source))   # patch 0079
   if (!opts$stage2_trim %in% c("legacy", "v2")) fail(sprintf("--stage2-trim must be 'legacy' or 'v2', got: '%s'", opts$stage2_trim))   # patch 0083
+  if (!opts$stage2_gamma_v_source %in% c("regional", "table")) fail(sprintf("--stage2-gamma-v-source must be 'regional' or 'table', got: '%s'", opts$stage2_gamma_v_source))   # patch 0085
+  if (identical(opts$stage2_gamma_v_source, "table") && !(nzchar(opts$stage2_gamma_v_table) && file.exists(opts$stage2_gamma_v_table))) fail(sprintf("--stage2-gamma-v-source table needs --stage2-gamma-v-table pointing at an existing .rds, got: '%s'", opts$stage2_gamma_v_table))   # patch 0085
+  if (!opts$stage2_export_period_count %in% c("rows", "panel")) fail(sprintf("--stage2-export-period-count must be 'rows' or 'panel', got: '%s'", opts$stage2_export_period_count))   # patch 0085
   if (!(is.finite(opts$stage1_sigma_cap) && opts$stage1_sigma_cap > 1)) fail(sprintf("--stage1-sigma-cap must be a number > 1, got: '%s'", opts$stage1_sigma_cap))   # patch 0084
   if (!opts$stage1_capped_omega %in% c("keep", "drop")) fail(sprintf("--stage1-capped-omega must be 'keep' or 'drop', got: '%s'", opts$stage1_capped_omega))   # patch 0084
   if (!is.na(opts$stage2_sigma_fallback_pin) && !(is.finite(opts$stage2_sigma_fallback_pin) && opts$stage2_sigma_fallback_pin > 1)) fail(sprintf("--stage2-sigma-fallback-pin must be a number > 1 or omitted, got: '%s'", opts$stage2_sigma_fallback_pin))   # patch 0084

@@ -582,10 +582,12 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   wt_imp_vec <- compute_exporter_weights(dt_nonref, exporter_order, cfg)
 
   # --- Export-side moments for Tier 1 only ---
+  gv_counts_cell <- c(exporter = 0L, regional = 0L, default = 0L)         # patch 0085
   if (N_tier1 > 0L) {
     exp_mom <- build_export_moments(exporter_order[1:N_tier1],
                                      focal_importer, all_dt, cfg,
                                      exp_lookup = exp_lookup)
+    if (!is.null(exp_mom$gv_counts)) gv_counts_cell <- gv_counts_cell + exp_mom$gv_counts   # patch 0085 (the list is rebuilt below)
     # Align export-side weights with import-side weighting scheme.
     # exp_jmap[m] = j_idx + 2 where j_idx is the position within
     # exporter_order[1:N_tier1], so exp_jmap[m] - 2 is a valid index
@@ -607,6 +609,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   if (ref_moment_on) {
     ref_mom <- tryCatch(build_export_moments(ref_exporter, focal_importer, all_dt, cfg, exp_lookup = exp_lookup),
                         error = function(e) NULL)
+    if (!is.null(ref_mom) && !is.null(ref_mom$gv_counts)) gv_counts_cell <- gv_counts_cell + ref_mom$gv_counts   # patch 0085
     if (!is.null(ref_mom) && isTRUE(ref_mom$M == 1L)) {
       exp_mom <- list(exp_Y = c(ref_mom$exp_Y, exp_mom$exp_Y),
                       exp_X = rbind(ref_mom$exp_X, exp_mom$exp_X),
@@ -814,6 +817,14 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # (patch 0077) both optimizer outcomes on a cell that fell back; NULL otherwise.
   # Read by estimate_product_fixed_sigma() BEFORE the avg_trade join drops it.
   if (!is.null(fallback_rec)) data.table::setattr(est_dt, "fallback", fallback_rec)
+  # (patch 0085) how the export rows' gamma_V was resolved on this cell
+  if (sum(gv_counts_cell) > 0L) {
+    data.table::setattr(est_dt, "gamma_v_resolution",
+      data.table(importer = focal_importer, good = g_code,
+                 n_exporter = unname(gv_counts_cell["exporter"]),
+                 n_regional = unname(gv_counts_cell["regional"]),
+                 n_default  = unname(gv_counts_cell["default"])))
+  }
   est_dt
 }
 
@@ -837,6 +848,15 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
   # build_export_moments uses this to avoid O(N_exporters) repeated
   # filtering of dt_g on every cell.
   exp_lookup <- compute_exporter_lookup(dt_g)
+  # (patch 0085) the exporter-specific gamma_V table is subset to this product
+  # and keyed on (importer, exporter) once, so each cell's lookups are binary
+  # searches rather than scans of the whole previous-pass table.
+  if (!is.null(cfg$gamma_V_exporter_lookup)) {
+    gvt <- cfg$gamma_V_exporter_lookup[good == as.character(g)]
+    data.table::setkeyv(gvt, c("importer", "exporter"))
+    cfg$gamma_V_exporter_lookup <- gvt
+  }
+  gvres_g <- list()
 
   for (imp in viable) {
     n_cells <- n_cells + 1L
@@ -852,6 +872,8 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
     if (!is.null(est)) {
       fb <- attr(est, "fallback")                                       # patch 0077
       if (!is.null(fb)) fallbacks_g[[length(fallbacks_g) + 1L]] <- fb
+      gv <- attr(est, "gamma_v_resolution")                             # patch 0085
+      if (!is.null(gv)) gvres_g[[length(gvres_g) + 1L]] <- gv
       est[, good := g]
       trade_wt <- dt_g[importer == imp,
                        .(avg_trade = mean(cusval, na.rm = TRUE)), by = exporter]
@@ -898,6 +920,7 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
                                 cells=n_cells, succeeded=n_ok, skipped=n_skipped)
     attr(out, "failures") <- failures_g
     attr(out, "fallbacks") <- fallbacks_g                                # patch 0077
+    attr(out, "gamma_v_resolution") <- gvres_g                           # patch 0085
     out
   } else NULL
 }

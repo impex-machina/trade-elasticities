@@ -108,6 +108,15 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
   # responsible for having keyed these lookups once upstream.
   sig_V_lkp <- cfg$sigma_V_lookup
   gam_V_lkp <- cfg$gamma_V_lookup
+  # (patch 0085) exporter-specific gamma_V: a keyed (importer = V, exporter,
+  # good, gamma) table from a previous Stage-2b pass, already subset to this
+  # product by estimate_product_fixed_sigma(). Eq. (11)'s object is exporter
+  # j's own supply parameter at the reference destination V; the regional
+  # median was a proxy for it. Used where (V, j) is present, regional median
+  # (then the default) otherwise; NULL reproduces every release through v0.8.3.
+  gam_V_exp_lkp <- cfg$gamma_V_exporter_lookup
+  gv_counts <- c(exporter = 0L, regional = 0L, default = 0L)
+  export_pc <- if (is.null(cfg$stage2_export_period_count)) "rows" else cfg$stage2_export_period_count   # patch 0085
 
   for (j_idx in seq_along(exporter_order)) {
     exp_j <- exporter_order[j_idx]
@@ -170,6 +179,11 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
     } else {
       focal_vals[, `:=`(cusval_lag = shift(cusval, 1L), pd_e = .N)]
     }
+    # (patch 0085) --stage2-export-period-count panel: the Broda-Weinstein T
+    # of the export row is the pair's panel length (period_count, counted
+    # before the differencing filters), the same definition the import side
+    # uses; "rows" (default, through v0.8.3) is the post-filter row count.
+    if (export_pc == "panel" && "period_count" %in% names(focal_vals)) focal_vals[, pd_e := period_count[1]]
     focal_vals[, bw_w_e := bw_weight(cusval, cusval_lag, pd_e)]
 
     exp_cols <- c("exp_y","exp_x1","exp_x2","exp_x3","exp_x4",
@@ -200,12 +214,20 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
     }
 
     gam_V_val <- cfg$gamma_V_default
-    if (!is.null(gam_V_lkp)) {
-      row_g <- gam_V_lkp[importer == ref_dest & good == g_code]
-      if (nrow(row_g) > 0L && !is.na(row_g$gamma[1]) && row_g$gamma[1] > 0) {
-        gam_V_val <- row_g$gamma[1]
+    gv_src <- "default"
+    if (!is.null(gam_V_exp_lkp)) {                                        # patch 0085
+      row_e <- gam_V_exp_lkp[.(as.character(ref_dest), as.character(exp_j)), nomatch = 0L]
+      if (nrow(row_e) > 0L && !is.na(row_e$gamma[1]) && row_e$gamma[1] > 0) {
+        gam_V_val <- row_e$gamma[1]; gv_src <- "exporter"
       }
     }
+    if (gv_src == "default" && !is.null(gam_V_lkp)) {
+      row_g <- gam_V_lkp[importer == ref_dest & good == g_code]
+      if (nrow(row_g) > 0L && !is.na(row_g$gamma[1]) && row_g$gamma[1] > 0) {
+        gam_V_val <- row_g$gamma[1]; gv_src <- "regional"
+      }
+    }
+    gv_counts[gv_src] <- gv_counts[gv_src] + 1L
 
     sig_V_vec    <- c(sig_V_vec, sig_V_val)
     gam_V_vec    <- c(gam_V_vec, gam_V_val)
@@ -221,7 +243,8 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
       sig_V  = sig_V_vec,
       gam_V  = gam_V_vec,
       wt_exp = rep(1, M),
-      M      = M
+      M      = M,
+      gv_counts = gv_counts                                             # patch 0085
     )
   } else {
     list(
