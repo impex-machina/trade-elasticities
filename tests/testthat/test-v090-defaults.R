@@ -32,12 +32,12 @@ test_that("v0.9.0 CLI and config defaults, with the reproducers still accepted",
   o <- parse_cli(base); cfg <- build_config(o)
   expect_equal(cfg$stage1_sigma_cap, 50); expect_identical(cfg$stage1_capped_omega, "drop")
   expect_identical(cfg$stage2_trim, "v2"); expect_equal(cfg$stage2_gamma_v_passes, 3L)
-  expect_identical(cfg$stage2_export_period_count, "panel"); expect_identical(cfg$stage2_sigma_edge, "publish")
+  expect_identical(cfg$stage2_export_period_count, "panel"); expect_identical(cfg$stage2_sigma_edge, "fallback")   # patch 0087
   expect_identical(cfg$stage2_fallback, "best"); expect_identical(cfg$stage2b_prior_source, "estimated")
   rep <- build_config(parse_cli(c(base, "--stage1-sigma-cap", "10", "--stage1-capped-omega", "keep", "--stage2-trim", "legacy",
-                                   "--stage2-gamma-v-passes", "1", "--stage2-export-period-count", "rows", "--stage2-sigma-edge", "fallback")))
+                                   "--stage2-gamma-v-passes", "1", "--stage2-export-period-count", "rows", "--stage2-sigma-edge", "publish")))
   expect_equal(rep$stage1_sigma_cap, 10); expect_identical(rep$stage1_capped_omega, "keep"); expect_identical(rep$stage2_trim, "legacy")
-  expect_equal(rep$stage2_gamma_v_passes, 1L); expect_identical(rep$stage2_export_period_count, "rows"); expect_identical(rep$stage2_sigma_edge, "fallback")
+  expect_equal(rep$stage2_gamma_v_passes, 1L); expect_identical(rep$stage2_export_period_count, "rows"); expect_identical(rep$stage2_sigma_edge, "publish")
   expect_error(parse_cli(c(base, "--stage2-gamma-v-passes", "0")), "stage2-gamma-v-passes")
   expect_error(parse_cli(c(base, "--stage2-sigma-edge", "drop")), "stage2-sigma-edge")
   expect_silent(validate_config(cfg))
@@ -45,9 +45,9 @@ test_that("v0.9.0 CLI and config defaults, with the reproducers still accepted",
   bad <- cfg; bad$stage2_gamma_v_passes <- 0L; expect_error(validate_config(bad), "stage2_gamma_v_passes")
   dt <- make_synthetic_baci(seed = 42L); c0 <- make_synthetic_cfg()
   c_e <- c0; c_e$stage2_sigma_edge <- "fallback"
-  expect_false(identical(.fs_cfg_stamp(c0, dt), .fs_cfg_stamp(c_e, dt)))
+  expect_identical(.fs_cfg_stamp(c0, dt), .fs_cfg_stamp(c_e, dt))        # absent key == fallback (patch 0087)
   c_pub <- c0; c_pub$stage2_sigma_edge <- "publish"
-  expect_identical(.fs_cfg_stamp(c0, dt), .fs_cfg_stamp(c_pub, dt))      # absent key == publish
+  expect_false(identical(.fs_cfg_stamp(c0, dt), .fs_cfg_stamp(c_pub, dt)))
 })
 
 test_that("apply_sigma_edge_rule() removes exactly the sigma_capped cells under 'fallback'", {
@@ -56,7 +56,7 @@ test_that("apply_sigma_edge_rule() removes exactly the sigma_capped cells under 
                   sigma_capped = c(FALSE, FALSE, TRUE, FALSE, TRUE, NA))
   p <- apply_sigma_edge_rule(copy(s), "publish")
   expect_equal(nrow(p), 6L); expect_equal(attr(p, "n_edge_dropped"), 0L)
-  f <- apply_sigma_edge_rule(copy(s), "fallback")
+  f <- apply_sigma_edge_rule(copy(s))                                       # the library default is fallback too (patch 0087)
   expect_equal(nrow(f), 4L); expect_equal(attr(f, "n_edge_dropped"), 2L)
   expect_setequal(f$importer, c("1", "2", "4", "6"))                        # NA sigma_capped is not an edge
   nocol <- apply_sigma_edge_rule(copy(s)[, !"sigma_capped"], "fallback")

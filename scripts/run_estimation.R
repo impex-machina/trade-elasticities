@@ -120,7 +120,7 @@ cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts$stage2_trim)) "legacy" else
 cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s\n",   # patch 0085/0086
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
             if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
-            if (is.null(opts$stage2_sigma_edge)) "publish" else opts$stage2_sigma_edge))
+            if (is.null(opts$stage2_sigma_edge)) "fallback" else opts$stage2_sigma_edge))
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
@@ -333,7 +333,7 @@ if (should_run("1", opts, paths)) {
 sigma_clean <- sigma_estimates[!is.na(sigma) & sigma > 1 & convergence == 0]
 # (patch 0086) --stage2-sigma-edge fallback: cells whose published sigma is a
 # box edge leave the clean set (fallback sigma, no sigma_V, out of the priors).
-sigma_clean <- apply_sigma_edge_rule(sigma_clean, if (is.null(opts$stage2_sigma_edge)) "publish" else opts$stage2_sigma_edge)
+sigma_clean <- apply_sigma_edge_rule(sigma_clean, if (is.null(opts$stage2_sigma_edge)) "fallback" else opts$stage2_sigma_edge)   # patch 0087: absent == fallback
 if (isTRUE(attr(sigma_clean, "n_edge_dropped") > 0L)) {
   cat(sprintf("  sigma-edge cells dropped from the clean set (fallback sigma, no sigma_V, out of the priors): %s\n",
               format(attr(sigma_clean, "n_edge_dropped"), big.mark = ",")))

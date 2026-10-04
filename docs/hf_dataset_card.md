@@ -45,8 +45,10 @@ under another cleaning rule must say which rule.
 > gamma at that destination from the previous Stage-2b pass (three passes),
 > replacing the regional-median proxy, which mis-set it by 0.2% at the
 > median but 9% at p90 and 92% at p99 of Tier-1 rows. (4) The export-side
-> Broda-Weinstein T is the pair's panel length. Sigma-edge rule:
-> <fill: publish or fallback, from the session A/B>. Numbers vs v0.8.3:
+> Broda-Weinstein T is the pair's panel length. (5) A Stage-1 cell whose
+> published sigma is a box edge takes the fallback sigma like a cell with
+> no estimate (sigma_robust FALSE, no sigma_V, omega out of the priors):
+> 13,810 cells at cap 50. Numbers vs v0.8.3:
 > <fill from the rc compare_runs at the card step>. Data revision:
 > `<fill at the card step after the HF upload>`. **v0.8.3 remains available
 > pinned at revision `60be1e6bae2a575ec1af2094beb7f542a120f812`.**

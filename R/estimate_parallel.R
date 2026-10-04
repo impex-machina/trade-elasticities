@@ -527,7 +527,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_trim)) cfg$stage2_trim <- "v2"                               # patch 0086: absent == v2 (v0.9.0)
   if (is.null(cfg$stage2_gamma_v_source)) cfg$stage2_gamma_v_source <- "regional"      # patch 0085: absent == regional
   if (is.null(cfg$stage2_export_period_count)) cfg$stage2_export_period_count <- "panel" # patch 0086: absent == panel (v0.9.0)
-  if (is.null(cfg$stage2_sigma_edge)) cfg$stage2_sigma_edge <- "publish"               # patch 0086: absent == publish
+  if (is.null(cfg$stage2_sigma_edge)) cfg$stage2_sigma_edge <- "fallback"              # patch 0087: absent == fallback (v0.9.0)
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),

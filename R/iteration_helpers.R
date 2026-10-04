@@ -69,10 +69,10 @@ stage2b_priors_from_regional <- function(regional_clean, rows = c("all", "estima
 #' edge) has no sigma estimate. Under rule "fallback" such cells leave the
 #' clean set, so Stage 2 gives them the fallback sigma like any cell without
 #' an estimate, sigma_robust is FALSE on them, they carry no sigma_V, and
-#' their omega is out of the priors. "publish" (every release through v0.9.0
-#' as shipped) keeps them with sigma = cap.
+#' their omega is out of the priors. "publish" (every release through v0.8.3)
+#' keeps them with sigma = cap. "fallback" is the v0.9.0 default (patch 0087).
 #' @return the (possibly filtered) table with attribute n_edge_dropped.
-apply_sigma_edge_rule <- function(sigma_clean, rule = c("publish", "fallback")) {
+apply_sigma_edge_rule <- function(sigma_clean, rule = c("fallback", "publish")) {
   rule <- match.arg(rule)
   if (rule == "publish" || !"sigma_capped" %in% names(sigma_clean)) {
     data.table::setattr(sigma_clean, "n_edge_dropped", 0L); return(sigma_clean)

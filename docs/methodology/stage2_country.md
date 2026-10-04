@@ -576,11 +576,14 @@ beside the final table, so the published table reproduces from one command
 and each step is on record. The run with three passes is the shipped one;
 the fixed-point residual it leaves in the tail is a stated limitation.
 
-`--stage2-sigma-edge {publish|fallback}` (default `publish`): a Stage-1
+`--stage2-sigma-edge {fallback|publish}` (default `fallback` from v0.9.0,
+patch 0087; `publish` reproduces every release through v0.8.3): a Stage-1
 cell whose published σ is a box edge (`sigma_capped`) has no σ estimate;
 under `fallback` it leaves the clean set, so Stage 2 gives it the fallback
 σ like any cell without an estimate, `sigma_robust` is FALSE on it, it
 carries no σ_V and its ω is out of the priors (`apply_sigma_edge_rule()` in
-`R/iteration_helpers.R`). The v0.9.0 session runs both rules; whichever
-ships sets the default. `tests/testthat/test-v090-defaults.R` locks the
+`R/iteration_helpers.R`). The rule was decided on principle rather than by
+A/B — it is the treatment the pipeline already gives a cell with no Stage-1
+estimate, an ω at its cap, and a capped σ's SE — and verified post hoc in
+the v0.9.0 run's gate against the rc chain (13,810 cells at cap 50). `tests/testthat/test-v090-defaults.R` locks the
 defaults, the reproducers, and both helpers.

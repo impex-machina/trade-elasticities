@@ -53,7 +53,7 @@ test_that("CLI, validate_config and the checkpoint stamp carry the gamma_V famil
   base <- c("--data", fake)
   o <- parse_cli(base)
   expect_identical(o$stage2_gamma_v_source, "regional"); expect_identical(o$stage2_export_period_count, "panel")   # patch 0086 default
-  expect_equal(o$stage2_gamma_v_passes, 3L); expect_identical(o$stage2_sigma_edge, "publish")                      # patch 0086
+  expect_equal(o$stage2_gamma_v_passes, 3L); expect_identical(o$stage2_sigma_edge, "fallback")                     # patch 0086/0087
   expect_error(parse_cli(c(base, "--stage2-gamma-v-source", "table")), "stage2-gamma-v-table")
   tab <- file.path(fake, "prev.rds"); saveRDS(data.table(x = 1), tab)
   o2 <- parse_cli(c(base, "--stage2-gamma-v-source", "table", "--stage2-gamma-v-table", tab, "--stage2-export-period-count", "panel"))
