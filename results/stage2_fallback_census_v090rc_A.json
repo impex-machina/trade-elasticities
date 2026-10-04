@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "csv": "C:\\Users\\maxxj\\te_rc\\v090\\out_A\\baci_hs92_v202601_elast_country_hs4_stage2_fallbacks.csv",
+    "label": "v090rc_A",
+    "rules": "best",
+    "git_rev": "57df7d4",
+    "timestamp": "2026-10-04 01:23:43 EDT"
+  },
+  "n_cells": 8834,
+  "n_comparable": 8834,
+  "n_lbfgsb_error": 0,
+  "n_nm_error": 0,
+  "n_nm_worse": 7455,
+  "share_nm_worse": 0.84389857,
+  "n_nm_better": 1379,
+  "n_tie": 0,
+  "excess_quantiles": {
+    "p10": -0.00061802,
+    "p25": 0.0025531,
+    "p50": 0.0484103,
+    "p75": 0.20747751,
+    "p90": 0.51658991,
+    "p99": 2.10394071
+  },
+  "excess_quantiles_where_worse": {
+    "p10": 0.00201606,
+    "p25": 0.01529274,
+    "p50": 0.07861654,
+    "p75": 0.25831501,
+    "p90": 0.59053277,
+    "p99": 2.28862108
+  },
+  "n_nm_converged": 4516,
+  "n_relabel_ok_to_nonconverged": 3325,
+  "chosen": {
+    "lbfgsb": 7455,
+    "nelder_mead": 1379
+  },
+  "J_quantiles": {
+    "p10": 3,
+    "p50": 20,
+    "p90": 54,
+    "p100": 197
+  },
+  "M_quantiles": {
+    "p10": 4,
+    "p50": 20,
+    "p90": 54,
+    "p100": 162
+  }
+}
