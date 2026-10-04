@@ -86,7 +86,9 @@ opt_list <- list(
               dest = "out_dir"),
   make_option("--step2-vce", type = "character", default = NULL,
               dest = "step2_vce",
-              help = "Step-2 VCE rule for the replicate fits: 'legacy' or 'kclass' (default: the estimator's default)")
+              help = "Step-2 VCE rule for the replicate fits: 'legacy' or 'kclass' (default: the estimator's default)"),
+  make_option("--sigma-cap", type = "double", default = NULL, dest = "sigma_cap",
+              help = "Stage-1 sigma cap for the replicate fits (patch 0088): pass the cap the bootstrapped Stage-1 run used (50 since v0.9.0; default: the estimator's default, 10)")
 )
 opts <- parse_args(OptionParser(option_list = opt_list))
 if (is.null(opts$cache) || is.null(opts$stage1)) {
@@ -112,6 +114,7 @@ dir.create(opts$out_dir, showWarnings = FALSE, recursive = TRUE)
 cat("========================================================================\n")
 cat("EXPORTER-CLUSTER BOOTSTRAP: STAGE 1 SIGMA SE BENCHMARK\n")
 cat("========================================================================\n")
+cat(sprintf("  sigma_cap=%s\n", if (is.null(opts$sigma_cap)) "estimator default (10)" else format(opts$sigma_cap)))   # patch 0088
 cat(sprintf("  cells=%d  B=%d  ncores=%d  seed=%d  min_boot_ok=%d  step2_vce=%s\n",
             opts$n_cells, opts$B, opts$ncores, opts$seed, opts$min_boot_ok,
             if (is.null(opts$step2_vce)) "default" else opts$step2_vce))
@@ -204,7 +207,7 @@ boot_cell <- function(i) {
   r <- bs_boot_cell(slices[[i]], published_route = row$final_source,
                     B = opts$B, seed = opts$seed + i,
                     min_boot_ok = opts$min_boot_ok, min_year = opts$min_year,
-                    step2_vce = opts$step2_vce)
+                    step2_vce = opts$step2_vce, sigma_cap = opts$sigma_cap)   # patch 0088
   c(list(importer = row$importer, good = row$good,
          nexp_bin = as.character(row$nexp_bin), f_bin = as.character(row$f_bin),
          final_source = row$final_source,

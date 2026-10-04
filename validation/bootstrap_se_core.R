@@ -36,7 +36,7 @@
 #'   default flip; the rc window passes the flag the run used.
 #' @return list(sigma, sigma_se, route) or NULL when the fit does not reach
 #'   status "ok".
-bs_fit_cell <- function(panel_df, min_year = 1995L, step2_vce = NULL) {
+bs_fit_cell <- function(panel_df, min_year = 1995L, step2_vce = NULL, sigma_cap = NULL) {
   prep <- tryCatch(
     prepare_cell_moments(panel_df,
                          exporter_col = "exporter", time_col = "t",
@@ -47,6 +47,7 @@ bs_fit_cell <- function(panel_df, min_year = 1995L, step2_vce = NULL) {
       is.null(prep$n_obs) || prep$n_obs < 5) return(NULL)
   args <- list(prep$moments, ref_exporter = prep$ref_exporter)
   if (!is.null(step2_vce)) args$step2_vce <- step2_vce
+  if (!is.null(sigma_cap)) args$sigma_start_cap <- sigma_cap        # patch 0088: the cap of the Stage-1 run being bootstrapped
   fit <- tryCatch(do.call(estimate_cell_liml, args), error = function(e) NULL)
   if (is.null(fit) || !isTRUE(fit$status == "ok") || !is.finite(fit$sigma))
     return(NULL)
@@ -67,10 +68,10 @@ bs_fit_cell <- function(panel_df, min_year = 1995L, step2_vce = NULL) {
 #' @return a one-row list. Fields up to boot_mad_sd are the pre-0063 schema,
 #'   unchanged; the branch-tag fields follow.
 bs_boot_cell <- function(slice, published_route, B, seed, min_boot_ok = 50L,
-                         min_year = 1995L, step2_vce = NULL) {
+                         min_year = 1995L, step2_vce = NULL, sigma_cap = NULL) {
   set.seed(seed)
   sl <- as.data.frame(slice)
-  base <- bs_fit_cell(sl, min_year = min_year, step2_vce = step2_vce)
+  base <- bs_fit_cell(sl, min_year = min_year, step2_vce = step2_vce, sigma_cap = sigma_cap)
 
   exps <- unique(sl$exporter)
   by_exp <- split(sl, sl$exporter)
@@ -82,7 +83,7 @@ bs_boot_cell <- function(slice, published_route, B, seed, min_boot_ok = 50L,
       x$exporter <- j              # relabel: duplicates enter as distinct panels
       x
     })
-    f <- bs_fit_cell(do.call(rbind, parts), min_year = min_year, step2_vce = step2_vce)
+    f <- bs_fit_cell(do.call(rbind, parts), min_year = min_year, step2_vce = step2_vce, sigma_cap = sigma_cap)
     if (!is.null(f)) { sig_b[b] <- f$sigma; se_b[b] <- f$sigma_se; route_b[b] <- f$route }
   }
   ok <- is.finite(sig_b)
