@@ -52,7 +52,8 @@ test_that("CLI, validate_config and the checkpoint stamp carry the gamma_V famil
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
   o <- parse_cli(base)
-  expect_identical(o$stage2_gamma_v_source, "regional"); expect_identical(o$stage2_export_period_count, "rows")
+  expect_identical(o$stage2_gamma_v_source, "regional"); expect_identical(o$stage2_export_period_count, "panel")   # patch 0086 default
+  expect_equal(o$stage2_gamma_v_passes, 3L); expect_identical(o$stage2_sigma_edge, "publish")                      # patch 0086
   expect_error(parse_cli(c(base, "--stage2-gamma-v-source", "table")), "stage2-gamma-v-table")
   tab <- file.path(fake, "prev.rds"); saveRDS(data.table(x = 1), tab)
   o2 <- parse_cli(c(base, "--stage2-gamma-v-source", "table", "--stage2-gamma-v-table", tab, "--stage2-export-period-count", "panel"))
@@ -67,9 +68,9 @@ test_that("CLI, validate_config and the checkpoint stamp carry the gamma_V famil
   bad <- cfg; bad$stage2_export_period_count <- "years"; expect_error(validate_config(bad), "stage2_export_period_count")
   c_t <- cfg; c_t$stage2_gamma_v_source <- "table"
   expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(c_t, dt)))
-  c_p <- cfg; c_p$stage2_export_period_count <- "panel"
+  c_p <- cfg; c_p$stage2_export_period_count <- "rows"
   expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(c_p, dt)))
-  c_d <- cfg; c_d$stage2_gamma_v_source <- "regional"; c_d$stage2_export_period_count <- "rows"
+  c_d <- cfg; c_d$stage2_gamma_v_source <- "regional"; c_d$stage2_export_period_count <- "panel"
   expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(c_d, dt))   # absent keys == the defaults
   c_l <- cfg; c_l$gamma_V_exporter_lookup <- data.table(importer = "4", exporter = "e", good = "0101", gamma = 1)
   expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(c_l, dt)))   # the table is fingerprinted
@@ -115,17 +116,17 @@ test_that("a different exporter table changes only cells with export rows; absen
   expect_equal(nrow(changed_cells[!cells_with_export, on = .(importer, good)]), 0L)
 })
 
-test_that("'panel' is recorded and keeps the schema; 'rows' is the default", {
+test_that("'rows' is recorded and keeps the schema; 'panel' is the default (patch 0086)", {
   .gv_setup()
   dt <- make_synthetic_baci(seed = 42L); cfg <- make_synthetic_cfg()
   r0 <- .gv_run(cfg, dt)
-  expect_identical(attr(r0, "run_meta")$export_period_count, "rows")
-  cfg_p <- cfg; cfg_p$stage2_export_period_count <- "panel"
-  r1 <- .gv_run(cfg_p, dt)
-  expect_identical(attr(r1, "run_meta")$export_period_count, "panel")
-  expect_setequal(names(r1), names(r0)); expect_equal(nrow(r1), nrow(r0))
+  expect_identical(attr(r0, "run_meta")$export_period_count, "panel")
   cfg_r <- cfg; cfg_r$stage2_export_period_count <- "rows"
-  expect_identical(finalize_saved_output(.gv_run(cfg_r, dt)), finalize_saved_output(r0))
+  r1 <- .gv_run(cfg_r, dt)
+  expect_identical(attr(r1, "run_meta")$export_period_count, "rows")
+  expect_setequal(names(r1), names(r0)); expect_equal(nrow(r1), nrow(r0))
+  cfg_p <- cfg; cfg_p$stage2_export_period_count <- "panel"
+  expect_identical(finalize_saved_output(.gv_run(cfg_p, dt)), finalize_saved_output(r0))
 })
 
 test_that("the fixed-point census measures step sizes and the contraction ratio", {

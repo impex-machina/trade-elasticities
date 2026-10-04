@@ -117,9 +117,10 @@ cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" els
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "best" else opts$stage2_fallback))   # patch 0077/0080
 cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source))   # patch 0079/0080
 cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts$stage2_trim)) "legacy" else opts$stage2_trim))   # patch 0083
-cat(sprintf("  Stage-2 gamma_V source: %s%s | export period count: %s\n",   # patch 0085
+cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s\n",   # patch 0085/0086
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
-            opts$stage2_export_period_count))
+            if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
+            if (is.null(opts$stage2_sigma_edge)) "publish" else opts$stage2_sigma_edge))
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
@@ -330,6 +331,13 @@ if (should_run("1", opts, paths)) {
 }
 
 sigma_clean <- sigma_estimates[!is.na(sigma) & sigma > 1 & convergence == 0]
+# (patch 0086) --stage2-sigma-edge fallback: cells whose published sigma is a
+# box edge leave the clean set (fallback sigma, no sigma_V, out of the priors).
+sigma_clean <- apply_sigma_edge_rule(sigma_clean, if (is.null(opts$stage2_sigma_edge)) "publish" else opts$stage2_sigma_edge)
+if (isTRUE(attr(sigma_clean, "n_edge_dropped") > 0L)) {
+  cat(sprintf("  sigma-edge cells dropped from the clean set (fallback sigma, no sigma_V, out of the priors): %s\n",
+              format(attr(sigma_clean, "n_edge_dropped"), big.mark = ",")))
+}
 sigma_fallback <- median(sigma_clean$sigma, na.rm = TRUE)
 # (patch 0084) --stage2-sigma-fallback-pin: hold the fallback sigma at a given
 # value instead of the clean-cell median, so an experiment that changes the
@@ -617,6 +625,43 @@ if (should_run("2b", opts, paths)) {
 
     country_results <- estimate_all_fixed_sigma(
       config_2b, ncores = ncores, prepared_dt = dt_country)
+    # (patch 0086) native exporter-specific gamma_V iteration: pass 1 above
+    # (regional median, or the table named by --stage2-gamma-v-table); each
+    # further pass takes gamma_jV from the previous pass's own table, under the
+    # same flags. The pass tables, the fallback / trimmed tables of every pass
+    # and the step log are kept beside the final table, so the published table
+    # reproduces from this one command and each step is on record.
+    gv_passes <- if (is.null(opts$stage2_gamma_v_passes)) 1L else as.integer(opts$stage2_gamma_v_passes)
+    if (gv_passes > 1L) {
+      prefix_country <- build_output_prefix(config_2b)
+      rotate_csvs <- function(k) {
+        for (f in paste0(prefix_country, c("_stage2_fallbacks.csv", "_stage2_trimmed.csv")))
+          if (file.exists(f)) file.rename(f, sub("\\.csv$", sprintf("_pass%d.csv", k), f))
+      }
+      rotate_csvs(1L)
+      saveRDS(finalize_saved_output(country_results), paste0(out_base_country, "_fixed_sigma_pass1.rds"))
+      pass_log <- list()
+      for (k in 2:gv_passes) {
+        prev <- country_results
+        gv_tab <- prev[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0,
+                       .(importer = as.character(importer), exporter = as.character(exporter),
+                         good = as.character(good), gamma)]
+        config_2b$gamma_V_exporter_lookup <- gv_tab
+        cat(sprintf("\n--- gamma_V pass %d of %d: exporter-specific gamma_jV from pass %d (%s usable rows) ---\n",
+                    k, gv_passes, k - 1L, format(nrow(gv_tab), big.mark = ",")))
+        country_results <- estimate_all_fixed_sigma(config_2b, ncores = ncores, prepared_dt = dt_country)
+        step <- gamma_v_step(prev, country_results)
+        pass_log[[length(pass_log) + 1L]] <- data.table(pass = k, from_pass = k - 1L, usable_rows = nrow(gv_tab),
+                                                         tier1_rows = step[["n"]], abs_dlng_p50 = step[["p50"]], abs_dlng_p90 = step[["p90"]],
+                                                         abs_dlng_p99 = step[["p99"]], abs_dlng_max = step[["max"]], share_lt_1e2 = step[["share_lt_1e2"]])
+        cat(sprintf("  gamma_V pass %d step from pass %d: Tier-1 rows %s | abs d ln gamma p50 %.4g p90 %.4g p99 %.4g | share < 1e-2 %.1f%%\n",
+                    k, k - 1L, format(step[["n"]], big.mark = ","), step[["p50"]], step[["p90"]], step[["p99"]], 100 * step[["share_lt_1e2"]]))
+        rotate_csvs(k)
+        if (k < gv_passes) saveRDS(finalize_saved_output(country_results), paste0(out_base_country, sprintf("_fixed_sigma_pass%d.rds", k)))
+      }
+      fwrite(rbindlist(pass_log), paste0(out_base_country, "_gamma_v_passes.csv"))
+      cat(sprintf("  gamma_V pass log: %s_gamma_v_passes.csv (final table = pass %d)\n", out_base_country, gv_passes))
+    }
     saveRDS(finalize_saved_output(country_results), country_file)
   }
 } else {

@@ -172,9 +172,12 @@ s2b_section <- function(o, n, ol, nl) {
                   med(1 / g_n[is.finite(1 / g_n)]))
 
   rows <- row_num(rows, "sigma median", med(o$sigma), med(n$sigma))
-  rows <- row_shr(rows, "share sigma at cap (>= 9.999)",
+  rows <- row_shr(rows, "share sigma >= 10",
                   shr(o$sigma >= 9.999, !is.na(o$sigma)),
                   shr(n$sigma >= 9.999, !is.na(n$sigma)))
+  rows <- row_shr(rows, "share sigma at its cap (max published sigma)",   # patch 0086: cap-aware
+                  shr(o$sigma >= max(o$sigma, na.rm = TRUE) - 1e-3, !is.na(o$sigma)),
+                  shr(n$sigma >= max(n$sigma, na.rm = TRUE) - 1e-3, !is.na(n$sigma)))
 
   se_o <- if (has_col(o, "gamma_se")) o$gamma_se else NA_real_
   se_n <- if (has_col(n, "gamma_se")) n$gamma_se else NA_real_
@@ -240,9 +243,12 @@ if (!is.null(opts$old_stage1) && !is.null(opts$new_stage1)) {
   rows <- row_num(rows, "sigma median (ok)", med(sig_o), med(sig_n))
   rows <- row_num(rows, "sigma p25 (ok)", q(sig_o, .25), q(sig_n, .25))
   rows <- row_num(rows, "sigma p75 (ok)", q(sig_o, .75), q(sig_n, .75))
-  rows <- row_shr(rows, "share sigma at cap (ok, >= 9.999)",
+  rows <- row_shr(rows, "share sigma >= 10 (ok)",
                   shr(sig_o >= 9.999, !is.na(sig_o)),
                   shr(sig_n >= 9.999, !is.na(sig_n)))
+  rows <- row_shr(rows, "share sigma at its cap (ok, max published sigma)",   # patch 0086: cap-aware
+                  shr(sig_o >= max(sig_o, na.rm = TRUE) - 1e-3, !is.na(sig_o)),
+                  shr(sig_n >= max(sig_n, na.rm = TRUE) - 1e-3, !is.na(sig_n)))
 
   for (cc in c("sigma_se", "omega_se", "rho_se")) {
     v_o <- if (has_col(s1_old, cc)) s1_old[[cc]][ok_o] else NA_real_

@@ -349,7 +349,7 @@ stage2b_summary <- list(
 # schema, so we identify them as the two value spikes: the cap is exactly 10;
 # the fallback is the most-common NON-cap sigma (one value shared across a
 # large block of cells, where genuine cell-specific estimates do not repeat).
-sigma_cap_value <- 10
+sigma_cap_value <- max(stage2b_dt$sigma, na.rm = TRUE)   # patch 0086: the cap is the largest published sigma (10 through v0.8.3, 50 since v0.9.0)
 .sig_spikes <- stage2b_dt[sigma != sigma_cap_value, .N, by = sigma][order(-N)]
 sigma_fallback_value <- .sig_spikes$sigma[1]
 stopifnot(sigma_fallback_value > 1, sigma_fallback_value < sigma_cap_value)

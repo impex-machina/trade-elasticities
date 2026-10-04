@@ -548,3 +548,39 @@ To recreate from scratch:
 
 Stage 1 wall-clock not included (skipped because Stage 1 output already
 exists).
+
+### v0.9.0 defaults, the native γ_V iteration, and the σ-edge rule (patch 0086)
+
+From the v0.9 rc attribution ladder (S3 `v090rc_run_20261004/`, runs A–E;
+`docs/methodology/v083_v090rcA_compare_runs.md` and the `v090rc*_compare_runs.md`
+pairs): the cap is the only change that moves headline numbers (γ median
+0.656 → 0.646, opt_tariff 0.751 → 0.736, `non_converged` +0.7 pt, SE
+coverage −1.1 pt, SE median 0.198 → 0.230 as larger σ flattens the γ
+objective), and every row moves by about 2% at the median through the
+priors and σ_V, the cells whose own σ changed barely more; the trim moves
+nothing at the headline (−7,705 rows); the exporter-specific γ_V moves the
+tail, not the middle (Tier-1 |Δ ln γ| p50 0.2%, p90 9%, p99 92%) and is the
+one change that improves the status table; the T rule is small; a third
+γ_V pass contracts at 0.13 at the median but about 0.5 at p99, so a
+1%-of-rows tail does not settle.
+
+Defaults from v0.9.0: `--stage2-trim v2`, `--stage2-export-period-count
+panel`, `--stage2-gamma-v-passes 3`; `legacy`, `rows`, `1` reproduce
+v0.8.3 (together with cap 10 and `--stage1-capped-omega keep`). The γ_V
+iteration is native: pass 1 uses `--stage2-gamma-v-source` (regional median
+by default), each further pass takes γ_jV from the previous pass's own
+table under the same flags; the pass tables (`_fixed_sigma_pass<k>.rds`),
+every pass's fallback and trimmed tables (`_pass<k>.csv`) and the step log
+(`_gamma_v_passes.csv`: Tier-1 |Δ ln γ| p50/p90/p99 per step) are written
+beside the final table, so the published table reproduces from one command
+and each step is on record. The run with three passes is the shipped one;
+the fixed-point residual it leaves in the tail is a stated limitation.
+
+`--stage2-sigma-edge {publish|fallback}` (default `publish`): a Stage-1
+cell whose published σ is a box edge (`sigma_capped`) has no σ estimate;
+under `fallback` it leaves the clean set, so Stage 2 gives it the fallback
+σ like any cell without an estimate, `sigma_robust` is FALSE on it, it
+carries no σ_V and its ω is out of the priors (`apply_sigma_edge_rule()` in
+`R/iteration_helpers.R`). The v0.9.0 session runs both rules; whichever
+ships sets the default. `tests/testthat/test-v090-defaults.R` locks the
+defaults, the reproducers, and both helpers.

@@ -116,7 +116,7 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
   # (then the default) otherwise; NULL reproduces every release through v0.8.3.
   gam_V_exp_lkp <- cfg$gamma_V_exporter_lookup
   gv_counts <- c(exporter = 0L, regional = 0L, default = 0L)
-  export_pc <- if (is.null(cfg$stage2_export_period_count)) "rows" else cfg$stage2_export_period_count   # patch 0085
+  export_pc <- if (is.null(cfg$stage2_export_period_count)) "panel" else cfg$stage2_export_period_count   # patch 0086: absent == panel (v0.9.0)
 
   for (j_idx in seq_along(exporter_order)) {
     exp_j <- exporter_order[j_idx]

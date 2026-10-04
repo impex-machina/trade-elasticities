@@ -96,11 +96,14 @@ build_config <- function(opts) {
     # patch 0079/0080: Stage-2a rows behind the 2b priors; absent key == estimated (v0.8.3 default; all = <= v0.8.2 reproducer).
     stage2b_prior_source = opts$stage2b_prior_source %||% "estimated",
     # patch 0083: tail-trim semantics; absent key == legacy (<= v0.8.3 reproducer).
-    stage2_trim = opts$stage2_trim %||% "legacy",
+    stage2_trim = opts$stage2_trim %||% "v2",                            # patch 0086: v0.9.0 default (legacy = <= v0.8.3)
     # patch 0085: gamma_V source (regional = <= v0.8.3), its table, and the export-side BW period count (rows = <= v0.8.3)
     stage2_gamma_v_source = opts$stage2_gamma_v_source %||% "regional",
     stage2_gamma_v_table = opts$stage2_gamma_v_table %||% "",
-    stage2_export_period_count = opts$stage2_export_period_count %||% "rows",
+    stage2_export_period_count = opts$stage2_export_period_count %||% "panel",   # patch 0086: v0.9.0 default (rows = <= v0.8.3)
+    # patch 0086: exporter-specific gamma_V passes (1 = <= v0.8.3) and the sigma-edge rule
+    stage2_gamma_v_passes = opts$stage2_gamma_v_passes %||% 3L,
+    stage2_sigma_edge = opts$stage2_sigma_edge %||% "publish",
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
     stage1_cf_admissibility = opts$stage1_cf_admissibility %||% "legacy",
@@ -114,8 +117,8 @@ build_config <- function(opts) {
     # patch 0057: Stage-2's unit-value trim applied inside Stage 1 (NA = off).
     stage1_uv_trim = if (is.null(opts$stage1_uv_trim)) NA_real_ else opts$stage1_uv_trim,
     # patch 0084: Stage-1 sigma cap (10 = <= v0.8.3), capped-cell omega rule, fallback pin (NA = computed)
-    stage1_sigma_cap = opts$stage1_sigma_cap %||% 10,
-    stage1_capped_omega = opts$stage1_capped_omega %||% "keep",
+    stage1_sigma_cap = opts$stage1_sigma_cap %||% 50,                    # patch 0086: v0.9.0 default (10 = <= v0.8.3)
+    stage1_capped_omega = opts$stage1_capped_omega %||% "drop",           # patch 0086: v0.9.0 default
     stage2_sigma_fallback_pin = if (is.null(opts$stage2_sigma_fallback_pin)) NA_real_ else opts$stage2_sigma_fallback_pin,
 
     # --- Across-exporter weighting (methodological) ---

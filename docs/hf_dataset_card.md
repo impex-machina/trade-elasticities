@@ -32,6 +32,24 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.9.0 (2026-10-XX).** Methodology release, from the v0.9 rc attribution
+> ladder (five runs, one change each; compare docs in docs/methodology/).
+> (1) The Stage-1 sigma cap is 50 (10 through v0.8.3): 68,518 cells publish
+> a different sigma -- the 24,780 that sat at the old cap plus some 42,000
+> whose closed-form HLIML point had sigma in (10, 50) and had been routed to
+> Step 2 -- 1,667 cells gain an estimate, sigma_se is finite on 95.2% of ok
+> cells (89.8%), and 13,810 cells sit at the new edge (sigma_capped TRUE,
+> sigma_robust FALSE). (2) The tail trim takes its sigma bounds over cells
+> and the Stage-2a plateau replacement is retired; the removed rows are on
+> record. (3) Eq. (11)'s reference-destination gamma_V is the exporter's own
+> gamma at that destination from the previous Stage-2b pass (three passes),
+> replacing the regional-median proxy, which mis-set it by 0.2% at the
+> median but 9% at p90 and 92% at p99 of Tier-1 rows. (4) The export-side
+> Broda-Weinstein T is the pair's panel length. Sigma-edge rule:
+> <fill: publish or fallback, from the session A/B>. Numbers vs v0.8.3:
+> <fill from the rc compare_runs at the card step>. Data revision:
+> `<fill at the card step after the HF upload>`. **v0.8.3 remains available
+> pinned at revision `60be1e6bae2a575ec1af2094beb7f542a120f812`.**
 > **v0.8.3 (2026-10-02).** Two Stage-2 fixes from the 2026-09-29 audit,
 > both bit-preserving under the previous rule (`--stage2-fallback legacy`,
 > `--stage2b-prior-source all` reproduce v0.8.2). (1) A cell whose

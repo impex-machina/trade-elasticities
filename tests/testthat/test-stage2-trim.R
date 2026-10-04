@@ -42,17 +42,17 @@ test_that("CLI, validate_config and the checkpoint stamp carry stage2_trim", {
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
   expect_identical(parse_cli(c(base, "--stage2-trim", "v2"))$stage2_trim, "v2")
-  expect_identical(parse_cli(base)$stage2_trim, "legacy")
-  expect_identical(build_config(parse_cli(base))$stage2_trim, "legacy")
+  expect_identical(parse_cli(base)$stage2_trim, "v2")                      # patch 0086 default
+  expect_identical(build_config(parse_cli(base))$stage2_trim, "v2")
   expect_error(parse_cli(c(base, "--stage2-trim", "v3")), "stage2-trim")
   cfg <- make_synthetic_cfg(); dt <- make_synthetic_baci(seed = 42L)
   expect_silent(validate_config(cfg))
   cfg_bad <- cfg; cfg_bad$stage2_trim <- "v3"
   expect_error(validate_config(cfg_bad), "stage2_trim")
   cfg_v2 <- cfg; cfg_v2$stage2_trim <- "v2"
-  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_v2, dt)))
+  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_v2, dt))    # absent key == v2 (patch 0086)
   cfg_leg <- cfg; cfg_leg$stage2_trim <- "legacy"
-  expect_identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_leg, dt))   # absent key == legacy
+  expect_false(identical(.fs_cfg_stamp(cfg, dt), .fs_cfg_stamp(cfg_leg, dt)))
 })
 
 test_that("legacy: the trimmed table is exactly the removed rows; default identical to legacy; no trim -> no table", {
@@ -63,7 +63,7 @@ test_that("legacy: the trimmed table is exactly the removed rows; default identi
   r0 <- .tr_run(cfg0, dt)
   expect_false(file.exists(.tr_file(cfg0)))          # removed by the no-trim run
   expect_null(attr(r0, "run_meta")$trimmed_rows)
-  expect_identical(attr(r0, "run_meta")$trim_mode, "legacy")
+  expect_identical(attr(r0, "run_meta")$trim_mode, "v2")                  # absent key == v2 (patch 0086)
 
   cfg <- make_synthetic_cfg(); cfg$tail_trim_pct <- 0.05
   on.exit(unlink(.tr_file(cfg)), add = TRUE)
@@ -86,8 +86,6 @@ test_that("legacy: the trimmed table is exactly the removed rows; default identi
   src <- r0[is.na(tier) | is_estimated_row(tier, convergence)]
   expect_equal(unname(b$sig_lo), unname(quantile(src$sigma, 0.05))); expect_equal(unname(b$sig_hi), unname(quantile(src$sigma, 0.95)))
   expect_equal(unname(b$gam_lo), unname(quantile(src$gamma, 0.05))); expect_equal(unname(b$gam_hi), unname(quantile(src$gamma, 0.95)))
-  r_def <- .tr_run(cfg, dt)
-  expect_identical(finalize_saved_output(r_def), finalize_saved_output(r1))
 })
 
 test_that("v2: sigma bounds over cells, whole-cell removal, gamma trim unchanged, shared rows identical", {
@@ -114,4 +112,7 @@ test_that("v2: sigma bounds over cells, whole-cell removal, gamma trim unchanged
   # rows shared with legacy are identical in every column (membership is the only difference)
   m <- merge(r1, r2, by = .key, suffixes = c(".l", ".v"))
   for (col in setdiff(names(r1), .key)) expect_equal(m[[paste0(col, ".l")]], m[[paste0(col, ".v")]], info = col)
+  # (patch 0086) an absent key is v2: the default run equals the explicit v2 run
+  r_def <- .tr_run(cfg, dt)
+  expect_identical(finalize_saved_output(r_def), finalize_saved_output(r2))
 })

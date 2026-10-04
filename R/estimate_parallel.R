@@ -495,6 +495,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2b_prior_source",              # patch 0079 (the prior tables are fingerprinted too)
             "stage2_trim",                       # patch 0083
             "stage2_gamma_v_source", "stage2_export_period_count",   # patch 0085
+            "stage2_sigma_edge",                                      # patch 0086
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -523,9 +524,10 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
   if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "best"                     # patch 0080: absent == best (v0.8.3)
   if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "estimated"       # patch 0080: absent == estimated (v0.8.3)
-  if (is.null(cfg$stage2_trim)) cfg$stage2_trim <- "legacy"                           # patch 0083: absent == legacy
+  if (is.null(cfg$stage2_trim)) cfg$stage2_trim <- "v2"                               # patch 0086: absent == v2 (v0.9.0)
   if (is.null(cfg$stage2_gamma_v_source)) cfg$stage2_gamma_v_source <- "regional"      # patch 0085: absent == regional
-  if (is.null(cfg$stage2_export_period_count)) cfg$stage2_export_period_count <- "rows" # patch 0085: absent == rows
+  if (is.null(cfg$stage2_export_period_count)) cfg$stage2_export_period_count <- "panel" # patch 0086: absent == panel (v0.9.0)
+  if (is.null(cfg$stage2_sigma_edge)) cfg$stage2_sigma_edge <- "publish"               # patch 0086: absent == publish
   parts <- list(
     scalars = cfg[intersect(keys, names(cfg))],
     tables  = lapply(cfg[intersect(tabs, names(cfg))], tab_fp),
@@ -786,7 +788,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   # removes are recorded (run_meta$trimmed_rows and
   # <prefix>_stage2_trimmed.csv beside the fallback table), so the removal is
   # no longer silent.
-  trim_mode <- if (is.null(cfg$stage2_trim)) "legacy" else cfg$stage2_trim
+  trim_mode <- if (is.null(cfg$stage2_trim)) "v2" else cfg$stage2_trim   # patch 0086: absent == v2 (v0.9.0)
   trimmed_rows <- NULL
   trim_rec <- function(d, reason) {
     cols <- intersect(c("importer", "exporter", "good", "sigma", "gamma", "tier", "convergence"), names(d))
@@ -902,7 +904,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     trim_mode = trim_mode,           # patch 0083
     gamma_v_resolution = gv_totals,  # patch 0085
     gamma_v_resolution_cells = gv_info,
-    export_period_count = if (is.null(cfg$stage2_export_period_count)) "rows" else cfg$stage2_export_period_count,
+    export_period_count = if (is.null(cfg$stage2_export_period_count)) "panel" else cfg$stage2_export_period_count,   # patch 0086: absent == panel
     trimmed_rows = trimmed_rows,     # patch 0083
     fallback_info = fallback_info,   # patch 0077
     trim_bounds = if (exists("sig_lo")) list(

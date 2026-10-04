@@ -56,7 +56,7 @@ test_that("CLI, build_config, validate_config and the wrapper carry the sigma-ca
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
   o <- parse_cli(base)
-  expect_equal(o$stage1_sigma_cap, 10); expect_identical(o$stage1_capped_omega, "keep"); expect_true(is.na(o$stage2_sigma_fallback_pin))
+  expect_equal(o$stage1_sigma_cap, 50); expect_identical(o$stage1_capped_omega, "drop"); expect_true(is.na(o$stage2_sigma_fallback_pin))   # patch 0086 defaults
   o2 <- parse_cli(c(base, "--stage1-sigma-cap", "50", "--stage1-capped-omega", "drop", "--stage2-sigma-fallback-pin", "2.4618"))
   expect_equal(o2$stage1_sigma_cap, 50); expect_identical(o2$stage1_capped_omega, "drop"); expect_equal(o2$stage2_sigma_fallback_pin, 2.4618)
   cfg2 <- build_config(o2)
@@ -69,7 +69,7 @@ test_that("CLI, build_config, validate_config and the wrapper carry the sigma-ca
   bad <- cfg; bad$stage1_sigma_cap <- 1; expect_error(validate_config(bad), "stage1_sigma_cap")
   bad <- cfg; bad$stage1_capped_omega <- "maybe"; expect_error(validate_config(bad), "stage1_capped_omega")
   bad <- cfg; bad$stage2_sigma_fallback_pin <- 0.5; expect_error(validate_config(bad), "stage2_sigma_fallback_pin")
-  expect_equal(formals(run_stage1_liml)$sigma_cap, 10)                 # absent argument == the <= v0.8.3 rule
+  expect_equal(formals(run_stage1_liml)$sigma_cap, 10)                 # the LIBRARY default stays 10; the CLI/config default is 50 (patch 0086)
   expect_equal(formals(estimate_cell_liml)$sigma_start_cap, 10)
 })
 

@@ -62,6 +62,47 @@ stage2b_priors_from_regional <- function(regional_clean, rows = c("all", "estima
 }
 
 
+#' Stage-2 sigma-edge rule (patch 0086).
+#'
+#' A Stage-1 cell whose published sigma is a box edge (sigma_capped: the Step-2
+#' clamp, the sigma edge of the boundary box, or the corner of the omega-cap
+#' edge) has no sigma estimate. Under rule "fallback" such cells leave the
+#' clean set, so Stage 2 gives them the fallback sigma like any cell without
+#' an estimate, sigma_robust is FALSE on them, they carry no sigma_V, and
+#' their omega is out of the priors. "publish" (every release through v0.9.0
+#' as shipped) keeps them with sigma = cap.
+#' @return the (possibly filtered) table with attribute n_edge_dropped.
+apply_sigma_edge_rule <- function(sigma_clean, rule = c("publish", "fallback")) {
+  rule <- match.arg(rule)
+  if (rule == "publish" || !"sigma_capped" %in% names(sigma_clean)) {
+    data.table::setattr(sigma_clean, "n_edge_dropped", 0L); return(sigma_clean)
+  }
+  keep <- !(sigma_clean$sigma_capped %in% TRUE)
+  out <- sigma_clean[keep]
+  data.table::setattr(out, "n_edge_dropped", sum(!keep))
+  out
+}
+
+
+#' Step between two Stage-2b passes of the exporter-specific gamma_V
+#' iteration (patch 0086): |d ln gamma| on Tier-1 rows directly estimated and
+#' converged in both passes, the rows the iteration touches.
+#' @return named numeric: n, p50, p90, p99, max, share_lt_1e2.
+gamma_v_step <- function(prev, cur) {
+  key <- c("importer", "exporter", "good")
+  pick <- function(x) {
+    y <- x[tier == 1L & convergence == 0L & is.finite(gamma) & gamma > 0, c(key, "gamma"), with = FALSE]
+    for (k in key) y[[k]] <- as.character(y[[k]])
+    y
+  }
+  m <- merge(pick(prev), pick(cur), by = key, suffixes = c(".a", ".b"))
+  d <- abs(log(m$gamma.b) - log(m$gamma.a))
+  q <- function(p) if (length(d)) unname(quantile(d, p)) else NA_real_
+  c(n = nrow(m), p50 = q(.5), p90 = q(.9), p99 = q(.99), max = if (length(d)) max(d) else NA_real_,
+    share_lt_1e2 = if (length(d)) mean(d < 1e-2) else NA_real_)
+}
+
+
 #' Initialize country-level starting values from regional estimates.
 #'
 #' Creates a lookup table mapping (region, product) -> (sigma, gamma)

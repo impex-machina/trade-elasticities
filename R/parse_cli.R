@@ -167,16 +167,16 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     optparse::make_option(
       c("--stage1-sigma-cap"),
-      type = "double", default = 10,
+      type = "double", default = 50,
       help = paste("Stage-1 sigma cap (estimate_cell_liml's sigma_start_cap):",
                    "closed-form HLIML admissibility, the sigma edge of the",
-                   "boundary box and the Step-2 clamp. 10 reproduces every",
-                   "release through v0.8.3 (patch 0084). Default: %default"),
+                   "boundary box and the Step-2 clamp. 50 since v0.9.0 (patch",
+                   "0086); 10 reproduces every release through v0.8.3. Default: %default"),
       metavar = "CAP"
     ),
     optparse::make_option(
       c("--stage1-capped-omega"),
-      type = "character", default = "keep",
+      type = "character", default = "drop",
       help = paste("Whether a sigma-capped Stage-1 cell's omega enters the",
                    "Stage-2a good-level priors: 'keep' (through v0.8.3) or",
                    "'drop' (patch 0084). Default: %default"),
@@ -239,9 +239,13 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Where Eq. (11)'s reference-destination gamma_V comes from at Stage 2b: 'regional' (the Stage-2a regional median; every release through v0.8.3) or 'table' (exporter-specific gamma_jV from the Stage-2b table given by --stage2-gamma-v-table, regional median where absent; patch 0085). Default: %default"),
     optparse::make_option(c("--stage2-gamma-v-table"), type = "character", default = "", metavar = "PATH",
       help = "A previous Stage-2b country table (.rds) for --stage2-gamma-v-source table (patch 0085)."),
-    optparse::make_option(c("--stage2-export-period-count"), type = "character", default = "rows", metavar = "MODE",
+    optparse::make_option(c("--stage2-export-period-count"), type = "character", default = "panel", metavar = "MODE",
       help = "The Broda-Weinstein T of an export-side row: 'rows' (post-filter row count; every release through v0.8.3) or 'panel' (the pair's period_count, the import side's definition; patch 0085). Default: %default"),
-    optparse::make_option(c("--stage2-trim"), type = "character", default = "legacy", metavar = "MODE",
+    optparse::make_option(c("--stage2-gamma-v-passes"), type = "integer", default = 3L, metavar = "N",
+      help = "Stage-2b passes of the exporter-specific gamma_V iteration: pass 1 uses --stage2-gamma-v-source, each further pass takes gamma_jV from the previous pass's own table (patch 0086). 1 = single pass (every release through v0.8.3). Default: %default"),
+    optparse::make_option(c("--stage2-sigma-edge"), type = "character", default = "publish", metavar = "RULE",
+      help = "Stage-1 cells whose published sigma is a box edge (sigma_capped): 'publish' (keep sigma = cap in Stage 2) or 'fallback' (treat as no estimate: fallback sigma, sigma_robust FALSE, no sigma_V, out of the priors; patch 0086). Default: %default"),
+    optparse::make_option(c("--stage2-trim"), type = "character", default = "v2", metavar = "MODE",
       help = "Stage-2 tail-trim semantics: 'legacy' (sigma bounds as row quantiles although sigma is cell-level; Stage-2a plateau replacement on; every release through v0.8.3) or 'v2' (sigma bounds over cells, plateau replacement off; patch 0083). Both record the removed rows in <prefix>_stage2_trimmed.csv. Default: %default"),
     optparse::make_option(c("--stage2b-prior-source"), type = "character", default = "estimated", metavar = "ROWS",
       help = "Stage-2a rows behind the Stage-2b good-level prior and gamma_V medians: 'estimated' (v0.8.3 default, patch 0080: directly estimated rows only) or 'all' (every row with gamma > 0, incl. Stage-2a's own Tier-3 imputations; reproduces every release through v0.8.2). Default: %default"),
@@ -355,6 +359,8 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_gamma_v_source %in% c("regional", "table")) fail(sprintf("--stage2-gamma-v-source must be 'regional' or 'table', got: '%s'", opts$stage2_gamma_v_source))   # patch 0085
   if (identical(opts$stage2_gamma_v_source, "table") && !(nzchar(opts$stage2_gamma_v_table) && file.exists(opts$stage2_gamma_v_table))) fail(sprintf("--stage2-gamma-v-source table needs --stage2-gamma-v-table pointing at an existing .rds, got: '%s'", opts$stage2_gamma_v_table))   # patch 0085
   if (!opts$stage2_export_period_count %in% c("rows", "panel")) fail(sprintf("--stage2-export-period-count must be 'rows' or 'panel', got: '%s'", opts$stage2_export_period_count))   # patch 0085
+  if (is.na(opts$stage2_gamma_v_passes) || opts$stage2_gamma_v_passes < 1L) fail(sprintf("--stage2-gamma-v-passes must be an integer >= 1, got: '%s'", opts$stage2_gamma_v_passes))   # patch 0086
+  if (!opts$stage2_sigma_edge %in% c("publish", "fallback")) fail(sprintf("--stage2-sigma-edge must be 'publish' or 'fallback', got: '%s'", opts$stage2_sigma_edge))   # patch 0086
   if (!(is.finite(opts$stage1_sigma_cap) && opts$stage1_sigma_cap > 1)) fail(sprintf("--stage1-sigma-cap must be a number > 1, got: '%s'", opts$stage1_sigma_cap))   # patch 0084
   if (!opts$stage1_capped_omega %in% c("keep", "drop")) fail(sprintf("--stage1-capped-omega must be 'keep' or 'drop', got: '%s'", opts$stage1_capped_omega))   # patch 0084
   if (!is.na(opts$stage2_sigma_fallback_pin) && !(is.finite(opts$stage2_sigma_fallback_pin) && opts$stage2_sigma_fallback_pin > 1)) fail(sprintf("--stage2-sigma-fallback-pin must be a number > 1 or omitted, got: '%s'", opts$stage2_sigma_fallback_pin))   # patch 0084

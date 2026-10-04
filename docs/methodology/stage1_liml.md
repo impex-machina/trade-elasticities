@@ -262,3 +262,17 @@ changed, fallback rows, everything else); shipping it would carry the
 validation debt listed in the v0.8.3 audit (parity reliability on the
 cap-50 Stage-1 table, the bootstrap-SE census, the trim sensitivity set,
 and the template prose "cap value 10").
+
+**v0.9.0 (patch 0086).** `--stage1-sigma-cap` defaults to 50 and
+`--stage1-capped-omega` to `drop`; 10 / `keep` reproduce every release
+through v0.8.3. The library defaults of `run_stage1_liml(sigma_cap = 10)`
+and `estimate_cell_liml(sigma_start_cap = 10)` are unchanged, so harnesses
+that call the estimator directly keep the historical cap unless they pass
+one. The v0.9 rc session (S3 `v090rc_run_20261004/`, run A) measured the
+change on the universe: 68,518 cells (24.4%) publish a different σ — the
+24,780 that sat at the cap plus some 42,000 whose closed-form HLIML point
+had σ in (10, 50) and had been routed to Step 2 — no shipped interior cell
+moved, 1,667 cells gained an estimate, σ_se is finite on 95.2% of ok cells
+(89.8% before), and 13,810 cells (7.6%) sit at the new edge, mostly
+boundary optima that followed it. `--stage2-sigma-edge fallback` is the
+rule for those (see `stage2_country.md`).
