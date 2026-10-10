@@ -593,3 +593,45 @@ A/B — it is the treatment the pipeline already gives a cell with no Stage-1
 estimate, an ω at its cap, and a capped σ's SE — and verified post hoc in
 the v0.9.0 run's gate against the rc chain (13,810 cells at cap 50). `tests/testthat/test-v090-defaults.R` locks the
 defaults, the reproducers, and both helpers.
+
+### v0.9.1: the edge cells' Stage-1 SE leaked into the σ-propagation (patch 0090)
+
+The σ-edge rule drops a cell from the clean set, so Stage 2b gives it the
+fallback σ — but through v0.9.0 `run_estimation.R` built the two lookups the
+σ-propagation step reads, `sigma_se_lookup` and `sigma_adjust_lookup`, from
+the **full** Stage-1 table rather than from the clean set. On the 13,810
+edge cells `estimate_importer_product_fixed_sigma()` therefore ran
+`compute_dgamma_dsigma()` and `assess_sigma_robust()` with the fallback σ
+(2.306) beside the Stage-1 SE of the discarded σ = 50 point. On the Step-2
+clamp cells (adjust 4) and the σ-cap-edge boundary cells that SE is NA and
+the screen fails as documented; on the ω-edge corner cells — boundary optima
+on the ω floor or cap whose free σ landed within 1e-3 of the cap, flagged
+`sigma_capped` by value, adjust 6/8 — the HNCS edge SE for σ is finite, so
+`sigma_se`, `dgamma_dsigma` and `gamma_se_total` were published for an
+estimate the row does not carry and `sigma_robust` could pass. The 2026-10-10
+fresh-eyes review reproduced it on the synthetic fixture (a dropped cell with
+a planted SE of 0.3 and adjust 6 published σ 2.306, `sigma_se` 0.3,
+`sigma_robust` TRUE and a finite `gamma_se_total` on every estimated row);
+the v0.9.0 README and card sentence "sigma_robust FALSE on the 13,810 edge
+cells" held only for the cells whose SE was NA.
+
+Patch 0090 does three things. `stage2b_sigma_lookups()`
+(`R/iteration_helpers.R`) builds the σ, σ_se, adjust and σ_V lookups from the
+one clean table, so a cell outside it has no row in any of them; the cell
+estimator additionally blanks the SE and adjust code whenever the cell's σ
+is the fallback, so a hand-built config cannot leak either (a fallback σ has
+no Stage-1 SE of its own — the same treatment every other fallback cell
+already received). `apply_sigma_edge_se_rule()` and
+`scripts/apply_sigma_edge_se_rule.R` apply the rule to an existing table:
+for the cells whose Stage-1 row is `status == "ok"` with `sigma_capped`
+TRUE, `sigma_se`, `dgamma_dsigma` and `gamma_se_total` are set to NA and
+`sigma_robust` to FALSE on the rows that carry a flag (Tier-3 rows keep NA).
+γ, `gamma_se` and every other column are untouched because the optimizer
+never read the SE, so the corrected table is what a re-run under the patch
+publishes — which is how the v0.9.1 table is produced from the shipped
+v0.9.0 table without a box session, as the v0.8.3 `opt_tariff` correction
+was. Bit-preserving everywhere else: a cell that is not a fallback cell
+reads its SE and adjust code exactly as before. `tests/testthat/
+test-sigma-edge-se.R` locks the estimator, the lookup builder and the
+script (35 assertions). The census of the correction on the shipped table
+is the v0.9.1 card entry.

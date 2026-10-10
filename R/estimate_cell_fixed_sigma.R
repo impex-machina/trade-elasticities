@@ -431,7 +431,11 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     match_row <- cfg$sigma_lookup[importer == focal_importer & good == g_code]
     if (nrow(match_row) > 0L) sigma_val <- match_row$sigma[1]
   }
-  if (is.na(sigma_val) || sigma_val <= 1) {
+  # (patch 0090) remember whether the cell's sigma is the fallback: a fallback
+  # sigma has no Stage-1 SE or adjust code of its own, so the propagation
+  # block below must not read whatever the lookups hold for the cell.
+  sigma_is_fallback <- is.na(sigma_val) || sigma_val <= 1
+  if (sigma_is_fallback) {
     sigma_val <- if (!is.null(cfg$sigma_fallback)) cfg$sigma_fallback else
       return(cell_failure("no_sigma_estimate"))
   }
@@ -742,6 +746,13 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   adj_row <- if (!is.null(cfg$sigma_adjust_lookup))
     cfg$sigma_adjust_lookup[importer == focal_importer & good == g_code] else NULL
   adjust_cell <- if (!is.null(adj_row) && nrow(adj_row)) as.integer(adj_row$adjust[1]) else NA_integer_
+  # (patch 0090) A fallback sigma carries no Stage-1 SE or adjust code: whatever
+  # the lookups hold for the cell belongs to an estimate the row does not
+  # publish (v0.9.0's sigma-edge cells, whose omega-edge corner members had a
+  # finite projected sigma SE and adjust 6/8). With NA here the propagation
+  # is skipped, sigma_robust is FALSE and sigma_se / dgamma_dsigma /
+  # gamma_se_total publish NA, as on every other fallback cell.
+  if (sigma_is_fallback) { sigma_se_cell <- NA_real_; adjust_cell <- NA_integer_ }
 
   se_cond_vec <- c(gamma_k_se, gamma_j_se)            # d_hat order: [k, j_1..j_J]
   if (result$convergence == 0L && is.finite(sigma_se_cell)) {

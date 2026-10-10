@@ -9,6 +9,19 @@ tags:
   - tariffs
   - baci
 pretty_name: "Trade Elasticities (BACI HS92 V202601)"
+configs:
+  - config_name: bootstrap_se_cells
+    data_files: "validation/bootstrap_se_cells.csv"
+  - config_name: bootstrap_se_summary
+    data_files: "validation/bootstrap_se_summary.csv"
+  - config_name: liml_validation_tier1a
+    data_files: "validation/liml_validation_tier1a.csv"
+  - config_name: liml_validation_tier1b
+    data_files: "validation/liml_validation_tier1b.csv"
+  - config_name: se_calibration_mc_summary
+    data_files: "validation/se_calibration_mc_summary.csv"
+  - config_name: se_calibration_mc_per_param
+    data_files: "validation/se_calibration_mc_per_param.csv"
 ---
 
 <!--
@@ -32,6 +45,25 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.9.1 (2026-10-XX).** Correction to the sigma-propagation columns on the
+> 13,810 cells whose Stage-1 sigma is a box edge (patch 0090). Under the v0.9.0
+> sigma-edge rule those cells take the fallback sigma, but the Stage-1 sigma_se
+> and adjust lookups were still built from the full Stage-1 table, so on the
+> omega-edge corner cells among them (a finite projected sigma SE, adjust 6/8)
+> sigma_se, dgamma_dsigma and gamma_se_total were published for the discarded
+> sigma = 50 point beside the fallback sigma and sigma_robust could pass; the
+> v0.9.0 sentence "sigma_robust FALSE on the 13,810 edge cells" held only for
+> the cells whose SE was NA. Corrected on the shipped table by
+> `scripts/apply_sigma_edge_se_rule.R` without re-estimation: gamma, gamma_se
+> and every other column are identical to v0.9.0; on the edge cells sigma_se,
+> dgamma_dsigma and gamma_se_total are NA and sigma_robust is FALSE, as on every
+> other fallback cell. Census: <fill: edge rows N; sigma_se finite N -> 0; gamma_se_total finite N -> 0; sigma_robust TRUE N -> 0 (x% of edge rows had passed); sigma_robust TRUE over the table 24.4% -> x%>.
+> Stage 1 and Stage 2a unchanged (sha256-gated). Also in this release: the
+> dataset card's changelog entries are separated so they render as paragraphs,
+> and the hub viewer is configured one CSV per subset.
+> Data revision: `<fill at the card step after the HF upload>`. **v0.9.0 remains available
+> pinned at revision `af5d7c659f2a17e1c3e3ce8765d75731616a292c`.**
+>
 > **v0.9.0 (2026-10-10).** Methodology release, from the v0.9 rc attribution
 > ladder (five runs, one change each; compare docs in docs/methodology/).
 > (1) The Stage-1 sigma cap is 50 (10 through v0.8.3): 68,518 cells publish
@@ -52,6 +84,7 @@ under another cleaning rule must say which rule.
 > rows 6,813,953 -> 6,806,221; gamma median 0.656 -> 0.644 (1/gamma 1.52 -> 1.55); opt_tariff row-level median 0.751 -> 0.733; sigma median 2.462 -> 2.306 because the fallback sigma (the clean-cell median, now without the 13,810 edge cells) moved, not the estimates; 15.2% of rows carry it (10.8% without a Stage-1 estimate, 4.4% edge cells); gamma_se_status ok 69.5% -> 69.3%, non_converged 2.3% -> 2.4%; sigma_robust 23.7% -> 24.4%. Stage 1 re-estimated at cap 50: 182,912 ok cells (181,245), 68,518 cells publish a different sigma, sigma_se finite on 95.2% of ok cells (89.8%), 35,871 rows with sigma above 37 (max 49.99); the 13,810 edge cells carry the fallback sigma with sigma_robust FALSE. Exporter-specific gamma_V resolved on 93% of export rows; step sizes on Tier-1 rows p50 / p90 / p99 0.21% / 9.3% / 88% (pass 1 to 2) and 0.04% / 2.5% / 40% (pass 2 to 3), 83.6% within 1% after pass 3 -- the tail residual is a stated limitation. Optimizer fallback 7,710 cells (restart worse on 6,641). Tail trim 85,787 rows (gamma 24,550 high / 19,230 low, sigma 42,007 low; no high sigma bound). Bootstrap-SE census re-run at cap 50 (750 x 399): the robust same-branch dispersion ratio is 1.18x overall (1.0-1.5x by route at cap 10) while the unconditional SD ratio is 10.7x (3.3-4.5x at cap 10), because the cap-10 clamp had truncated the replicate tails. Split-half parity reliability re-measured on the shipped configuration: r_within 0.324, rank rho 0.338 (0.298 at cap 10). Attribution ladder and gates: S3 v090rc_run_20261004 (runs A-E) and v090rel_run_20261010 (G, G2). Data revision:
 > `af5d7c659f2a17e1c3e3ce8765d75731616a292c`. **v0.8.3 remains available
 > pinned at revision `60be1e6bae2a575ec1af2094beb7f542a120f812`.**
+>
 > **v0.8.3 (2026-10-02).** Two Stage-2 fixes from the 2026-09-29 audit,
 > both bit-preserving under the previous rule (`--stage2-fallback legacy`,
 > `--stage2b-prior-source all` reproduce v0.8.2). (1) A cell whose
@@ -78,6 +111,7 @@ under another cleaning rule must say which rule.
 > and in opt_tariff only elsewhere. Numbers vs v0.8.2: gamma median 0.656 unchanged (1/gamma median 1.524 -> 1.525); opt_tariff row-level median 0.760 -> 0.751 (cell-level 0.647 -> 0.638), net of the two rule changes and the opt_tariff correction; gamma_se_status ok 69.8% -> 69.5% and non_converged 2.0% -> 2.3% (2,768 cells that v0.8.2 labelled ok at a stalled restart now read non_converged); sigma_robust 23.6% -> 23.7%; rows 6,812,560 -> 6,813,953. Optimizer fallback: 7,295 Stage-2b cells reached the cap, the restart was the worse point on 6,274 (86%) and had reported convergence on 3,672; 398 Stage-2a cells. opt_tariff recomputed over published rows on 25,894 Stage-2b cells (11.2%; 1,528 had been above every gamma they publish) and 1,651 Stage-2a cells (125). Stage 1 regenerated on the v0.8.3 box and byte-identical to the shipped file (sha256 591d3bde...). The shipped summary.rds and summary.txt were written before the opt_tariff correction; the tables and the README reflect it.
 > Data revision: `60be1e6bae2a575ec1af2094beb7f542a120f812`. **v0.8.2 remains available pinned at
 > revision `7f85c8c31c4d2f8dcd3f8d4b848634f4217278c6`.**
+>
 > **v0.8.2 (2026-09-29).** Validation only: Pillar 3 (the standard-error
 > Monte Carlo) re-captured for the gamma_se form shipped since v0.7.4 -- the
 > sandwich with the ridge in lambda/gamma^2 units -- and extended with a
@@ -88,6 +122,7 @@ under another cleaning rule must say which rule.
 > validation/se_calibration_mc_*.csv change).
 > Data revision: `7f85c8c31c4d2f8dcd3f8d4b848634f4217278c6`. **v0.8.1 remains available pinned at
 > revision `0e3e446d0042268508e42414e95ad131f561ca11`.**
+>
 > **v0.8.1 (2026-09-29).** The Stage-2 cell optimizer's iteration cap rises
 > from 500 to 5,000: on a 2% product subsample non-converged cells fall
 > from 7.6% to 1.5% of rows, the freed cells moving a little further from
@@ -101,6 +136,7 @@ under another cleaning rule must say which rule.
 > parity.md). Numbers vs v0.8.0: non_converged 9.0% -> 2.0%; gamma_se finite 63.4% -> 69.8% (median 0.173 -> 0.199); gamma median 0.667 -> 0.656; opt_tariff median 0.749 -> 0.760 (cell median 0.647 unchanged); gamma_shrink_wt median 0.923 -> 0.902; rows +988 (trim membership).
 > Data revision: `0e3e446d0042268508e42414e95ad131f561ca11`. **v0.8.0 remains available pinned at
 > revision `60aad7c0d0534fcdbcb602daddd7269542167789`.**
+>
 > **v0.8.0 (2026-09-28).** Stage-2 specification: the reference exporter's
 > own export-side moment (Soderbery's Exports(s_ikg)) and the importer-
 > exporter constant of his footnote 14 (concentrated out of the import
@@ -116,6 +152,7 @@ under another cleaning rule must say which rule.
 > Numbers vs v0.7.4: opt_tariff median 0.723 -> 0.749 (cell median 0.617 -> 0.647); gamma median 0.665 -> 0.667; gamma_se finite 63.0% -> 63.4%; insufficient_df 0.5% -> 0.1%; non_converged 8.9% -> 9.0%; Stage 2a gamma_se now in the shipped sandwich form (median 0.156, was 0.524 legacy-form).
 > Data revision: `60aad7c0d0534fcdbcb602daddd7269542167789`. **v0.7.4 remains available pinned at
 > revision `587b849f1e5733af8f4e8d261ab63759c4a60d3e`.**
+>
 > **v0.7.4 (2026-09-25).** Stage-2 correction: the log-ridge penalty on
 > gamma now applies to every coordinate. Through v0.7.3 it skipped
 > coordinates below 1e-5 while the optimizer bound was 1e-6, and 828,294 of
@@ -139,6 +176,7 @@ under another cleaning rule must say which rule.
 > `docs/results/stage2_lambda_curve_v074rc.md`.
 > Data revision: `587b849f1e5733af8f4e8d261ab63759c4a60d3e`. **v0.7.3 remains available pinned at
 > revision `d4225cad88e68061b0af39e2917a26ee50db90ec`.**
+>
 > **v0.7.3 (2026-09-24).** Validation-only release: **every point estimate,
 > routing field and gamma SE is identical to v0.7.2** (Stage 1: 280,649 cells,
 > ok 181,245, interior 78,526 / Step 2 47,479 / boundary 55,240; sigma 2.462;
@@ -170,6 +208,7 @@ under another cleaning rule must say which rule.
 > `docs/methodology/stage1_liml.md` ("Step-2 standard errors", "v0.7.3 rc").
 > Data revision: `d4225cad88e68061b0af39e2917a26ee50db90ec`. **v0.7.2 remains available pinned at
 > revision `b1240168d4b83697eb30cdf99551924a55422ad0`.**
+>
 > **v0.7.2 (2026-09-21).** Validation-only release: **every estimate, SE and
 > routing field is identical to v0.7.1.** The four Pillar-2/3 validation
 > files (`liml_validation_tier1a/b.csv`, `se_calibration_mc_summary.csv`,
@@ -190,6 +229,7 @@ under another cleaning rule must say which rule.
 > consumers need not re-pull; consumers of the validation CSVs should.
 > Data revision: `b1240168d4b83697eb30cdf99551924a55422ad0`. **v0.7.1 remains available pinned at
 > revision `49466cd24ee2547d838b658dc3869c86deee63bf`.**
+>
 > **v0.7.1 (2026-09-21).** Validation-only release: **every point estimate and
 > routing field is identical to v0.7.0** (Stage 1: 280,649 cells, ok 181,245,
 > interior 78,526 / Step 2 47,479 / boundary 55,240; sigma 2.462; Stage 2b:
@@ -220,6 +260,7 @@ under another cleaning rule must say which rule.
 > `sigma_robust`; point-estimate consumers need not. Data revision:
 > `49466cd24ee2547d838b658dc3869c86deee63bf`. **v0.7.0 remains available pinned at revision
 > `feabe6f7fbc8f98bdb596e11e81aa70bac188faa`.**
+>
 > **v0.7.0 (2026-09-02).** Corrects the treatment of a negative algebraic
 > omega in the Feenstra inversion. When rho exceeds (sigma-1)/sigma the
 > inversion has no positive omega -- the point is the continuation of the
@@ -255,6 +296,7 @@ under another cleaning rule must say which rule.
 > consuming sigma OR omega OR gamma. Data revision: `feabe6f7fbc8f98bdb596e11e81aa70bac188faa`. **v0.6.1 remains
 > available pinned at revision `96e1589e4b5bd0bde0b3f2643b673ee09ff9f680`**
 > -- do not mix versions within one analysis.
+>
 > **v0.6.1 (2026-09-01).** Corrects the HLIML boundary search (the routing
 > introduced in v0.6.0 for cells where neither the closed-form interior
 > estimator nor the Step-2 fallback yields an admissible point). The v0.6.0

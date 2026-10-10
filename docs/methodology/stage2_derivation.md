@@ -152,8 +152,8 @@ $$
 
 $$
 + \frac{1 - \gamma_V (\sigma-2)}{(1+\gamma_V)(\sigma-1)} \cdot X^{exp}_{m,3}
-+ \frac{1 - \gamma_V (\sigma_V-2)}{(1+\gamma_V)(\sigma-1)} \cdot X^{exp}_{m,4}
-+ \frac{\gamma_I (\sigma_V-2) - 1}{(1+\gamma_I)(\sigma-1)} \cdot X^{exp}_{m,5}
++ \frac{\gamma_V (\sigma_V-2) - 1}{(1+\gamma_V)(\sigma-1)} \cdot X^{exp}_{m,4}
++ \frac{1 - \gamma_I (\sigma_V-2)}{(1+\gamma_I)(\sigma-1)} \cdot X^{exp}_{m,5}
 $$
 
 $$
@@ -161,6 +161,15 @@ $$
 + \frac{\sigma - \sigma_V}{\sigma-1} \cdot X^{exp}_{m,7}
 + \frac{\sigma_V - \sigma}{\sigma-1} \cdot X^{exp}_{m,8}
 $$
+
+**Sign note (patch 0090, 2026-10-10 fresh-eyes review).** The $X_4$ and $X_5$
+coefficients above carry the G1 correction of v0.4.1 (`s56 = -1` in both
+`.cpp` files): the printed Eq. (11) has them negated, and an independent
+re-derivation from the product of the Eq. (8) and Eq. (9) residuals gives the
+signs shown here. Through v0.9.0 this document listed the printed signs while
+the code (objective, gradient, Jacobian and `tests/testthat/test-eq11-signs.R`)
+already used the corrected ones; the derivative of $X_5$ below is the
+corrected coefficient's.
 
 Where $\gamma_I$ is the parameter at index `exp_jmap[m]` in $\theta$. Differentiate with respect to $\gamma_I$:
 
@@ -170,8 +179,8 @@ Where $\gamma_I$ is the parameter at index `exp_jmap[m]` in $\theta$. Differenti
 | $X_1$ | $(\gamma_I (\sigma-2) - 1) / ((1+\gamma_I)(\sigma-1))$ | $1 / (1+\gamma_I)^2$ |
 | $X_2$ | $\gamma_V / ((1+\gamma_V)(\sigma-1))$ | $0$ |
 | $X_3$ | $(1 - \gamma_V (\sigma-2)) / ((1+\gamma_V)(\sigma-1))$ | $0$ |
-| $X_4$ | $(1 - \gamma_V (\sigma_V-2)) / ((1+\gamma_V)(\sigma-1))$ | $0$ |
-| $X_5$ | $(\gamma_I (\sigma_V-2) - 1) / ((1+\gamma_I)(\sigma-1))$ | $(\sigma_V-1) / ((1+\gamma_I)^2 (\sigma-1))$ |
+| $X_4$ | $(\gamma_V (\sigma_V-2) - 1) / ((1+\gamma_V)(\sigma-1))$ | $0$ |
+| $X_5$ | $(1 - \gamma_I (\sigma_V-2)) / ((1+\gamma_I)(\sigma-1))$ | $-(\sigma_V-1) / ((1+\gamma_I)^2 (\sigma-1))$ |
 | $X_6$ | $-(\gamma_V (1+\gamma_I) + \gamma_I (1+\gamma_V)) / ((1+\gamma_I)(1+\gamma_V)(\sigma-1))$ | $-1 / ((1+\gamma_I)^2 (\sigma-1))$ |
 | $X_7$ | $(\sigma - \sigma_V) / (\sigma-1)$ | $0$ |
 | $X_8$ | $(\sigma_V - \sigma) / (\sigma-1)$ | $0$ |
@@ -184,7 +193,7 @@ $$
 \frac{\partial \text{pred}^{exp}_m}{\partial \gamma_I}
 = \frac{X^{exp}_{m,0}}{(1+\gamma_I)^2 (\sigma-1)}
 + \frac{X^{exp}_{m,1}}{(1+\gamma_I)^2}
-+ \frac{(\sigma_V - 1) X^{exp}_{m,5}}{(1+\gamma_I)^2 (\sigma-1)}
+- \frac{(\sigma_V - 1) X^{exp}_{m,5}}{(1+\gamma_I)^2 (\sigma-1)}
 - \frac{X^{exp}_{m,6}}{(1+\gamma_I)^2 (\sigma-1)}
 $$
 

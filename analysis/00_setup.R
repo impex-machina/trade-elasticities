@@ -349,14 +349,22 @@ stage2b_summary <- list(
 # schema, so we identify them as the two value spikes: the cap is exactly 10;
 # the fallback is the most-common NON-cap sigma (one value shared across a
 # large block of cells, where genuine cell-specific estimates do not repeat).
-sigma_cap_value <- max(stage2b_dt$sigma, na.rm = TRUE)   # patch 0086: the cap is the largest published sigma (10 through v0.8.3, 50 since v0.9.0)
-.sig_spikes <- stage2b_dt[sigma != sigma_cap_value, .N, by = sigma][order(-N)]
+# (patch 0090) The cap is read from the Stage-1 table -- the largest sigma on a
+# sigma_capped cell (10 through v0.8.3, 50 since v0.9.0) -- not from the
+# Stage-2b table: under --stage2-sigma-edge fallback (v0.9.0) no published
+# sigma sits at the cap, so max(stage2b_dt$sigma) was just the largest
+# estimated sigma and n_cap counted that one cell's rows. n_cap now counts the
+# rows at the cap (within the 1e-3 flag tolerance of boundary_flags()), which
+# is 0 under the edge rule and the cap spike through v0.8.3.
+sigma_cap_value <- if ("sigma_capped" %in% names(stage1) && any(stage1$sigma_capped %in% TRUE))
+  max(stage1$sigma[stage1$sigma_capped %in% TRUE], na.rm = TRUE) else max(stage2b_dt$sigma, na.rm = TRUE)
+.sig_spikes <- stage2b_dt[sigma < sigma_cap_value - 1e-3, .N, by = sigma][order(-N)]
 sigma_fallback_value <- .sig_spikes$sigma[1]
 stopifnot(sigma_fallback_value > 1, sigma_fallback_value < sigma_cap_value)
 stage2b_summary$sigma_provenance <- list(
   fallback_value = sigma_fallback_value,
   n_fallback     = sum(stage2b_dt$sigma == sigma_fallback_value),
-  n_cap          = sum(stage2b_dt$sigma == sigma_cap_value),
+  n_cap          = sum(stage2b_dt$sigma >= sigma_cap_value - 1e-3),   # patch 0090
   denominator    = nrow(stage2b_dt)
 )
 rm(.sig_spikes, sigma_cap_value, sigma_fallback_value)

@@ -578,12 +578,21 @@ if (should_run("2b", opts, paths)) {
     config_2b <- config_country
     # F7 (v0.4.0): character keys throughout -- dt_country's importer is
     # character, so stop relying on integer-to-string coercion in the joins.
-    config_2b$sigma_lookup     <- sigma_clean[, .(importer = as.character(importer), good, sigma)]
-
-    config_2b$sigma_se_lookup     <- sigma_estimates[, .(importer = as.character(importer),
-                                                         good     = as.character(good), sigma_se)]
-    config_2b$sigma_adjust_lookup <- sigma_estimates[, .(importer = as.character(importer),
-                                                         good     = as.character(good), adjust)]
+    # (patch 0090) The sigma, sigma_se and adjust lookups are built from the
+    # SAME clean set, so a cell that left it (no Stage-1 estimate, or a sigma
+    # on a box edge under --stage2-sigma-edge fallback) carries no Stage-1
+    # SE or adjust code into Stage 2b. Through v0.9.0 the SE and adjust
+    # lookups were built from the FULL Stage-1 table: the 13,810 edge cells
+    # took the fallback sigma while the propagation step still read their
+    # Stage-1 SE -- finite on the omega-edge corner cells (adjust 6/8) -- so
+    # sigma_se, dgamma_dsigma, gamma_se_total and sigma_robust were published
+    # for a sigma the table does not carry. stage2b_sigma_lookups() in
+    # R/iteration_helpers.R; scripts/apply_sigma_edge_se_rule.R corrects an
+    # existing table.
+    .lk <- stage2b_sigma_lookups(sigma_clean)
+    config_2b$sigma_lookup        <- .lk$sigma_lookup
+    config_2b$sigma_se_lookup     <- .lk$sigma_se_lookup
+    config_2b$sigma_adjust_lookup <- .lk$sigma_adjust_lookup
     config_2b$sigma_fallback   <- sigma_fallback
     config_2b$shrinkage_priors <- country_priors
     config_2b$shrinkage_lambda <- config$shrinkage_lambda
@@ -596,7 +605,7 @@ if (should_run("2b", opts, paths)) {
     config_2b$sigma_start     <- sigma_fallback
     config_2b$gamma_start     <- config_2b$gamma_V_default
 
-    config_2b$sigma_V_lookup <- sigma_clean[, .(importer = as.character(importer), good, sigma)]
+    config_2b$sigma_V_lookup <- .lk$sigma_V_lookup   # patch 0090: the same clean set
 
     rmap_2b <- build_region_map()
     gam_V_regional <- s2b_priors$gam_V_regional   # patch 0079: same row rule as the prior
