@@ -10,9 +10,10 @@
 #      no table (and removes a stale one);
 #   3. legacy is bit-identical to the <= v0.8.3 arithmetic (sigma bounds as row
 #      quantiles) and to the absent-key default;
-#   4. v2 takes the sigma bounds over cells, so a cell is removed on sigma
-#      grounds whole or not at all; the gamma trim is unchanged; rows shared
-#      with legacy carry identical values (membership is the only difference).
+#   4. v2 takes a LOW-tail sigma bound over cells (no high bound since patch
+#      0089: the sigma-edge rule handles cells whose sigma is a box edge), so a
+#      cell is removed on sigma grounds whole or not at all; the gamma trim is
+#      unchanged; rows shared with legacy carry identical values.
 # ============================================================================
 
 .tr_setup <- function() {
@@ -98,10 +99,12 @@ test_that("v2: sigma bounds over cells, whole-cell removal, gamma trim unchanged
   cfg_v2  <- cfg; cfg_v2$stage2_trim  <- "v2";     r2 <- .tr_run(cfg_v2, dt);  m2 <- attr(r2, "run_meta"); b2 <- m2$trim_bounds; tr2 <- m2$trimmed_rows
   expect_identical(m2$trim_mode, "v2")
   expect_setequal(names(r2), names(r1))
-  # sigma bounds are quantiles over the cells of the untrimmed estimated rows
+  # the sigma bound is a LOW-tail quantile over the cells of the untrimmed estimated rows; no high bound (patch 0089)
   src <- r0[is.na(tier) | is_estimated_row(tier, convergence)]
   cells <- unique(src[, .(importer, good, sigma)])
-  expect_equal(unname(b2$sig_lo), unname(quantile(cells$sigma, 0.05))); expect_equal(unname(b2$sig_hi), unname(quantile(cells$sigma, 0.95)))
+  expect_equal(unname(b2$sig_lo), unname(quantile(cells$sigma, 0.05))); expect_equal(b2$sig_hi, Inf)
+  expect_false(any(tr2$reason == "sigma_hi"))
+  expect_true(all(r2$sigma >= b2$sig_lo))
   # the gamma bounds are the legacy ones
   expect_equal(b2$gam_lo, b1$gam_lo); expect_equal(b2$gam_hi, b1$gam_hi)
   # a cell removed on sigma grounds is removed whole

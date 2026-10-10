@@ -815,9 +815,17 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     }
 
     if (trim_mode == "v2") {
+      # (patch 0089) v2's sigma trim is LOW-tail only, taken over cells. The
+      # low tail has a rationale (sigma near 1 breaks the 1/(sigma - 1)
+      # terms); the high tail has none once the sigma-edge rule handles the
+      # cells whose sigma is a box edge -- a large uncapped sigma is an
+      # estimate with a large SE that sigma_robust flags. With the cap at 10
+      # the cap spike sat above the 99.5th cell percentile and the high bound
+      # never bit; at cap 50 with the edge cells gone it deleted the top 0.5%
+      # of cells (sigma > 37), the very cells the cap was raised for.
       cell_sig <- unique(trim_src[, .(importer, good, sigma)])
       sig_lo <- quantile(cell_sig$sigma, trim_pct, na.rm = TRUE)
-      sig_hi <- quantile(cell_sig$sigma, 1 - trim_pct, na.rm = TRUE)
+      sig_hi <- Inf
     } else {
       sig_lo <- quantile(trim_src$sigma, trim_pct, na.rm = TRUE)
       sig_hi <- quantile(trim_src$sigma, 1 - trim_pct, na.rm = TRUE)

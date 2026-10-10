@@ -412,11 +412,17 @@ while rows above the γ bound were dropped instead: a row at 25 became the
 prior, a row at 40 vanished.
 
 `--stage2-trim {legacy|v2}` (config `stage2_trim`, checkpoint-stamped):
-`legacy` (default, and the rule for an absent key) reproduces every release
-through v0.8.3; `v2` takes the σ bounds as quantiles over cells (one σ per
-(importer, good)), so the cell drop is a deliberate 0.5%-of-cells rule, and
-retires the plateau replacement (the log ridge bounds γ and the γ tail trim
-handles the extremes). The γ trim is a row quantile under both. Under
+`legacy` reproduces every release through v0.8.3; `v2` (default from
+v0.9.0) takes the σ bound as a low-tail quantile over cells (one σ per
+(importer, good)), so the cell drop is a deliberate 0.5%-of-cells rule,
+has no high σ bound (patch 0089: the high tail is the σ-edge rule's job —
+a large uncapped σ is an estimate with a large SE that `sigma_robust`
+flags; with the cap at 10 the spike sat above the 99.5th cell percentile
+and the high bound never bit, while at cap 50 with the edge cells gone it
+deleted the top 0.5% of cells, σ > 37, the very cells the cap was raised
+for), and retires the plateau replacement (the log ridge bounds γ and the
+γ tail trim handles the extremes). The γ trim is a row quantile under
+both. Under
 **both** modes the rows the trim removes are recorded — `run_meta$trimmed_rows`
 and `<prefix>_stage2_trimmed.csv` beside the fallback table, with the
 bound each row violated — so the removal is no longer silent and a release
