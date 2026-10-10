@@ -2,92 +2,92 @@
   "n_cells": 280649,
   "n_products": 1240,
   "n_importers": 234,
-  "sy_fails": 169887,
-  "sy_evaluated": 181224,
-  "sy_pass_gs25": 69944,
-  "sy_gs25_evaluated": 181224,
-  "sargan_passes": 102978,
-  "sargan_evaluated": 177140,
-  "gs_both_passes": 18417,
-  "gs_both_evaluated": 78522,
+  "sy_fails": 171432,
+  "sy_evaluated": 182891,
+  "sy_pass_gs25": 70432,
+  "sy_gs25_evaluated": 182891,
+  "sargan_passes": 104199,
+  "sargan_evaluated": 178732,
+  "gs_both_passes": 19160,
+  "gs_both_evaluated": 81142,
   "adjust_x_final_source": {
     "code_0": {
-      "hliml": 78526,
+      "hliml": 81146,
       "step2_weighted": 0,
       "pre_discard": 0
     },
     "code_1": {
       "hliml": 0,
-      "step2_weighted": 33307,
+      "step2_weighted": 39503,
       "pre_discard": 0
     },
     "code_4": {
       "hliml": 0,
-      "step2_weighted": 10809,
+      "step2_weighted": 1934,
       "pre_discard": 0
     },
     "code_5": {
       "hliml": 0,
-      "step2_weighted": 3363,
+      "step2_weighted": 3868,
       "pre_discard": 0
     },
     "code_6_8_boundary": {
-      "hliml_boundary": 55240,
+      "hliml_boundary": 56461,
       "other": 0
     },
     "code_pre_discard": {
       "hliml": 0,
       "step2_weighted": 0,
-      "pre_discard": 99404
+      "pre_discard": 97737
     }
   },
   "routing_summary": {
-    "hliml_interior": 78526,
-    "step2_clean": 33307,
+    "hliml_interior": 81146,
+    "step2_clean": 39503,
     "step2_omega_only": 0,
     "omega_negative_floor": 0,
-    "clamped_at_sigma_cap": 10809,
-    "clamped_at_omega_cap": 3363,
-    "boundary_omega_floor": 15578,
-    "boundary_sigma_cap": 7259,
-    "boundary_omega_cap": 32403,
-    "boundary_total": 55240,
-    "pre_discard": 99404,
-    "step2_total": 47479,
-    "clamped_total": 14172
+    "clamped_at_sigma_cap": 1934,
+    "clamped_at_omega_cap": 3868,
+    "boundary_omega_floor": 15490,
+    "boundary_sigma_cap": 6399,
+    "boundary_omega_cap": 34572,
+    "boundary_total": 56461,
+    "pre_discard": 97737,
+    "step2_total": 45305,
+    "clamped_total": 5802
   },
   "omega_floor": {
-    "n_floor": 15582,
+    "n_floor": 15493,
     "denominator": 280649,
-    "n_floor_boundary_edge": 15578,
-    "n_floor_other": 4
+    "n_floor_boundary_edge": 15490,
+    "n_floor_other": 3
   },
   "edge_se": {
     "method": "hncs",
-    "n_boundary": 55240,
-    "n_boundary_with_se": 54594,
-    "n_boundary_with_sigma_se": 47568,
-    "n_boundary_status_fail": 646,
-    "share_ok_with_sigma_se": 0.898033049187564
+    "n_boundary": 56461,
+    "n_boundary_with_se": 55947,
+    "n_boundary_with_sigma_se": 49624,
+    "n_boundary_status_fail": 514,
+    "share_ok_with_sigma_se": 0.952047979356193
   },
   "step2_vce": {
     "method": "kclass",
-    "n_step2": 47479,
-    "n_step2_with_sigma_se": 36670,
-    "rel_se_median_step2": 0.238592270706143,
-    "rel_se_median_hliml": 0.252235832320123,
-    "rel_se_median_boundary": 0.297986256472183
+    "n_step2": 45305,
+    "n_step2_with_sigma_se": 43371,
+    "rel_se_median_step2": 0.29782707987135,
+    "rel_se_median_hliml": 0.259956039035221,
+    "rel_se_median_boundary": 0.316185082708481
   },
   "negative_omega": {
     "rule": "reject",
     "n_cf_beyond_inf_interior": 0,
-    "n_sigma_without_omega": 13494,
-    "n_boundary_corner": 2503,
+    "n_sigma_without_omega": 13069,
+    "n_boundary_corner": 2462,
     "denominator": 280649
   },
   "status_breakdown": {
-    "ok": 181245,
-    "all_inversions_failed": 27008,
+    "ok": 182912,
+    "all_inversions_failed": 25341,
     "fail_too_few_exporters": 4944,
     "step1_fail_singular_QWW": 1658,
     "step2_fail_singular_QWW_fellback_to_step1": 645,
@@ -96,15 +96,15 @@
   },
   "provenance_rates": {
     "interior_full_universe": {
-      "numerator": 78526,
+      "numerator": 81146,
       "denominator": 280649
     },
     "interior_conditional_on_ok": {
-      "numerator": 78526,
-      "denominator": 181245
+      "numerator": 81146,
+      "denominator": 182912
     },
     "step2_full_universe": {
-      "numerator": 47479,
+      "numerator": 45305,
       "denominator": 280649
     }
   }

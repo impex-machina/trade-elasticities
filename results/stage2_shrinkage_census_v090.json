@@ -1,0 +1,246 @@
+{
+  "meta": {
+    "n_rows_2b": 6806221,
+    "n_estimated": 4986810,
+    "n_goods_with_prior": 1240,
+    "shrink_wt_def": "half",
+    "timestamp": "2026-10-10 03:06:19 EDT",
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "stage2a": "data/derived/stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds",
+    "git_rev": "7af3f5a"
+  },
+  "q1": {
+    "n_estimated_rows": 4986810,
+    "n_with_shrink_wt": 4815805,
+    "shrink_wt": {
+      "p10": 0.19848197,
+      "p25": 0.56948661,
+      "p50": 0.89522644,
+      "p75": 0.98949883,
+      "p90": 0.99915074
+    },
+    "shrink_wt_mean": 0.74491688,
+    "share_gt_0_9": 0.49339892,
+    "share_gt_0_95": 0.40476639,
+    "share_gt_0_99": 0.24599065,
+    "implied_data_share": {
+      "p10": 0.00084926,
+      "p25": 0.01050117,
+      "p50": 0.10477356,
+      "p75": 0.43051339,
+      "p90": 0.80151803
+    },
+    "implied_data_share_mean": 0.25508312,
+    "implied_data_share_trade_weighted": 0.27394742,
+    "one_minus_shrink_wt_trade_weighted": 0.27394742,
+    "by_tier": [
+      {
+        "tier": 0,
+        "n": 196003,
+        "shrink_wt_median": 0.55050805,
+        "data_share_median": 0.44949195,
+        "data_share_trade_weighted": 0.2989601
+      },
+      {
+        "tier": 1,
+        "n": 4606261,
+        "shrink_wt_median": 0.9054079,
+        "data_share_median": 0.0945921,
+        "data_share_trade_weighted": 0.26426529
+      },
+      {
+        "tier": 2,
+        "n": 13541,
+        "shrink_wt_median": 0.99487107,
+        "data_share_median": 0.00512893,
+        "data_share_trade_weighted": 0.39939313
+      }
+    ],
+    "by_trade_rank": [
+      {
+        "rank_bin": "1",
+        "n": 201188,
+        "shrink_wt_median": 0.57970074,
+        "data_share_median": 0.42029926,
+        "data_share_trade_weighted": 0.32194474
+      },
+      {
+        "rank_bin": "2-3",
+        "n": 388127,
+        "shrink_wt_median": 0.58235352,
+        "data_share_median": 0.41764648,
+        "data_share_trade_weighted": 0.28168924
+      },
+      {
+        "rank_bin": "4-10",
+        "n": 1090162,
+        "shrink_wt_median": 0.73522695,
+        "data_share_median": 0.26477305,
+        "data_share_trade_weighted": 0.24353002
+      },
+      {
+        "rank_bin": ">10",
+        "n": 3136328,
+        "shrink_wt_median": 0.95685455,
+        "data_share_median": 0.04314545,
+        "data_share_trade_weighted": 0.18902419
+      }
+    ]
+  },
+  "q2": {
+    "unweighted": {
+      "n": 4986810,
+      "n_goods": 1240,
+      "n_cells": 210095,
+      "var_total": 0.88534079,
+      "share_good": 0.17433156,
+      "share_cell_within_good": 0.15361557,
+      "share_exporter_within_cell": 0.67205287
+    },
+    "trade_weighted": {
+      "n": 4986810,
+      "n_goods": 1240,
+      "n_cells": 210095,
+      "var_total": 1.39312206,
+      "share_good": 0.3249413,
+      "share_cell_within_good": 0.22246161,
+      "share_exporter_within_cell": 0.45259709
+    },
+    "tier1_only": {
+      "n": 4767358,
+      "n_goods": 1240,
+      "n_cells": 209541,
+      "var_total": 0.84590411,
+      "share_good": 0.18205234,
+      "share_cell_within_good": 0.16188019,
+      "share_exporter_within_cell": 0.65606747
+    },
+    "prior_only": {
+      "n": 4986810,
+      "n_goods": 1240,
+      "n_cells": 210095,
+      "var_total": 0.16686454,
+      "share_good": 1,
+      "share_cell_within_good": 1.41590675e-32,
+      "share_exporter_within_cell": 3.73009725e-33
+    }
+  },
+  "q3": {
+    "n_with_prior": 4986810,
+    "n_without_prior": 0,
+    "abs_dev": {
+      "p10": 0.00264328,
+      "p25": 0.0171776,
+      "p50": 0.1306857,
+      "p75": 0.59913996,
+      "p90": 1.40611081
+    },
+    "dev_signed": {
+      "p10": -1.05881929,
+      "p25": -0.25464192,
+      "p50": -0.00236859,
+      "p75": 0.05539136,
+      "p90": 0.49228705
+    },
+    "share_within_1pct": 0.19842324,
+    "share_within_5pct": 0.37091568,
+    "share_within_20pct": 0.56400886,
+    "abs_dev_trade_weighted_mean": 0.64006843,
+    "by_tier": [
+      {
+        "tier": 0,
+        "n": 204651,
+        "abs_dev_median": 0.69177554,
+        "abs_dev_p90": 2.09432452,
+        "share_within_5pct": 0.06760778
+      },
+      {
+        "tier": 1,
+        "n": 4767358,
+        "abs_dev_median": 0.11831352,
+        "abs_dev_p90": 1.35248927,
+        "share_within_5pct": 0.38320785
+      },
+      {
+        "tier": 2,
+        "n": 14801,
+        "abs_dev_median": 0.02354118,
+        "abs_dev_p90": 0.79333596,
+        "share_within_5pct": 0.60543207
+      }
+    ],
+    "reference_rows": {
+      "n": 204651,
+      "abs_dev": {
+        "p10": 0.08060099,
+        "p25": 0.26235646,
+        "p50": 0.69177554,
+        "p75": 1.35571512,
+        "p90": 2.09432452
+      },
+      "share_within_1pct": 0.01583672
+    }
+  },
+  "q4": {
+    "n_cells_ge2": 209594,
+    "within_cell_sd_log_gamma": {
+      "p10": 0.18917607,
+      "p25": 0.39344787,
+      "p50": 0.6966844,
+      "p75": 1.06980439,
+      "p90": 1.46184503
+    },
+    "across_good_sd_prior": 0.43144631,
+    "sd_log_gamma_all_estimated": 0.94092559,
+    "ratio_median_within_cell_sd_to_prior_sd": 1.61476501
+  },
+  "q5": {
+    "n_cells": 210095,
+    "abs_dev": {
+      "p10": 0.04496317,
+      "p25": 0.13431369,
+      "p50": 0.34377682,
+      "p75": 0.70128139,
+      "p90": 1.17593732
+    },
+    "share_within_5pct": 0.10965992,
+    "share_within_20pct": 0.34079821
+  },
+  "q6": [
+    {
+      "s_bin": "<0.5",
+      "n": 1042174,
+      "abs_dev_median": 0.7263221,
+      "abs_dev_p90": 1.91603682,
+      "data_share_median": 0.77838371
+    },
+    {
+      "s_bin": "0.5-0.9",
+      "n": 1397518,
+      "abs_dev_median": 0.37946791,
+      "abs_dev_p90": 1.7498149,
+      "data_share_median": 0.24741364
+    },
+    {
+      "s_bin": "0.9-0.95",
+      "n": 426837,
+      "abs_dev_median": 0.11348784,
+      "abs_dev_p90": 0.63754626,
+      "data_share_median": 0.07175475
+    },
+    {
+      "s_bin": "0.95-0.99",
+      "n": 764633,
+      "abs_dev_median": 0.04042075,
+      "abs_dev_p90": 0.19412149,
+      "data_share_median": 0.02403391
+    },
+    {
+      "s_bin": ">=0.99",
+      "n": 1184643,
+      "abs_dev_median": 0.00449628,
+      "abs_dev_p90": 0.03116957,
+      "data_share_median": 0.00144271
+    }
+  ]
+}

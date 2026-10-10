@@ -1,103 +1,17 @@
 {
-  "full": [
-    {
-      "config": "shiftlog_eps0.01_l0.1",
-      "rows": 151850,
-      "n_estimated": 112690,
-      "share_non_converged": 0.07749753,
-      "share_gamma_le_0_01": 0.00328334,
-      "share_gamma_le_1e_4": 0,
-      "share_gamma_ge_10": 0,
-      "shrink_wt_median": 0.93445347,
-      "within_cell_sd_median": 0.57063798,
-      "abs_dev_median": 0.08069008,
-      "abs_dev_p90": 1.04019955,
-      "opt_tariff_median": 0.59569431,
-      "gamma_median": 0.56258169
-    },
-    {
-      "config": "shiftlog_eps0.05_l0.1",
-      "rows": 152345,
-      "n_estimated": 113185,
-      "share_non_converged": 0.06405199,
-      "share_gamma_le_0_01": 0.01664532,
-      "share_gamma_le_1e_4": 0.01319079,
-      "share_gamma_ge_10": 0.00003534,
-      "shrink_wt_median": 0.91972154,
-      "within_cell_sd_median": 0.64271502,
-      "abs_dev_median": 0.09477885,
-      "abs_dev_p90": 1.18471022,
-      "opt_tariff_median": 0.59072317,
-      "gamma_median": 0.55763217
-    },
-    {
-      "config": "shipped_l0.1_maxit2000",
-      "rows": 151911,
-      "n_estimated": 112751,
-      "share_non_converged": 0.02662085,
-      "share_gamma_le_0_01": 0.00188912,
-      "share_gamma_le_1e_4": 0,
-      "share_gamma_ge_10": 0.00224388,
-      "shrink_wt_median": 0.92171807,
-      "within_cell_sd_median": 0.61133334,
-      "abs_dev_median": 0.09915222,
-      "abs_dev_p90": 1.18972494,
-      "opt_tariff_median": 0.60336134,
-      "gamma_median": 0.55452588
-    }
-  ],
+  "full": [],
   "split": [
     {
       "config": "shipped_l0.1",
-      "n_keys": 85172,
-      "n_cells": 4020,
-      "r_within": 0.29834753,
-      "rho_rank": 0.32054833,
-      "r_raw": 0.46054447,
-      "sd_within_a": 0.66244303,
-      "sd_within_b": 0.65572116
-    },
-    {
-      "config": "log_l0.01",
-      "n_keys": 85208,
-      "n_cells": 3993,
-      "r_within": 0.24684715,
-      "rho_rank": 0.27035481,
-      "r_raw": 0.36461837,
-      "sd_within_a": 0.99243064,
-      "sd_within_b": 0.99868439
-    },
-    {
-      "config": "shiftlog_eps0.01_l0.1",
-      "n_keys": 85879,
-      "n_cells": 4027,
-      "r_within": 0.25002978,
-      "rho_rank": 0.33719962,
-      "r_raw": 0.40870853,
-      "sd_within_a": 1.11231347,
-      "sd_within_b": 1.10977236
-    },
-    {
-      "config": "shiftlog_eps0.05_l0.1",
-      "n_keys": 85853,
-      "n_cells": 4025,
-      "r_within": 0.23638516,
-      "rho_rank": 0.34620318,
-      "r_raw": 0.36616407,
-      "sd_within_a": 1.65737319,
-      "sd_within_b": 1.6708662
-    },
-    {
-      "config": "level_l0.1",
-      "n_keys": 85722,
-      "n_cells": 4024,
-      "r_within": 0.20949734,
-      "rho_rank": 0.35248727,
-      "r_raw": 0.30954621,
-      "sd_within_a": 3.26723003,
-      "sd_within_b": 3.24583258
+      "n_keys": 85279,
+      "n_cells": 4032,
+      "r_within": 0.32374612,
+      "rho_rank": 0.33753761,
+      "r_raw": 0.47116997,
+      "sd_within_a": 0.8084812,
+      "sd_within_b": 0.81428574
     }
   ],
-  "generated": "2026-09-28 21:20:28 EDT",
-  "runs": "C:\\Users\\maxxj\\te_grid\\runs_parity.csv"
+  "generated": "2026-10-10 04:21:15 EDT",
+  "runs": "C:\\Users\\maxxj\\te_grid\\runs_v090.csv"
 }
