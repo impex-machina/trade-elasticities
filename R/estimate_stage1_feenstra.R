@@ -60,6 +60,9 @@ estimate_feenstra_sigma_cell <- function(imp_dt, focal_importer, cfg) {
   # sites so the Tier-4 legacy baseline stays comparable in A/B runs. See
   # build_config.R for the v0.5.0 default-flip record and absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
+  bw_lag_raw      <- identical(cfg$bw_lag, "raw")   # patch 0091
+  if (bw_lag_raw && !"cusval_lag" %in% names(dt))
+    stop("bw_lag = 'raw' needs the cusval_lag column prepare_data() attaches (patch 0091)")
   if (bw_lag_calendar) {
     dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",
                                     by = "exporter")]
@@ -80,7 +83,7 @@ estimate_feenstra_sigma_cell <- function(imp_dt, focal_importer, cfg) {
 
   # calendar mode: cusval_lag already attached on the pre-filter panel.
   setorder(dt_nonref, exporter, t)
-  if (!bw_lag_calendar) {
+  if (!bw_lag_calendar && !bw_lag_raw) {   # patch 0091
     dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
   }
   dt_nonref[, bw_w := bw_weight(cusval, cusval_lag, period_count)]

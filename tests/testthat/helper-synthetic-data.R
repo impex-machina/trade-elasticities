@@ -128,6 +128,7 @@ make_synthetic_baci <- function(seed = 42L) {
   grid[, `:=`(lp_dif     = lp     - data.table::shift(lp,     1L),
               ls_imp_dif = ls_imp - data.table::shift(ls_imp, 1L),
               ls_exp_dif = ls_exp - data.table::shift(ls_exp, 1L),
+              cusval_lag = data.table::shift(cusval, 1L),   # patch 0091: as prepare_data() attaches it
               period_count = .N),
        by = .(importer, exporter, good)]
   

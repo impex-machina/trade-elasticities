@@ -122,7 +122,7 @@ build_config <- function(opts) {
     stage2_sigma_fallback_pin = if (is.null(opts$stage2_sigma_fallback_pin)) NA_real_ else opts$stage2_sigma_fallback_pin,
 
     # --- Across-exporter weighting (methodological) ---
-    exporter_weight     = "trade_value",
+    exporter_weight     = opts$exporter_weight %||% "trade_value",   # patch 0091: absent == trade_value (every release)
     weight_period_floor = 10L,
 
     # --- Tier thresholds (methodological) ---

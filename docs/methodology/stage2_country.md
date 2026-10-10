@@ -635,3 +635,54 @@ reads its SE and adjust code exactly as before. `tests/testthat/
 test-sigma-edge-se.R` locks the estimator, the lookup builder and the
 script (35 assertions). The census of the correction on the shipped table
 is the v0.9.1 card entry.
+
+### The fn-14 weights: the lag the first differenced observation never had, and the inert T^{3/2} (patch 0091, experiment flags)
+
+Two findings of the 2026-10-10 fresh-eyes review about `bw_weight()`,
+$T^{3/2}(1/x_t + 1/x_{t-1})^{-1/2}$, with the two default-off flags that let
+them be measured on the 2% subsample before any default moves.
+
+**The lag.** Under `--bw-lag calendar` (the default since v0.5.0) the lag
+$x_{t-1}$ is looked up on the cell panel *after* `prepare_data()` has
+dropped each panel's leading observation, so the first differenced
+observation of every run (the pair's second year) finds no $t-1$ row and
+takes `bw_weight()`'s NA → 1 fallback: on the synthetic fixture a weight of
+1 beside 12–95 for its neighbours (a 0.1–1% share of the exporter's mean),
+and on BACI values in thousands of dollars the typical neighbour weight is
+$T^{3/2}\sqrt{x/2}$, i.e. tens to thousands. The observation is effectively
+deleted although $x_{t-1}$ is in the raw data — it is the value the
+difference itself was taken against — which contradicts the calendar mode's
+own premise that the lag is data rather than a retained-row construct, and
+costs one of the (at least) three differenced observations a Tier-1 exporter
+needs. `--bw-lag raw` reads a `cusval_lag` column that `prepare_data()` now
+attaches from the pre-differencing panel (the previous calendar year's value,
+NA across a gap), on both the import and the export side; `legacy` and
+`calendar` recompute their own lag on the cell panel and overwrite the
+column, so every shipped release is unchanged by its presence
+(`tests/testthat/test-bw-lag-raw.R` locks the bit-identity).
+
+**The T^{3/2} factor.** Each exporter's moment row is the within-exporter
+`weighted.mean` of its observations, and `period_count` is constant within
+an exporter, so the $T^{3/2}$ factor cancels exactly inside the mean. Its
+only effect in every release has been through the NA → 1 row: a larger $T$
+makes that one row relatively lighter. In particular the v0.9.0 "export-side
+Broda–Weinstein $T$ = panel length" rule (patch 0085) could only ever change
+the relative weight of that artefact row, which is why the C→D rung of the
+attribution ladder was "small". The weight fn. 14 implies *across* exporters
+— in Feenstra's 2SLS-with-exporter-dummies ⇔ WLS-on-exporter-averages
+equivalence, exporter $j$'s averaged row is weighted by the sum of its row
+weights, $T^{3/2}\sum_t(1/x_t + 1/x_{t-1})^{-1/2} \approx T^{5/2}\sqrt{x/2}$
+— does not reach the objective at all: the across-exporter weight is
+`exporter_weight = "trade_value"` (the exporter's customs value in the focal
+market, scaled by $\min(T, 10)/10$, normalized to sum to $J$), a deliberate
+and documented departure rather than fn. 14 itself. `--exporter-weight
+bw_sum` supplies the fn-14 cross-variety weight (the sum of the exporter's
+row weights, normalized to sum to $J$ so that $\lambda$ keeps its meaning
+against the data block); `uniform` and `trade_value` are unchanged.
+
+Both flags are experiment flags: the defaults stay `calendar` and
+`trade_value`, the checkpoint stamp sees both, and the 2% subsample passes
+(`--bw-lag raw`; `--exporter-weight bw_sum`; both) with
+`analysis/compare_runs.R` and the parity-reliability script are the
+measurement before any default moves. A move of either default is a
+methodology release with a Stage-2a + 2b box session.

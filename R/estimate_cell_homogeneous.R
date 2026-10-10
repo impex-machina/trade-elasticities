@@ -44,6 +44,26 @@ compute_exporter_weights <- function(dt_nonref, exporter_order, cfg) {
     }
     w[is.na(w) | !is.finite(w) | w <= 0] <- 1
     w
+  } else if (mode == "bw_sum") {
+    # (patch 0091) The cross-variety weight implied by Broda & Weinstein's
+    # observation-level weights in Feenstra's "2SLS with exporter dummies ==
+    # WLS on exporter averages" equivalence: exporter j's averaged moment row
+    # is weighted by the SUM of its row weights, sum_t T^{3/2} (1/x_t +
+    # 1/x_{t-1})^{-1/2}. Inside the within-exporter weighted mean the T^{3/2}
+    # factor cancels (T is constant within an exporter), so under
+    # "trade_value" the persistence weight of fn. 14 never reaches the
+    # objective; here it does, through this sum. Needs the bw_w column the
+    # cell estimator attaches before calling. Normalized to sum to J, as
+    # "trade_value" is, so lambda keeps its meaning against the data block.
+    if (!"bw_w" %in% names(dt_nonref))
+      stop("exporter_weight = 'bw_sum' needs the bw_w column (attach the BW weights first)")
+    stats <- dt_nonref[, .(wt = sum(bw_w, na.rm = TRUE)), by = exporter]
+    setkey(stats, exporter)
+    w <- stats[J(exporter_order)]$wt
+    tot <- sum(w, na.rm = TRUE)
+    if (is.finite(tot) && tot > 0) w <- w * J / tot
+    w[is.na(w) | !is.finite(w) | w <= 0] <- 1
+    w
   } else {
     rep(1, J)
   }
@@ -102,6 +122,7 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
   # covers every export-side moment. Semantics mirror the import sites: see
   # build_config.R for the v0.5.0 default-flip record and absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
+  bw_lag_raw      <- identical(cfg$bw_lag, "raw")   # patch 0091: prepared cusval_lag column
 
   # Helpers: lookup (importer, good) -> (sigma, gamma) with fallback.
   # Indexed by importer for O(log n) lookup via setkey; caller is
@@ -144,6 +165,8 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
                                  ref_ls_exp = ls_exp_dif)]
 
     focal_vals <- exp_flows[importer == focal_importer]
+    if (bw_lag_raw && !"cusval_lag" %in% names(focal_vals))
+      stop("bw_lag = 'raw' needs the cusval_lag column prepare_data() attaches (patch 0091)")
     # calendar mode: attach the fn-14 lag on the pre-filter bilateral
     # series (one exporter -> the focal importer, so no `by` needed),
     # before the reference-destination join and exp_y filter can drop
@@ -174,7 +197,7 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
     if (nrow(focal_vals) == 0L) next
 
     setorder(focal_vals, t)
-    if (bw_lag_calendar) {
+    if (bw_lag_calendar || bw_lag_raw) {   # patch 0091: raw keeps the prepared lag
       focal_vals[, pd_e := .N]
     } else {
       focal_vals[, `:=`(cusval_lag = shift(cusval, 1L), pd_e = .N)]
@@ -305,6 +328,9 @@ estimate_importer_product <- function(imp_dt, focal_importer, all_dt, cfg,
   # shift at the weights block below runs unchanged. See build_config.R
   # for the v0.5.0 default-flip record and the absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
+  bw_lag_raw      <- identical(cfg$bw_lag, "raw")   # patch 0091
+  if (bw_lag_raw && !"cusval_lag" %in% names(dt))
+    stop("bw_lag = 'raw' needs the cusval_lag column prepare_data() attaches (patch 0091)")
   if (bw_lag_calendar) {
     dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",
                                     by = "exporter")]
@@ -341,7 +367,7 @@ estimate_importer_product <- function(imp_dt, focal_importer, all_dt, cfg,
   # --- BW weights ---
   # calendar mode: cusval_lag already attached on the pre-filter panel.
   setorder(dt_nonref, exporter, t)
-  if (!bw_lag_calendar) {
+  if (!bw_lag_calendar && !bw_lag_raw) {   # patch 0091
     dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
   }
   dt_nonref[, bw_w := bw_weight(cusval, cusval_lag, period_count)]

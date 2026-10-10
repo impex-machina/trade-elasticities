@@ -51,8 +51,12 @@ validate_config <- function(cfg) {
   # typo cannot silently fall back to legacy on a run that intended the
   # calendar fix. NOT in `required` above: hand-built cfg lists (tests,
   # validation harnesses) predate the flag and stay valid without it.
-  if (!is.null(cfg$bw_lag) && !cfg$bw_lag %in% c("legacy", "calendar")) {
-    stop("bw_lag must be 'legacy' or 'calendar', got: ", cfg$bw_lag)
+  if (!is.null(cfg$bw_lag) && !cfg$bw_lag %in% c("legacy", "calendar", "raw")) {
+    stop("bw_lag must be 'legacy', 'calendar' or 'raw', got: ", cfg$bw_lag)
+  }
+  if (!is.null(cfg$exporter_weight) &&
+      !cfg$exporter_weight %in% c("trade_value", "uniform", "bw_sum")) {   # patch 0091
+    stop("exporter_weight must be 'trade_value', 'uniform' or 'bw_sum', got: ", cfg$exporter_weight)
   }
   if (!is.null(cfg$stage2_gradient) &&
       !cfg$stage2_gradient %in% c("numeric", "analytic")) {

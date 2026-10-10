@@ -91,9 +91,25 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       type = "character", default = "calendar",
       help = paste("BW weight lag policy: 'legacy' (previous retained row",
                    "via positional shift; reproduces published v0.4.x",
-                   "output bit-for-bit) or 'calendar' (previous calendar",
-                   "year from the cell panel, per Soderbery p. 50 fn 14).",
-                   "Default: %default"),
+                   "output bit-for-bit), 'calendar' (previous calendar",
+                   "year from the cell panel, per Soderbery p. 50 fn 14;",
+                   "the default since v0.5.0) or 'raw' (the previous",
+                   "calendar year's value taken from the pre-differencing",
+                   "panel by prepare_data(), so the first differenced",
+                   "observation of a run carries its lag too; patch 0091,",
+                   "experiment flag). Default: %default"),
+      metavar = "MODE"
+    ),
+    optparse::make_option(
+      c("--exporter-weight"),
+      type = "character", default = "trade_value",
+      help = paste("Across-exporter weight on the time-averaged moment rows:",
+                   "'trade_value' (sum of the exporter's customs value in",
+                   "the focal market, scaled by min(T, 10)/10; every release),",
+                   "'uniform', or 'bw_sum' (the sum of the exporter's",
+                   "Broda-Weinstein row weights, T^(3/2) sum_t (1/x_t +",
+                   "1/x_{t-1})^(-1/2), the cross-variety weight fn. 14 implies;",
+                   "patch 0091, experiment flag). Default: %default"),
       metavar = "MODE"
     ),
     optparse::make_option(
@@ -335,9 +351,13 @@ validate_cli_opts <- function(opts, parser = NULL) {
     fail(sprintf("--stage must be one of 'all', '1', '2a', '2b', got: '%s'",
                  opts$stage))
   }
-  if (!opts$bw_lag %in% c("legacy", "calendar")) {
-    fail(sprintf("--bw-lag must be 'legacy' or 'calendar', got: '%s'",
+  if (!opts$bw_lag %in% c("legacy", "calendar", "raw")) {
+    fail(sprintf("--bw-lag must be 'legacy', 'calendar' or 'raw', got: '%s'",
                  opts$bw_lag))
+  }
+  if (!opts$exporter_weight %in% c("trade_value", "uniform", "bw_sum")) {   # patch 0091
+    fail(sprintf("--exporter-weight must be 'trade_value', 'uniform' or 'bw_sum', got: '%s'",
+                 opts$exporter_weight))
   }
   if (!opts$stage2_gradient %in% c("numeric", "analytic")) {
     fail(sprintf("--stage2-gradient must be 'numeric' or 'analytic', got: '%s'",

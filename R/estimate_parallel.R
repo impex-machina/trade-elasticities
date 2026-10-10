@@ -571,6 +571,11 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     qlog$add("Data (pre-prepared)", n_obs = nrow(dt))
   }
 
+  # (patch 0091) bw_lag = "raw" reads the cusval_lag column prepare_data()
+  # attaches; fail here, loudly, rather than cell by cell inside the tryCatch.
+  if (identical(cfg$bw_lag, "raw") && !"cusval_lag" %in% names(dt))
+    stop("bw_lag = 'raw' needs the cusval_lag column prepare_data() attaches (patch 0091); the prepared panel has none")
+
   products <- unique(dt$good)
   n_products <- length(products)
   dt_by_product <- split(dt, by = "good", keep.by = TRUE)

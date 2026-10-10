@@ -191,6 +191,18 @@ prepare_data <- function(cfg, raw_cache = NULL) {
   dt[, `:=`(lp_dif = lp - shift(lp, 1L),
             ls_imp_dif = ls_imp - shift(ls_imp, 1L),
             ls_exp_dif = ls_exp - shift(ls_exp, 1L),
+            # (patch 0091) the Broda-Weinstein fn-14 lag x_{t-1}, taken HERE on
+            # the pre-differencing panel: the customs value of the previous
+            # calendar year, NA where that year is absent. Read by the
+            # estimators under cfg$bw_lag = "raw"; the legacy and calendar
+            # modes recompute their own lag on the cell panel and overwrite
+            # this column, so they are unchanged by its presence. Under
+            # "calendar" the lag is looked up on the DIFFERENCED table, which
+            # has no row for a panel's first year, so the first differenced
+            # observation of every run took bw_weight()'s NA -> 1 fallback --
+            # a weight of ~1 beside 10-3,000 for its neighbours -- although
+            # x_{t-1} is in the data; this column carries it.
+            cusval_lag = shift(cusval, 1L),
             t_gap = t - shift(t, 1L),
             period_count = .N), by = .(importer, exporter, good)]
 
@@ -203,7 +215,8 @@ prepare_data <- function(cfg, raw_cache = NULL) {
   # each panel's leading NA.
   n_gap_spanning <- dt[!is.na(t_gap) & t_gap != 1L, .N]
   dt[is.na(t_gap) | t_gap != 1L,
-     `:=`(lp_dif = NA_real_, ls_imp_dif = NA_real_, ls_exp_dif = NA_real_)]
+     `:=`(lp_dif = NA_real_, ls_imp_dif = NA_real_, ls_exp_dif = NA_real_,
+          cusval_lag = NA_real_)]   # patch 0091: the lag is the previous CALENDAR year's value or nothing
   dt[, t_gap := NULL]
 
   n_before <- nrow(dt)

@@ -496,6 +496,12 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # at the weights block below runs unchanged. See build_config.R for
   # the v0.5.0 default-flip record and the absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
+  # (patch 0091) "raw": the lag is the cusval_lag column prepare_data()
+  # attaches from the pre-differencing panel (x_{t-1} as data, including the
+  # first differenced observation of every run); nothing is recomputed here.
+  bw_lag_raw <- identical(cfg$bw_lag, "raw")
+  if (bw_lag_raw && !"cusval_lag" %in% names(dt))
+    stop("bw_lag = 'raw' needs the cusval_lag column prepare_data() attaches (patch 0091)")
   if (bw_lag_calendar) {
     dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",
                                     by = "exporter")]
@@ -559,7 +565,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # --- BW weights ---
   # calendar mode: cusval_lag already attached on the pre-filter panel.
   setorder(dt_nonref, exporter, t)
-  if (!bw_lag_calendar) {
+  if (!bw_lag_calendar && !bw_lag_raw) {   # legacy: positional shift on the retained rows
     dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
   }
   dt_nonref[, bw_w := bw_weight(cusval, cusval_lag, period_count)]
