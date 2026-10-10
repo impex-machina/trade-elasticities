@@ -32,7 +32,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.9.0 (2026-10-XX).** Methodology release, from the v0.9 rc attribution
+> **v0.9.0 (2026-10-10).** Methodology release, from the v0.9 rc attribution
 > ladder (five runs, one change each; compare docs in docs/methodology/).
 > (1) The Stage-1 sigma cap is 50 (10 through v0.8.3): 68,518 cells publish
 > a different sigma -- the 24,780 that sat at the old cap plus some 42,000
@@ -49,8 +49,8 @@ under another cleaning rule must say which rule.
 > published sigma is a box edge takes the fallback sigma like a cell with
 > no estimate (sigma_robust FALSE, no sigma_V, omega out of the priors):
 > 13,810 cells at cap 50. Numbers vs v0.8.3:
-> <fill from the rc compare_runs at the card step>. Data revision:
-> `<fill at the card step after the HF upload>`. **v0.8.3 remains available
+> rows 6,813,953 -> 6,806,221; gamma median 0.656 -> 0.644 (1/gamma 1.52 -> 1.55); opt_tariff row-level median 0.751 -> 0.733; sigma median 2.462 -> 2.306 because the fallback sigma (the clean-cell median, now without the 13,810 edge cells) moved, not the estimates; 15.2% of rows carry it (10.8% without a Stage-1 estimate, 4.4% edge cells); gamma_se_status ok 69.5% -> 69.3%, non_converged 2.3% -> 2.4%; sigma_robust 23.7% -> 24.4%. Stage 1 re-estimated at cap 50: 182,912 ok cells (181,245), 68,518 cells publish a different sigma, sigma_se finite on 95.2% of ok cells (89.8%), 35,871 rows with sigma above 37 (max 49.99); the 13,810 edge cells carry the fallback sigma with sigma_robust FALSE. Exporter-specific gamma_V resolved on 93% of export rows; step sizes on Tier-1 rows p50 / p90 / p99 0.21% / 9.3% / 88% (pass 1 to 2) and 0.04% / 2.5% / 40% (pass 2 to 3), 83.6% within 1% after pass 3 -- the tail residual is a stated limitation. Optimizer fallback 7,710 cells (restart worse on 6,641). Tail trim 85,787 rows (gamma 24,550 high / 19,230 low, sigma 42,007 low; no high sigma bound). Bootstrap-SE census re-run at cap 50 (750 x 399): the robust same-branch dispersion ratio is 1.18x overall (1.0-1.5x by route at cap 10) while the unconditional SD ratio is 10.7x (3.3-4.5x at cap 10), because the cap-10 clamp had truncated the replicate tails. Split-half parity reliability re-measured on the shipped configuration: r_within 0.324, rank rho 0.338 (0.298 at cap 10). Attribution ladder and gates: S3 v090rc_run_20261004 (runs A-E) and v090rel_run_20261010 (G, G2). Data revision:
+> `af5d7c659f2a17e1c3e3ce8765d75731616a292c`. **v0.8.3 remains available
 > pinned at revision `60be1e6bae2a575ec1af2094beb7f542a120f812`.**
 > **v0.8.3 (2026-10-02).** Two Stage-2 fixes from the 2026-09-29 audit,
 > both bit-preserving under the previous rule (`--stage2-fallback legacy`,
