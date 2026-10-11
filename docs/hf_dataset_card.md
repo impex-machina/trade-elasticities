@@ -75,7 +75,7 @@ under another cleaning rule must say which rule.
 > (as in v0.8.3). Also in this release: the dataset card's changelog entries
 > are separated so they render as paragraphs, and the hub viewer is configured
 > one CSV per subset.
-> Data revision: `<fill at the card step after the HF upload>`. **v0.9.0 remains available
+> Data revision: `134c1cbc80b5e657e45dd92e9c96c4d71155877c`. **v0.9.0 remains available
 > pinned at revision `af5d7c659f2a17e1c3e3ce8765d75731616a292c`.**
 >
 > **v0.9.0 (2026-10-10).** Methodology release, from the v0.9 rc attribution
