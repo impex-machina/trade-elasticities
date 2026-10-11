@@ -853,3 +853,26 @@ pre-trim, so a resume is valid across the two actions and the stamp does not
 include it. v0.9.1 ships the column NA throughout (drop semantics kept, so a
 v0.9.0→v0.9.1 diff is the edge-cell correction plus two columns); the
 default moves to `flag` with the next full Stage-2b run if the A/B says so.
+
+### The pre-trim γ blow-up diagnostic (patch 0097)
+
+`analysis/trim_diagnostic.R` characterises the rows the tail trim removes,
+from a run's trim record (`<prefix>_stage2_trimmed.rds`/`.csv`; full rows
+since patch 0093, the seven-column record of earlier runs is accepted with
+fewer sections), the published table and the Stage-1 table. Five sections:
+composition (reason × tier, reason × convergence, cells, goods); the σ
+behind the γ tails — Eq. (10)'s coefficients carry $1/(\sigma-1)$, so a γ
+that explodes may be a σ near the pole: level, provenance (HLIML interior /
+Step 2 / boundary / fallback) and SE of the trimmed rows' cells against the
+published rows'; concentration — whether the tail rows sit in a few cells
+whose σ is the problem (half or more of a cell's estimated rows trimmed) or
+are single exporters in ordinary cells; distance from the good-level prior
+(recovered from the Tier-3 rows, whose γ is exp(prior)) and, on a full-row
+record, trade size, shrinkage weight and exposure; and the within-good
+alternative — what a 0.5%-per-tail rule taken within each good would remove
+on the pre-trim union, against the global rule's removals and their overlap.
+Nothing in it changes a published number; it is the evidence for keeping,
+tightening or re-scoping the trim (`--stage2-trim-action flag` keeps the
+rows either way). Results land in `docs/results/trim_diagnostic_<label>.md`
+and `results/trim_diagnostic_<label>.json`; `tests/testthat/
+test-trim-diagnostic.R` locks the counts.
