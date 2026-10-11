@@ -1,0 +1,108 @@
+{
+  "full": [
+    {
+      "config": "base",
+      "rows": 151779,
+      "n_estimated": 112645,
+      "share_non_converged": 0.02327726,
+      "share_gamma_le_0_01": 0.00392383,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.00442985,
+      "shrink_wt_median": 0.91514191,
+      "within_cell_sd_median": 0.65484489,
+      "abs_dev_median": 0.10814775,
+      "abs_dev_p90": 1.30133339,
+      "opt_tariff_median": 0.58497485,
+      "gamma_median": 0.53876682
+    },
+    {
+      "config": "raw",
+      "rows": 151781,
+      "n_estimated": 112647,
+      "share_non_converged": 0.01896153,
+      "share_gamma_le_0_01": 0.00302716,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.0044564,
+      "shrink_wt_median": 0.91157115,
+      "within_cell_sd_median": 0.62289238,
+      "abs_dev_median": 0.10653478,
+      "abs_dev_p90": 1.26637323,
+      "opt_tariff_median": 0.58607714,
+      "gamma_median": 0.5403968
+    },
+    {
+      "config": "bwsum",
+      "rows": 151813,
+      "n_estimated": 112679,
+      "share_non_converged": 0.01985996,
+      "share_gamma_le_0_01": 0.00519174,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.00549348,
+      "shrink_wt_median": 0.86424951,
+      "within_cell_sd_median": 0.68151245,
+      "abs_dev_median": 0.17013973,
+      "abs_dev_p90": 1.39657012,
+      "opt_tariff_median": 0.59173688,
+      "gamma_median": 0.53820706
+    },
+    {
+      "config": "both",
+      "rows": 151812,
+      "n_estimated": 112678,
+      "share_non_converged": 0.0228177,
+      "share_gamma_le_0_01": 0.00484567,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.00544916,
+      "shrink_wt_median": 0.83823814,
+      "within_cell_sd_median": 0.67548825,
+      "abs_dev_median": 0.19256454,
+      "abs_dev_p90": 1.41782852,
+      "opt_tariff_median": 0.59762595,
+      "gamma_median": 0.53843397
+    }
+  ],
+  "split": [
+    {
+      "config": "base",
+      "n_keys": 85274,
+      "n_cells": 4033,
+      "r_within": 0.33295488,
+      "rho_rank": 0.34256213,
+      "r_raw": 0.47330427,
+      "sd_within_a": 0.82607607,
+      "sd_within_b": 0.83790362
+    },
+    {
+      "config": "raw",
+      "n_keys": 85323,
+      "n_cells": 4029,
+      "r_within": 0.30258415,
+      "rho_rank": 0.31975368,
+      "r_raw": 0.44968888,
+      "sd_within_a": 0.7208622,
+      "sd_within_b": 0.72621664
+    },
+    {
+      "config": "bwsum",
+      "n_keys": 85382,
+      "n_cells": 4037,
+      "r_within": 0.3143834,
+      "rho_rank": 0.33794169,
+      "r_raw": 0.41575047,
+      "sd_within_a": 1.14636617,
+      "sd_within_b": 1.15555704
+    },
+    {
+      "config": "both",
+      "n_keys": 85338,
+      "n_cells": 4032,
+      "r_within": 0.30707127,
+      "rho_rank": 0.31942461,
+      "r_raw": 0.43929051,
+      "sd_within_a": 0.83567485,
+      "sd_within_b": 0.84783617
+    }
+  ],
+  "generated": "2026-10-11 15:47:53 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\v091_runs.csv"
+}
