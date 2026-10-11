@@ -6,6 +6,16 @@
 > legacy run; that tree is **not** part of this repository. It is
 > preserved at the projects-tree `_archive/` and on S3
 > (`s3://trade-elast-baci-hs92-v202601-hs4/legacy_pipeline_archive_pre_hs6_padding_fix/`).
+>
+> **Which numbers are current (patch 0092, 2026-10-10).** The sections
+> "Output schema", "SE status table breakdown", "Exposure quantiles",
+> "Headline numbers", "Sigma provenance breakdown" and "Reproducibility" below
+> describe the May-2026 legacy run (8.13M rows, 20 columns, 60.7% `ok`,
+> fallback σ 2.91) and are kept as its record. The shipped table's numbers
+> are the README's, regenerated from `results/*.json` at every release; the
+> schema is the README's column table (20 columns since v0.7.x). The dated
+> sections from "## Log-ridge domain" onward are the methodology record of
+> the releases from v0.7.4 on.
 > The reproducibility section at the end documents the *legacy* workflow
 > as a historical record; the equivalent CLI-driven workflow will be
 > documented once parity is verified. See the Provenance section of
@@ -71,6 +81,8 @@ The σ-γ ridge follow-up analysis is at
 | `inspection_country.log` | Output of `inspect_country.R` against the tagged file |
 
 ## Output schema (country-level, 15 columns)
+
+> *May-2026 legacy run; the current numbers are in the README (see the note at the top of this file).*
 
 | Column | Type | Description |
 |--------|------|-------------|
@@ -155,6 +167,8 @@ during the refactor and are not recoverable. A single reconstructed harness,
 
 ## SE status table breakdown
 
+> *May-2026 legacy run; the current numbers are in the README (see the note at the top of this file).*
+
 | Status | Count | Share | Interpretation |
 |--------|-------|-------|-----------------|
 | `ok` | 4,932,371 | 60.70% | Finite SE, calibrated. Safe for inference |
@@ -181,6 +195,8 @@ exposure ≤2 have SEs that correctly reflect weak identification.
 
 ## Headline numbers
 
+> *May-2026 legacy run; the current numbers are in the README (see the note at the top of this file).*
+
 - 1,240 HS4 products × 233 importers × 233 exporters covered
 - Stage 2b country output: 8,126,398 cell-exporter rows
   - Tier 1 (full identification): 70.6%
@@ -191,6 +207,8 @@ exposure ≤2 have SEs that correctly reflect weak identification.
 - γ SE coverage (status == `ok`): 60.7%
 
 ## Sigma provenance breakdown
+
+> *May-2026 legacy run; the current numbers are in the README (see the note at the top of this file).*
 
 | Provenance | Rows | Share |
 |------------|------|-------|
@@ -686,3 +704,41 @@ Both flags are experiment flags: the defaults stay `calendar` and
 `analysis/compare_runs.R` and the parity-reliability script are the
 measurement before any default moves. A move of either default is a
 methodology release with a Stage-2a + 2b box session.
+
+
+### Run hygiene, the Stage-2a default γ_V, and the hub upload guard (patch 0092)
+
+Three independent items from the 2026-10-10 review, none of which changes a
+published number.
+
+**Empty runs leave no files behind.** Both estimators return early with "No
+estimates" when every cell fails; through v0.9.0 that return came before the
+end-of-run cleanup, so the `_checkpoint.rds` / `_fs_checkpoint.rds` written
+during the run survived and the next run under a different config hit the
+resume guard ("written under a different estimation config; refusing to
+resume"), and a stale `_stage2_fallbacks.csv` / `_stage2_trimmed.csv` from an
+earlier run could pass for the empty run's record. `.remove_stale_run_files()`
+runs on both early returns. (Met in the sandbox while testing `--bw-lag raw`
+on a panel without the prepared column.)
+
+**`--stage2a-gamma-v-default {clean|priors}`** (default `clean`, every
+release). Stage 2a's default γ_V for Eq. (11) reference destinations without
+a lookup, and its γ start, are the median ω over the whole clean Stage-1
+set — floored (1e-4), capped and, since v0.9.0, σ-edge cells included —
+while the good-level priors built two lines earlier exclude exactly those
+rows (`feenstra_gamma_clean`). `priors` takes the median over the priors'
+rows instead, so the two Stage-2a defaults share one population. The median
+is robust and the effect is expected to be small; it is a Stage-2a
+methodology change all the same, so it ships default-off for the next
+Stage-2a session rather than as a data patch.
+
+**`scripts/hf_upload_release.py` refuses a second upload for a released
+entry.** Gate 0 reads the card's topmost changelog entry; if its `Data
+revision:` already carries a 40-hex oid, `--execute` aborts unless `--force`
+is passed, so an upload cannot run before the next entry has been added to
+the card (the v0.9.0 sequencing incident: the release commit landed after
+the card commit). A `<fill>` placeholder or a missing line counts as "not
+yet released". The dry run prints the top entry and its state either way.
+
+Also: `run_estimation.R`'s end-of-run manifest check reads
+`<repo>/data/manifest.csv` rather than a CWD-relative path.

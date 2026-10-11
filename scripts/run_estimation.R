@@ -444,7 +444,13 @@ if (should_run("2a", opts, paths)) {
     config_2a$sigma_fallback <- sigma_fallback
 
     config_2a$sigma_V_default <- sigma_fallback
-    config_2a$gamma_V_default <- median(sigma_clean$gamma, na.rm = TRUE)
+    # (patch 0092) 'clean' (every release): the median omega over the whole
+    # clean set, floored / capped / sigma-edge cells included; 'priors': the
+    # median over the rows the good-level priors use (feenstra_gamma_clean),
+    # so the Stage-2a default gamma_V and the gamma start share the priors'
+    # population. Default-off: a flip is a Stage-2a methodology change.
+    config_2a$gamma_V_default <- stage2a_gamma_v_default(sigma_clean, feenstra_gamma_clean,
+                                                         config$stage2a_gamma_v_default)
     config_2a$sigma_start     <- sigma_fallback
     config_2a$gamma_start     <- config_2a$gamma_V_default
 
@@ -762,7 +768,7 @@ cat("\nDone.\n")
 
 
 local({
-  manifest_path <- "data/manifest.csv"
+  manifest_path <- file.path(repo_dir, "data", "manifest.csv")   # patch 0092: was CWD-relative
   if (!file.exists(manifest_path)) {
     message("[checksum] data/manifest.csv not found; skipping verification.")
     return(invisible(NULL))

@@ -54,16 +54,55 @@ def fail(msg: str) -> None:
     sys.exit(1)
 
 
+CARD = Path("docs/hf_dataset_card.md")
+
+
+def card_top_entry(card: Path):
+    """(version, revision-or-None) for the topmost changelog entry of the
+    card, or None when the card or an entry cannot be found. The revision is
+    the 40-hex value after 'Data revision:' within that entry; a <fill>
+    placeholder or a missing line counts as no revision."""
+    import re
+    if not card.exists():
+        return None
+    lines = card.read_text(encoding="utf-8").splitlines()
+    head = re.compile(r"^> \*\*v(\d+\.\d+\.\d+)\b")
+    starts = [i for i, l in enumerate(lines) if head.match(l)]
+    if not starts:
+        return None
+    first, nxt = starts[0], (starts[1] if len(starts) > 1 else len(lines))
+    version = head.match(lines[first]).group(1)
+    body = "\n".join(lines[first:nxt])
+    m = re.search(r"Data revision:[\s>]*`([0-9a-f]{40})`", body)   # the value may sit on the next quoted line
+    return version, (m.group(1) if m else None)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--execute", action="store_true",
                     help="perform the upload (default: dry run)")
     ap.add_argument("--message", default=None,
                     help="hub commit message (required with --execute)")
+    ap.add_argument("--force", action="store_true",
+                    help="upload even though the card's top entry already carries a "
+                         "data revision (patch 0092 re-run guard)")
     args = ap.parse_args()
 
     if args.execute and not args.message:
         fail("--execute requires --message")
+
+    # --- Gate 0 (patch 0092): the card's TOP entry is the release being cut.
+    # If it already carries a 40-hex data revision, the upload for that entry
+    # happened; a second --execute would create a hub commit the card does
+    # not describe (the v0.9.0 sequencing incident). --force overrides.
+    top = card_top_entry(CARD)
+    if top is not None:
+        version, revision = top
+        state = f"revision {revision}" if revision else "no data revision yet (<fill> or absent)"
+        print(f"card top entry: v{version} -- {state}")
+        if args.execute and revision and not args.force:
+            fail(f"docs/hf_dataset_card.md's top entry v{version} already carries data revision "
+                 f"{revision}; add the next entry to the card first, or pass --force")
 
     if not MANIFEST.exists():
         fail(f"{MANIFEST} not found — run from the repo root")

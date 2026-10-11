@@ -84,6 +84,25 @@ apply_sigma_edge_rule <- function(sigma_clean, rule = c("fallback", "publish")) 
 }
 
 
+#' Stage 2a's default gamma_V and gamma start (patch 0092).
+#'
+#' @param sigma_clean the clean Stage-1 table (gamma = omega column).
+#' @param priors_rows the rows the good-level priors are built from
+#'   (feenstra_gamma_clean in run_estimation.R: gamma > 0, unfloored,
+#'   uncapped, and -- under --stage1-capped-omega drop -- no sigma-edge cells).
+#' @param rule "clean" (every release: median over sigma_clean) or "priors"
+#'   (median over priors_rows). NULL/absent == "clean".
+#' @return the default gamma_V (a scalar).
+stage2a_gamma_v_default <- function(sigma_clean, priors_rows, rule = "clean") {
+  if (is.null(rule)) rule <- "clean"
+  if (!rule %in% c("clean", "priors")) stop("stage2a_gamma_v_default(): rule must be 'clean' or 'priors', got: ", rule)
+  src <- if (rule == "priors") priors_rows else sigma_clean
+  if (is.null(src) || !"gamma" %in% names(src) || !any(is.finite(src$gamma)))
+    stop("stage2a_gamma_v_default(): no finite gamma in the '", rule, "' rows")
+  stats::median(src$gamma, na.rm = TRUE)
+}
+
+
 #' Stage-2b sigma lookups from the clean Stage-1 set (patch 0090).
 #'
 #' The sigma lookup, the Stage-1 sigma_se and adjust-code lookups that the

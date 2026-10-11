@@ -54,6 +54,10 @@ validate_config <- function(cfg) {
   if (!is.null(cfg$bw_lag) && !cfg$bw_lag %in% c("legacy", "calendar", "raw")) {
     stop("bw_lag must be 'legacy', 'calendar' or 'raw', got: ", cfg$bw_lag)
   }
+  if (!is.null(cfg$stage2a_gamma_v_default) &&
+      !cfg$stage2a_gamma_v_default %in% c("clean", "priors")) {   # patch 0092
+    stop("stage2a_gamma_v_default must be 'clean' or 'priors', got: ", cfg$stage2a_gamma_v_default)
+  }
   if (!is.null(cfg$exporter_weight) &&
       !cfg$exporter_weight %in% c("trade_value", "uniform", "bw_sum")) {   # patch 0091
     stop("exporter_weight must be 'trade_value', 'uniform' or 'bw_sum', got: ", cfg$exporter_weight)

@@ -101,6 +101,18 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       metavar = "MODE"
     ),
     optparse::make_option(
+      c("--stage2a-gamma-v-default"),
+      type = "character", default = "clean",
+      help = paste("Rows behind Stage 2a's default gamma_V (Eq. (11) reference",
+                   "destinations without a lookup) and its gamma start:",
+                   "'clean' (the median omega over the whole clean Stage-1",
+                   "set, floored / capped cells included; every release) or",
+                   "'priors' (the median over the rows the good-level priors",
+                   "use: unfloored, uncapped, no sigma-edge cells; patch",
+                   "0092, experiment flag). Default: %default"),
+      metavar = "ROWS"
+    ),
+    optparse::make_option(
       c("--exporter-weight"),
       type = "character", default = "trade_value",
       help = paste("Across-exporter weight on the time-averaged moment rows:",
@@ -354,6 +366,10 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$bw_lag %in% c("legacy", "calendar", "raw")) {
     fail(sprintf("--bw-lag must be 'legacy', 'calendar' or 'raw', got: '%s'",
                  opts$bw_lag))
+  }
+  if (!opts$stage2a_gamma_v_default %in% c("clean", "priors")) {   # patch 0092
+    fail(sprintf("--stage2a-gamma-v-default must be 'clean' or 'priors', got: '%s'",
+                 opts$stage2a_gamma_v_default))
   }
   if (!opts$exporter_weight %in% c("trade_value", "uniform", "bw_sum")) {   # patch 0091
     fail(sprintf("--exporter-weight must be 'trade_value', 'uniform' or 'bw_sum', got: '%s'",

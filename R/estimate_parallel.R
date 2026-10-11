@@ -21,6 +21,20 @@
 #  PARALLEL ESTIMATION ENGINE
 # ===========================================================================
 
+#' Remove run files a finished-or-abandoned run must not leave behind (patch 0092).
+#'
+#' Used on the "no estimates" early returns of both estimators, which through
+#' v0.9.0 returned before the end-of-run cleanup: a `_checkpoint.rds` /
+#' `_fs_checkpoint.rds` written under one config then tripped the resume guard
+#' of the next run under another, and a stale `_stage2_fallbacks.csv` /
+#' `_stage2_trimmed.csv` from an earlier run could pass for this run's record.
+#' @param paths character vector of file paths; missing ones are ignored.
+.remove_stale_run_files <- function(paths) {
+  for (p in paths) if (file.exists(p)) { file.remove(p); cat(sprintf("  Stale run file removed: %s\n", p)) }
+  invisible(NULL)
+}
+
+
 #' @param cfg Config list.
 #' @param ncores Number of CPU cores. NULL = detectCores() - 2.
 #' @return data.table of estimates.
@@ -231,7 +245,13 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
 
   # --- Combine and truncate ---
   results_list <- results_list[!sapply(results_list, is.null)]
-  if (length(results_list) == 0L) { cat("\nNo estimates produced.\n"); return(NULL) }
+  if (length(results_list) == 0L) {
+    # (patch 0092) a run that produced nothing must not leave its checkpoint
+    # behind: the next run with a different config would hit the resume guard
+    cat("\nNo estimates produced.\n")
+    .remove_stale_run_files(paste0(build_output_prefix(cfg), "_checkpoint.rds"))
+    return(NULL)
+  }
 
   # Extract timing and failures before rbindlist strips attributes
   timing_info <- lapply(results_list, function(r) attr(r, "timing"))
@@ -736,7 +756,13 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
 
   t_elapsed <- as.numeric(difftime(Sys.time(), t_start, units = "mins"))
   results_list <- results_list[!sapply(results_list, is.null)]
-  if (length(results_list) == 0L) { cat("\nNo estimates.\n"); return(NULL) }
+  if (length(results_list) == 0L) {
+    # (patch 0092) same as the joint estimator: no checkpoint, and no stale
+    # fallback / trim record from an earlier run masquerading as this run's
+    cat("\nNo estimates.\n")
+    .remove_stale_run_files(paste0(build_output_prefix(cfg), c("_fs_checkpoint.rds", "_stage2_fallbacks.csv", "_stage2_trimmed.csv")))
+    return(NULL)
+  }
 
   timing_info <- lapply(results_list, function(r) attr(r, "timing"))
   timing_info <- timing_info[!sapply(timing_info, is.null)]
