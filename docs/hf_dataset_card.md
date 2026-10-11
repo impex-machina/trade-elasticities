@@ -45,7 +45,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.9.1 (2026-10-XX).** Correction to the sigma-propagation columns on the
+> **v0.9.1 (2026-10-11).** Correction to the sigma-propagation columns on the
 > 13,810 cells whose Stage-1 sigma is a box edge (patch 0090). Under the v0.9.0
 > sigma-edge rule those cells take the fallback sigma, but the Stage-1 sigma_se
 > and adjust lookups were still built from the full Stage-1 table, so on the
@@ -64,14 +64,17 @@ under another cleaning rule must say which rule.
 > on every other fallback cell.
 > Two schema additions, both computed locally and both NA-safe for a consumer
 > that ignores them (patch 0093): `gamma_v_resid` = |ln gamma - ln gamma_prev|
-> between the last two gamma_V passes (filled on <fill: N> rows; p50 <fill>,
-> p90 <fill>, p99 <fill>), NA on Tier-3, non-converged and absent rows; and
+> between the last two gamma_V passes (filled on 4,743,415 rows, 69.7%; p50
+> 3.97e-04, p90 0.027, p99 0.417, max 8.26; 83.0% of filled rows below 1e-2),
+> NA on Tier-3, non-converged and absent rows; and
 > `trim_reason`, NA throughout this release (the v0.9.0 drop semantics are
 > kept: the trimmed rows are not in the table), the column that
 > `--stage2-trim-action flag` fills from v0.10.0 on. 22 columns.
-> Stage 1 and Stage 2a unchanged (sha256-gated). Also in this release: the
-> dataset card's changelog entries are separated so they render as paragraphs,
-> and the hub viewer is configured one CSV per subset.
+> Stage 1 and Stage 2a unchanged (sha256-gated). The summary `.rds`/`.txt`
+> beside the Stage-2b table are the v0.9.0 run's and predate both corrections
+> (as in v0.8.3). Also in this release: the dataset card's changelog entries
+> are separated so they render as paragraphs, and the hub viewer is configured
+> one CSV per subset.
 > Data revision: `<fill at the card step after the HF upload>`. **v0.9.0 remains available
 > pinned at revision `af5d7c659f2a17e1c3e3ce8765d75731616a292c`.**
 >

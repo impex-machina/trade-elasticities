@@ -109,3 +109,10 @@ results/stage2_dgp_summary_quick.json
 results/*_bw_gap_census_series.csv
 
 grid/
+
+# ============================================================================
+# Python bytecode cache (scripts/hf_upload_release.py leaves it behind;
+# patch 0095)
+# ============================================================================
+__pycache__/
+*.pyc
