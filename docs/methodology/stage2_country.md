@@ -876,3 +876,64 @@ tightening or re-scoping the trim (`--stage2-trim-action flag` keeps the
 rows either way). Results land in `docs/results/trim_diagnostic_<label>.md`
 and `results/trim_diagnostic_<label>.json`; `tests/testthat/
 test-trim-diagnostic.R` locks the counts.
+
+
+### The pre-trim γ blow-up, measured: the 2% subsample (2026-10-11) — the tails are σ-pole cells
+
+`analysis/trim_diagnostic.R` on the D1 base run (`te_grid/v091_base`, full-row
+record; `docs/results/trim_diagnostic_v091_subsample_base.md`,
+`results/trim_diagnostic_v091_subsample_base.json`): 1,922 trimmed rows from
+601 cells and all 25 goods — `sigma_lo` 935 (224 of them Tier 3; the only
+reason with non-converged rows, 224), `gamma_hi` 554, `gamma_lo` 433 — against
+112,645 published directly estimated rows.
+
+**The σ behind the γ tails** (cell-level, Stage 1 joined):
+
+| rows | n | σ median | σ p10 | σ < 1.5 | σ < 2 | σ SE median | SE > σ − 1 |
+|---|---|---|---|---|---|---|---|
+| `gamma_hi` | 554 | 1.289 | 1.067 | 66.8% | 81.2% | 0.293 | 48.9% |
+| `gamma_lo` | 433 | 1.060 | 1.016 | 93.1% | 97.7% | 0.232 | 86.4% |
+| all γ tails | 987 | 1.168 | 1.021 | 78.3% | 88.4% | 0.270 | 65.3% |
+| published (directly estimated) | 112,645 | 2.306 | 1.238 | 20.4% | 37.2% | 0.559 | 24.7% |
+
+Provenance: the tail cells are *more* interior-HLIML than the published rows
+(`gamma_hi` 60.8%, `gamma_lo` 66.1%, published 42.1%) and no more fallback
+(8.5% / 1.4% vs 10.6%) — ordinary ok estimates whose σ is at the pole. Eq.
+(10)'s coefficients carry $1/(\sigma-1)$; as σ → 1⁺ the import block's
+curvature in γ collapses and the optimizer sends individual exporters' γ to
+either end.
+
+**Concentration.** 578 cells; median one tail row per cell (max 18); 41.6% of
+tail rows sit in cells with three or more, but only 14 cells (4.6% of tail
+rows) lose half or more of their estimated rows. It is single exporters
+scattering within pole-σ cells, not cells collapsing whole.
+
+**Distance and trade size.** |ln γ − ln prior| p50 5.23 / p90 6.69 on the
+tails (published 0.107 / 1.30): 180× from the prior with `gamma_shrink_wt`
+no different from the rest (0.917 vs 0.915 — at the pole the data block
+overwhelms λ = 0.1 even where the information is nil). The tails are
+*larger* flows (median `avg_trade` 206 vs 54; 2.9% below the published
+p10): not a thin-data artefact. `gamma_se_status` on the tails: plateau
+52.8%, non_converged 22.9%, boundary 24.0%. `sigma_robust` is FALSE on
+89.5% of them — the pole test (σ − 2.5·SE > 1) already rejects almost the
+whole population the trim removes.
+
+**The within-good alternative.** On the pre-trim union (113,632 rows) a
+0.5%-per-tail rule within each good removes 1,162 rows against the global
+rule's 987; 723 by both, 439 only within-good (published today), 264 only
+global; 73.3% overlap. The driver is σ, not the good, so a within-good rule
+moves 700 rows for no principled gain.
+
+**Reading and outcome.** The 0.5% γ trim is a light-touch σ-pole filter: it
+removes the most extreme of the γ's that a σ near 1 produces, and nothing
+else of note. It stays as shipped. The consumer guidance is that
+`sigma_robust` covers this population more completely than the trim does
+(25% of published rows are within one SE of the pole and carry
+`sigma_robust` FALSE; the trim touches 0.9%). The methodology question it
+opens — a σ-floor edge rule mirroring v0.9.0's cap rule, a σ within $c$·SE
+of 1 taking the fallback σ — would move far more rows than the trim and is a
+box change, so it is handled like the fn-14 flags: a default-off flag and a
+local parity A/B before any session (open; not scheduled). The full-run
+record of v0.9.0 is the seven-column kind on S3
+(`v090rel_run_20261010`); the subsample finding is large enough (σ median
+1.17 vs 2.31) that it is not expected to differ.
