@@ -154,6 +154,10 @@ build_summary <- function(results, cfg, step1_results = NULL, scope = NULL) {
   }
 
   meta <- attr(results, "run_meta")
+  # (patch 0093) the summary is over the published rows; a flagged trimmed
+  # row (--stage2-trim-action flag) is counted, not summarized.
+  n_trim_flagged <- if ("trim_reason" %in% names(results)) sum(!is.na(results$trim_reason)) else 0L
+  results <- results[is_published_row(results)]
   dt <- results[!is.na(sigma) & !is.na(gamma)]
 
   # --- Config provenance ---
@@ -220,6 +224,7 @@ build_summary <- function(results, cfg, step1_results = NULL, scope = NULL) {
   # --- Global distributional statistics ---
   global <- list(
     n_estimates    = nrow(dt),
+    n_trim_flagged = n_trim_flagged,   # patch 0093
     n_products     = uniqueN(dt$good),
     n_importers    = uniqueN(dt$importer),
     n_exporters    = uniqueN(dt$exporter),

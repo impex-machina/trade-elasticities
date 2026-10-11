@@ -124,6 +124,7 @@ build_config <- function(opts) {
     # --- Across-exporter weighting (methodological) ---
     exporter_weight     = opts$exporter_weight %||% "trade_value",   # patch 0091: absent == trade_value (every release)
     stage2a_gamma_v_default = opts$stage2a_gamma_v_default %||% "clean",   # patch 0092: absent == clean (every release)
+    stage2_trim_action  = opts$stage2_trim_action %||% "drop",   # patch 0093: absent == drop (every release through v0.9.1)
     weight_period_floor = 10L,
 
     # --- Tier thresholds (methodological) ---

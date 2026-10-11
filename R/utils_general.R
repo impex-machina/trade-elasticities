@@ -103,7 +103,7 @@ finalize_saved_output <- function(x,
                                   sort_cols = c("good", "importer",
                                                 "exporter")) {
   out <- data.table::copy(x)
-  for (a in c("run_meta", "timing", "failures")) {
+  for (a in c("run_meta", "timing", "failures", "trim_flag_census")) {   # patch 0093: the add_trim_flags() census is volatile too
     data.table::setattr(out, a, NULL)
   }
   keys <- intersect(sort_cols, names(out))

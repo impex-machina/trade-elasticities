@@ -760,7 +760,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     # (patch 0092) same as the joint estimator: no checkpoint, and no stale
     # fallback / trim record from an earlier run masquerading as this run's
     cat("\nNo estimates.\n")
-    .remove_stale_run_files(paste0(build_output_prefix(cfg), c("_fs_checkpoint.rds", "_stage2_fallbacks.csv", "_stage2_trimmed.csv")))
+    .remove_stale_run_files(paste0(build_output_prefix(cfg), c("_fs_checkpoint.rds", "_stage2_fallbacks.csv", "_stage2_trimmed.csv", "_stage2_trimmed.rds")))
     return(NULL)
   }
 
@@ -820,10 +820,20 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   # <prefix>_stage2_trimmed.csv beside the fallback table), so the removal is
   # no longer silent.
   trim_mode <- if (is.null(cfg$stage2_trim)) "v2" else cfg$stage2_trim   # patch 0086: absent == v2 (v0.9.0)
+  # (patch 0093) what happens to a trimmed row: "drop" (every release through
+  # v0.9.1: the row leaves the table and the CSV is its record) or "flag" (the
+  # row stays, with trim_reason set; every cell statistic, the summary, the
+  # gamma_V pass lookup and the analysis scripts read the published rows,
+  # i.e. trim_reason NA). The trim_reason column is in the schema under both.
+  trim_action <- if (is.null(cfg$stage2_trim_action)) "drop" else cfg$stage2_trim_action
   trimmed_rows <- NULL
+  # (patch 0093) the record carries the FULL row (every column the table
+  # publishes, as of this point) plus the reason, so a drop-mode table and
+  # its CSV reconstruct the flag-mode table exactly (add_trim_flags()).
+  # Through v0.9.0 it carried (importer, exporter, good, sigma, gamma, tier,
+  # convergence) only.
   trim_rec <- function(d, reason) {
-    cols <- intersect(c("importer", "exporter", "good", "sigma", "gamma", "tier", "convergence"), names(d))
-    out <- d[, ..cols]; out[, reason := reason]; out
+    out <- data.table::copy(d); out[, reason := reason]; out
   }
   if (!is.na(trim_pct) && trim_pct > 0) {
     n_b <- nrow(output)
@@ -885,11 +895,13 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     }
   }
   trim_file <- paste0(build_output_prefix(cfg), "_stage2_trimmed.csv")
+  trim_rds  <- paste0(build_output_prefix(cfg), "_stage2_trimmed.rds")   # patch 0093: the bit-exact twin of the CSV
   if (!is.null(trimmed_rows) && nrow(trimmed_rows) > 0L) {
     fwrite(trimmed_rows, trim_file)
-    cat(sprintf("    Trimmed rows recorded: %s\n", trim_file))
-  } else if (file.exists(trim_file)) {
-    file.remove(trim_file)
+    saveRDS(trimmed_rows, trim_rds)
+    cat(sprintf("    Trimmed rows recorded: %s (+ .rds)\n", trim_file))
+  } else {
+    for (p in c(trim_file, trim_rds)) if (file.exists(p)) file.remove(p)
   }
 
   # Ensure tier column exists
@@ -906,6 +918,24 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
                 format(ot$n_above_gmax_before, big.mark = ","), format(ot$n_above_gmax_after, big.mark = ",")))
   }
 
+  # (patch 0093) two schema columns. gamma_v_resid is |ln gamma - ln gamma_prev|
+  # between the last two native gamma_V passes, filled by run_estimation.R
+  # (attach_gamma_v_resid()) and NA here; trim_reason is NA on every row the
+  # trim kept, and under --stage2-trim-action flag the trimmed rows are
+  # re-appended below with their reason (after the opt_tariff recompute, so
+  # the cell statistics are over the published rows under either action;
+  # a flagged row's cell-level columns are its pre-trim values).
+  output[, gamma_v_resid := NA_real_]
+  output[, trim_reason := NA_character_]
+  if (identical(trim_action, "flag") && !is.null(trimmed_rows) && nrow(trimmed_rows) > 0L) {
+    flagged <- data.table::copy(trimmed_rows)
+    data.table::setnames(flagged, "reason", "trim_reason")
+    flagged[, gamma_v_resid := NA_real_]
+    output <- rbindlist(list(output, flagged), use.names = TRUE, fill = TRUE)
+    cat(sprintf("  Trim action 'flag': %s trimmed rows kept with trim_reason (%s published rows)\n",
+                format(nrow(flagged), big.mark = ","), format(sum(is.na(output$trim_reason)), big.mark = ",")))
+  }
+
   # Retain avg_trade so downstream recomputations (e.g. plateau fallback
   # in run_estimation.R) can re-weight optimal tariffs without re-reading
   # the full data.
@@ -914,23 +944,24 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
       "gamma_se_total","sigma_robust","sigma_se","dgamma_dsigma",
       "gamma_se_status","gamma_exposure","gamma_shrink_wt","ref_exporter",
       "opt_tariff","opt_tariff_all","convergence","obj_value","tier",
-      "avg_trade"))
+      "avg_trade","gamma_v_resid","trim_reason"))   # patch 0093
   output <- output[, ..keep_cols]
 
-  # --- Summary ---
+  # --- Summary (over the published rows) ---
+  pub <- output[is.na(trim_reason)]
   cat(sprintf("\nFixed-sigma estimation: %.1f min, %s estimates\n",
-              t_elapsed, format(nrow(output), big.mark = ",")))
+              t_elapsed, format(nrow(pub), big.mark = ",")))
   cat(sprintf("  sigma median=%.3f, gamma median=%.3f, opt_tariff median=%.3f\n",
-              median(output$sigma, na.rm=TRUE), median(output$gamma, na.rm=TRUE),
-              median(output$opt_tariff, na.rm=TRUE)))
-  if ("tier" %in% names(output)) {
-    tier_tab <- output[, .N, by = tier]
+              median(pub$sigma, na.rm=TRUE), median(pub$gamma, na.rm=TRUE),
+              median(pub$opt_tariff, na.rm=TRUE)))
+  if ("tier" %in% names(pub)) {
+    tier_tab <- pub[, .N, by = tier]
     setorder(tier_tab, tier)
     for (i in seq_len(nrow(tier_tab))) {
       cat(sprintf("  Tier %s: %s estimates (%.1f%%)\n",
                   as.character(tier_tab$tier[i]),
                   format(tier_tab$N[i], big.mark = ","),
-                  100 * tier_tab$N[i] / nrow(output)))
+                  100 * tier_tab$N[i] / nrow(pub)))
     }
   }
 
@@ -941,6 +972,8 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     ncores = ncores, rcpp_loaded = .het_obj_fs_rcpp_loaded,
     trim_pct = trim_pct,
     trim_mode = trim_mode,           # patch 0083
+    trim_action = trim_action,       # patch 0093
+    n_trim_flagged = sum(!is.na(output$trim_reason)),   # patch 0093
     gamma_v_resolution = gv_totals,  # patch 0085
     gamma_v_resolution_cells = gv_info,
     export_period_count = if (is.null(cfg$stage2_export_period_count)) "panel" else cfg$stage2_export_period_count,   # patch 0086: absent == panel

@@ -55,9 +55,16 @@ under another cleaning rule must say which rule.
 > v0.9.0 sentence "sigma_robust FALSE on the 13,810 edge cells" held only for
 > the cells whose SE was NA. Corrected on the shipped table by
 > `scripts/apply_sigma_edge_se_rule.R` without re-estimation: gamma, gamma_se
-> and every other column are identical to v0.9.0; on the edge cells sigma_se,
+> and every other v0.9.0 column are identical to v0.9.0; on the edge cells sigma_se,
 > dgamma_dsigma and gamma_se_total are NA and sigma_robust is FALSE, as on every
 > other fallback cell. Census: <fill: edge rows N; sigma_se finite N -> 0; gamma_se_total finite N -> 0; sigma_robust TRUE N -> 0 (x% of edge rows had passed); sigma_robust TRUE over the table 24.4% -> x%>.
+> Two schema additions, both computed locally and both NA-safe for a consumer
+> that ignores them (patch 0093): `gamma_v_resid` = |ln gamma - ln gamma_prev|
+> between the last two gamma_V passes (filled on <fill: N> rows; p50 <fill>,
+> p90 <fill>, p99 <fill>), NA on Tier-3, non-converged and absent rows; and
+> `trim_reason`, NA throughout this release (the v0.9.0 drop semantics are
+> kept: the trimmed rows are not in the table), the column that
+> `--stage2-trim-action flag` fills from v0.10.0 on. 22 columns.
 > Stage 1 and Stage 2a unchanged (sha256-gated). Also in this release: the
 > dataset card's changelog entries are separated so they render as paragraphs,
 > and the hub viewer is configured one CSV per subset.

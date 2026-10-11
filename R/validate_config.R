@@ -54,6 +54,9 @@ validate_config <- function(cfg) {
   if (!is.null(cfg$bw_lag) && !cfg$bw_lag %in% c("legacy", "calendar", "raw")) {
     stop("bw_lag must be 'legacy', 'calendar' or 'raw', got: ", cfg$bw_lag)
   }
+  if (!is.null(cfg$stage2_trim_action) && !cfg$stage2_trim_action %in% c("drop", "flag")) {   # patch 0093
+    stop("stage2_trim_action must be 'drop' or 'flag', got: ", cfg$stage2_trim_action)
+  }
   if (!is.null(cfg$stage2a_gamma_v_default) &&
       !cfg$stage2a_gamma_v_default %in% c("clean", "priors")) {   # patch 0092
     stop("stage2a_gamma_v_default must be 'clean' or 'priors', got: ", cfg$stage2a_gamma_v_default)

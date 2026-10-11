@@ -59,8 +59,15 @@ stage1 <- readRDS(file.path(
 stage2b <- readRDS(file.path(
   DERIVED_S2B, "baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds"))
 
+# (patch 0093) a table produced under --stage2-trim-action flag carries its
+# trimmed rows with trim_reason set; every pillar reads the published rows
+# (trim_reason NA), as the pipeline's own statistics do. The flagged rows
+# are kept aside in stage2b_flagged for a diagnostic that wants them.
+stage2b_flagged <- if ("trim_reason" %in% names(stage2b)) stage2b[!is.na(trim_reason)] else stage2b[0L]
+if ("trim_reason" %in% names(stage2b)) stage2b <- stage2b[is.na(trim_reason)]
+
 message("00_setup.R: loaded stage1 (", nrow(stage1), " rows) and ",
-        "stage2b (", nrow(stage2b), " rows)")
+        "stage2b (", nrow(stage2b), " published rows; ", nrow(stage2b_flagged), " flagged trimmed rows kept aside)")
 
 # --- emit summaries for README build artifact ------------------------------
 # Architecture: README.md is a generated build artifact. Numbers flow through
@@ -325,6 +332,7 @@ rm(n_interior, n_step2, n_status_ok)
 stage2b_dt <- stage2b[!is.na(sigma) & !is.na(gamma)]
 stage2b_summary <- list(
   n_cells      = nrow(stage2b_dt),
+  n_trim_flagged = nrow(stage2b_flagged),   # patch 0093
   n_importers  = data.table::uniqueN(stage2b_dt$importer),
   n_exporters  = data.table::uniqueN(stage2b_dt$exporter),
   n_sigma      = nrow(unique(stage2b_dt[, .(importer, good)])),

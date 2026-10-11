@@ -628,7 +628,7 @@ if (should_run("2b", opts, paths)) {
     # of the regional median where (V, j, good) is present.
     if (identical(opts$stage2_gamma_v_source, "table")) {
       gv_tab <- readRDS(opts$stage2_gamma_v_table); setDT(gv_tab)
-      gv_tab <- gv_tab[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0,
+      gv_tab <- gv_tab[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0 & is_published_row(gv_tab),   # patch 0093
                        .(importer = as.character(importer), exporter = as.character(exporter),
                          good = as.character(good), gamma)]
       config_2b$gamma_V_exporter_lookup <- gv_tab
@@ -658,7 +658,7 @@ if (should_run("2b", opts, paths)) {
       pass_log <- list()
       for (k in 2:gv_passes) {
         prev <- country_results
-        gv_tab <- prev[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0,
+        gv_tab <- prev[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0 & is_published_row(prev),   # patch 0093
                        .(importer = as.character(importer), exporter = as.character(exporter),
                          good = as.character(good), gamma)]
         config_2b$gamma_V_exporter_lookup <- gv_tab
@@ -674,6 +674,14 @@ if (should_run("2b", opts, paths)) {
         rotate_csvs(k)
         if (k < gv_passes) saveRDS(finalize_saved_output(country_results), paste0(out_base_country, sprintf("_fixed_sigma_pass%d.rds", k)))
       }
+      # (patch 0093) gamma_v_resid on the final table: |ln gamma - ln gamma_prev|
+      # against the previous pass, NA where either pass has no published
+      # directly estimated converged gamma for the row. scripts/add_gamma_v_resid.R
+      # applies the same function to an existing final table and its pass table.
+      gvr <- attach_gamma_v_resid(country_results, prev)
+      cat(sprintf("  gamma_v_resid (pass %d vs %d): filled on %s of %s rows | p50 %.2e p90 %.3f p99 %.3f max %.3f | %.1f%% below 1e-2\n",
+                  gv_passes, gv_passes - 1L, format(gvr$n_filled, big.mark = ","), format(gvr$n_rows, big.mark = ","),
+                  gvr$p50, gvr$p90, gvr$p99, gvr$max, 100 * gvr$share_lt_1e2))
       fwrite(rbindlist(pass_log), paste0(out_base_country, "_gamma_v_passes.csv"))
       cat(sprintf("  gamma_V pass log: %s_gamma_v_passes.csv (final table = pass %d)\n", out_base_country, gv_passes))
     }

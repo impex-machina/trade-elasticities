@@ -34,7 +34,8 @@ EXPECTED_COLS <- c(
   "gamma_se_total", "sigma_robust", "sigma_se", "dgamma_dsigma",
   "ref_exporter",
   "opt_tariff", "opt_tariff_all",
-  "convergence", "obj_value", "tier", "avg_trade"
+  "convergence", "obj_value", "tier", "avg_trade",
+  "gamma_v_resid", "trim_reason"   # patch 0093
 )
 
 

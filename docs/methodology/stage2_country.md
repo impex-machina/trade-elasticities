@@ -742,3 +742,42 @@ yet released". The dry run prints the top entry and its state either way.
 
 Also: `run_estimation.R`'s end-of-run manifest check reads
 `<repo>/data/manifest.csv` rather than a CWD-relative path.
+
+
+### Two schema columns without a box: `gamma_v_resid` and `trim_reason` (patch 0093)
+
+Both columns are deterministic functions of artefacts every run already
+produces, so they are added to an existing table locally and the pipeline
+fills them natively from the next run on; the two routes give the same
+table (`tests/testthat/test-0093-schema.R`).
+
+**`gamma_v_resid`** is $|\ln \gamma - \ln \gamma_{\text{prev}}|$ between the
+final native γ_V pass and the one before it — the per-row form of the
+pass-step census above (`gamma_v_step()` reports its quantiles over Tier-1
+rows). `attach_gamma_v_resid()` fills it on rows that are directly estimated,
+converged and published in both passes and leaves NA on Tier-3 rows (their γ
+is the prior and would show a misleading 0), on non-converged rows (a
+fallback point) and on rows the previous pass does not carry. The runner
+applies it after its last pass and prints the census;
+`scripts/add_gamma_v_resid.R` applies it to an existing final table and its
+`_fixed_sigma_pass<K−1>.rds`. The v0.9.0 iteration's tail is not at a fixed
+point after three passes (p99 of the Tier-1 step 0.40), and this column is
+how a consumer sees which rows are settled.
+
+**`trim_reason`** and `--stage2-trim-action {drop|flag}` (default `drop`,
+every release through v0.9.1). The trim's record now carries the full row
+(`_stage2_trimmed.csv`, and a bit-exact `.rds` twin) rather than the seven
+columns of patch 0083, so a drop-mode table and its record reconstruct the
+flag-mode table exactly (`add_trim_flags()`, `scripts/add_trim_flags.R`; a
+pre-0093 seven-column record is accepted and its rows then carry NA in the
+unrecorded columns — the v0.9.0 record is of that kind). Under `flag` the
+trimmed rows stay with their reason and every consumer reads the published
+rows through `is_published_row()`: the cell statistics (the trim and the
+`opt_tariff` recompute run before the rows are re-appended, so a flagged
+row's cell-level columns are its pre-trim values), the run summary, the
+γ_V pass lookup and `gamma_v_step()`, and `analysis/00_setup.R`, which
+keeps the flagged rows aside as `stage2b_flagged`. The checkpoint is
+pre-trim, so a resume is valid across the two actions and the stamp does not
+include it. v0.9.1 ships the column NA throughout (drop semantics kept, so a
+v0.9.0→v0.9.1 diff is the edge-cell correction plus two columns); the
+default moves to `flag` with the next full Stage-2b run if the A/B says so.

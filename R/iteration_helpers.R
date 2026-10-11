@@ -84,6 +84,102 @@ apply_sigma_edge_rule <- function(sigma_clean, rule = c("fallback", "publish")) 
 }
 
 
+#' Published-row mask (patch 0093): TRUE where the row is not a flagged
+#' trimmed row (trim_reason NA, or no such column). Every consumer of a
+#' Stage-2 table reads the published rows through this.
+is_published_row <- function(dt) {
+  if ("trim_reason" %in% names(dt)) is.na(dt$trim_reason) else rep(TRUE, nrow(dt))
+}
+
+
+#' Attach gamma_v_resid to a Stage-2b table (patch 0093).
+#'
+#' gamma_v_resid = |ln gamma_cur - ln gamma_prev| for every (importer,
+#' exporter, good) row that is a directly estimated, converged, published
+#' row with a finite positive gamma in BOTH passes -- the population the
+#' exporter-specific gamma_V lookup is built from; NA on Tier-3 rows (their
+#' gamma is the prior, identical across passes), on non-converged rows (a
+#' fallback point), on flagged trimmed rows and on rows absent from the
+#' previous pass. It is the per-row form of the pass-step census
+#' (gamma_v_step()): the native gamma_V iteration is a fixed-point solve
+#' with a contracting median and a tail that is not at a fixed point after
+#' three passes (p99 of |d ln gamma| 0.40 at v0.9.0), and this column lets a
+#' consumer see which rows are settled.
+#'
+#' @param cur the final pass table (modified by reference).
+#' @param prev the previous pass table.
+#' @return invisibly, a census list.
+attach_gamma_v_resid <- function(cur, prev) {
+  key <- c("importer", "exporter", "good")
+  pick <- function(x) {
+    ok <- is_estimated_row(x$tier, x$convergence) & x$convergence %in% 0L & is.finite(x$gamma) & x$gamma > 0 & is_published_row(x)
+    y <- x[ok, c(key, "gamma"), with = FALSE]
+    for (k in key) y[[k]] <- as.character(y[[k]])
+    y
+  }
+  p <- pick(prev); data.table::setnames(p, "gamma", "gamma_prev")
+  k_cur <- paste(as.character(cur$importer), as.character(cur$exporter), as.character(cur$good), sep = "\r")
+  k_prev <- paste(p$importer, p$exporter, p$good, sep = "\r")
+  m <- match(k_cur, k_prev)
+  ok_cur <- is_estimated_row(cur$tier, cur$convergence) & cur$convergence %in% 0L & is.finite(cur$gamma) & cur$gamma > 0 & is_published_row(cur)
+  res <- rep(NA_real_, nrow(cur))
+  hit <- ok_cur & !is.na(m)
+  res[hit] <- abs(log(cur$gamma[hit]) - log(p$gamma_prev[m[hit]]))
+  cur[, gamma_v_resid := res]
+  d <- res[is.finite(res)]
+  q <- function(pr) if (length(d)) unname(stats::quantile(d, pr)) else NA_real_
+  invisible(list(n_rows = nrow(cur), n_filled = length(d), p50 = q(.5), p90 = q(.9), p99 = q(.99),
+                 max = if (length(d)) max(d) else NA_real_, share_lt_1e2 = if (length(d)) mean(d < 1e-2) else NA_real_))
+}
+
+
+#' Re-append trimmed rows to a drop-mode Stage-2b table as flagged rows (patch 0093).
+#'
+#' `trimmed` is the run's _stage2_trimmed.rds (bit-exact, written beside the
+#' CSV since patch 0093) or _stage2_trimmed.csv (full rows + reason since
+#' patch 0093, 15 significant digits; the 7-column record of earlier runs is
+#' accepted, and its rows then carry NA in every unrecorded column). With
+#' `trimmed = NULL` only the
+#' trim_reason column (NA) is added -- the drop-mode schema. Rows already in
+#' `dt` are refused (the record belongs to another run). Returns the table
+#' (a new object: rbindlist) and the census as attributes.
+add_trim_flags <- function(dt, trimmed = NULL) {
+  dt <- data.table::copy(dt)
+  if (!"gamma_v_resid" %in% names(dt)) dt[, gamma_v_resid := NA_real_]
+  if (!"trim_reason" %in% names(dt)) dt[, trim_reason := NA_character_]
+  if (is.null(trimmed) || nrow(trimmed) == 0L) {
+    data.table::setattr(dt, "trim_flag_census", list(n_flagged_added = 0L, n_published = sum(is.na(dt$trim_reason))))
+    return(dt)
+  }
+  tr <- data.table::copy(trimmed); data.table::setDT(tr)
+  if (!"reason" %in% names(tr)) stop("add_trim_flags(): the trimmed record needs a 'reason' column")
+  for (k in c("importer", "exporter", "good")) { data.table::set(tr, j = k, value = as.character(tr[[k]])); data.table::set(dt, j = k, value = as.character(dt[[k]])) }
+  k_dt <- paste(dt$importer, dt$exporter, dt$good, sep = "\r"); k_tr <- paste(tr$importer, tr$exporter, tr$good, sep = "\r")
+  if (any(k_tr %in% k_dt))
+    stop(sprintf("add_trim_flags(): %d rows of the trimmed record are already in the table; the record belongs to another run", sum(k_tr %in% k_dt)))
+  data.table::setnames(tr, "reason", "trim_reason")
+  tr[, gamma_v_resid := NA_real_]
+  extra <- setdiff(names(tr), names(dt))
+  if (length(extra)) tr[, (extra) := NULL]
+  # a CSV round trip loses storage classes (integer vs double, logical);
+  # align each recorded column to the table's class. Code columns with
+  # leading zeros must be READ as character (the script's fread does).
+  for (c in intersect(names(tr), names(dt))) {
+    if (!identical(class(tr[[c]]), class(dt[[c]]))) {
+      cls <- class(dt[[c]])[1]
+      data.table::set(tr, j = c, value = switch(cls, integer = as.integer(tr[[c]]), numeric = as.numeric(tr[[c]]),
+                                                logical = as.logical(tr[[c]]), character = as.character(tr[[c]]), tr[[c]]))
+    }
+  }
+  n_unrec <- length(setdiff(names(dt), names(tr)))
+  out <- rbindlist(list(dt, tr), use.names = TRUE, fill = TRUE)
+  data.table::setattr(out, "trim_flag_census",
+                      list(n_flagged_added = nrow(tr), n_published = sum(is.na(out$trim_reason)),
+                           n_unrecorded_columns = n_unrec, reasons = as.list(table(tr$trim_reason))))
+  out
+}
+
+
 #' Stage 2a's default gamma_V and gamma start (patch 0092).
 #'
 #' @param sigma_clean the clean Stage-1 table (gamma = omega column).
@@ -189,7 +285,7 @@ apply_sigma_edge_se_rule <- function(dt, stage1) {
 gamma_v_step <- function(prev, cur) {
   key <- c("importer", "exporter", "good")
   pick <- function(x) {
-    y <- x[tier == 1L & convergence == 0L & is.finite(gamma) & gamma > 0, c(key, "gamma"), with = FALSE]
+    y <- x[tier == 1L & convergence == 0L & is.finite(gamma) & gamma > 0 & is_published_row(x), c(key, "gamma"), with = FALSE]   # patch 0093: published rows
     for (k in key) y[[k]] <- as.character(y[[k]])
     y
   }
