@@ -711,7 +711,71 @@ Both flags are experiment flags: the defaults stay `calendar` and
 (`--bw-lag raw`; `--exporter-weight bw_sum`; both) with
 `analysis/compare_runs.R` and the parity-reliability script are the
 measurement before any default moves. A move of either default is a
-methodology release with a Stage-2a + 2b box session.
+methodology release with a Stage-2a + 2b box session. The measurement was
+taken on 2026-10-11 and closed both flags; the next section is its record.
+
+### The fn-14 flags, measured: the 2% subsample A/B of 2026-10-11 — closed, no session
+
+Design, fixed before the numbers were seen. D1: four single-pass Stage-2b
+runs on the 2% product subsample (`--product-sample 0.02 --product-seed
+20260926 --stage2-gamma-v-passes 1`, v0.9.1 Stage-1 and Stage-2a tables) —
+`base`, `raw` (`--bw-lag raw`), `bwsum` (`--exporter-weight bw_sum`),
+`both` — and the per-row step of each rung against base,
+$|\ln\gamma_{\text{rung}} - \ln\gamma_{\text{base}}|$ on shared Tier-1
+converged rows (`gamma_v_step()`); a rung with p50 below 1e-3 and p90 below
+0.05 would have been inside the γ_V iteration's own residual (p50 4e-4,
+p90 0.027) and closed on magnitude alone. D2, for every rung that cleared
+D1: odd/even parity passes of base and the rung, and the split-half
+reliability of the within-cell-demeaned log γ
+(`analysis/stage2_reliability.R`); ship only if $r_{\text{within}}$ improves
+on base by at least 0.03 with the rank correlation not lower, reject at
+$\Delta r \le 0$. Artefacts: `docs/results/v091_subsample_step_census.txt`,
+`docs/methodology/v091_v091_{raw,bwsum,both}_subsample_compare.md`,
+`docs/results/stage2_reliability_v091_subsample.md`,
+`results/stage2_reliability_v091_subsample.json`; the pass tables are under
+`te_grid/v091_*`.
+
+D1 — every rung cleared the magnitude screen by a wide margin (base: 151,779
+rows, γ median 0.5437, `opt_tariff` median 0.653; the γ median is pinned by
+the Tier-3 mass points and is uninformative here):
+
+| rung | shared Tier-1 rows | step p50 | p90 | p99 | max | below 1e-2 | `opt_tariff` median |
+|---|---|---|---|---|---|---|---|
+| `raw` | 103,193 | 2.31e-02 | 0.350 | 1.607 | 7.39 | 38.4% | 0.657 |
+| `bwsum` | 103,171 | 4.90e-02 | 0.381 | 1.157 | 6.34 | 25.2% | 0.665 |
+| `both` | 102,701 | 8.21e-02 | 0.583 | 1.890 | 7.43 | 18.6% | 0.666 |
+
+D2 — all three rungs lower reproducibility; none meets the rule, all three
+are rejected:
+
+| config | n_keys | n_cells | $r_{\text{within}}$ | rank ρ | $r_{\text{raw}}$ | sd within (A / B) | non-converged | shrink wt | within-cell sd (full) |
+|---|---|---|---|---|---|---|---|---|---|
+| `base` | 85,300 | 4,030 | **0.333** | 0.343 | 0.473 | 0.826 / 0.838 | 2.3% | 0.915 | 0.655 |
+| `raw` | 85,300 | 4,030 | 0.303 | 0.320 | 0.450 | 0.721 / 0.726 | 1.9% | 0.912 | 0.623 |
+| `bwsum` | 85,400 | 4,040 | 0.314 | 0.338 | 0.416 | 1.15 / 1.16 | 2.0% | 0.864 | 0.682 |
+| `both` | 85,300 | 4,030 | 0.307 | 0.319 | 0.439 | 0.836 / 0.848 | 2.3% | 0.838 | 0.675 |
+
+Reading. `raw` restores the pair's entry-year observation at full weight;
+the result is tighter within-cell dispersion (0.72 vs 0.83) but less of it
+reproduces across halves (Δr = −0.030, exactly the resolution of the test,
+on the wrong side). The economic reading is that the first year a pair
+trades is the noisiest observation in its run — a partial year, small
+volumes, a unit value that is not yet the steady-state one — and the
+calendar mode's accidental ~zero weight on it has been acting as an
+entry-year filter; the accident is kept because it is measured to help, and
+it is now documented as a rule of the estimator rather than as fn. 14.
+`bwsum` puts the fn-14 cross-variety weight on large, persistent exporters:
+within-cell dispersion widens by 40%, the shrinkage weight falls (0.915 →
+0.864: the data block gets heavier against the fixed λ), and reproducibility
+falls (Δr = −0.019, rank ρ unchanged) — the heavier rows are not the more
+reproducible ones. `both` compounds the two (Δr = −0.026). `opt_tariff`
+moves by +0.6% / +1.8% / +2.0% at the median under the three rungs; the
+direction is not evidence either way. Outcome: the shipped weighting
+(`calendar`, `trade_value`) stays, no v0.10.0 session is warranted by these
+flags, and both remain available for anyone who wants the fn-14 literal.
+`--stage2a-gamma-v-default priors` (patch 0092) is unmeasured by this A/B
+and rides whatever Stage-2a session comes next, with an expected effect at
+the level of a median over 180k cells.
 
 
 ### Run hygiene, the Stage-2a default γ_V, and the hub upload guard (patch 0092)
