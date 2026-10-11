@@ -50,14 +50,18 @@ under another cleaning rule must say which rule.
 > sigma-edge rule those cells take the fallback sigma, but the Stage-1 sigma_se
 > and adjust lookups were still built from the full Stage-1 table, so on the
 > omega-edge corner cells among them (a finite projected sigma SE, adjust 6/8)
-> sigma_se, dgamma_dsigma and gamma_se_total were published for the discarded
-> sigma = 50 point beside the fallback sigma and sigma_robust could pass; the
-> v0.9.0 sentence "sigma_robust FALSE on the 13,810 edge cells" held only for
-> the cells whose SE was NA. Corrected on the shipped table by
-> `scripts/apply_sigma_edge_se_rule.R` without re-estimation: gamma, gamma_se
-> and every other v0.9.0 column are identical to v0.9.0; on the edge cells sigma_se,
-> dgamma_dsigma and gamma_se_total are NA and sigma_robust is FALSE, as on every
-> other fallback cell. Census: <fill: edge rows N; sigma_se finite N -> 0; gamma_se_total finite N -> 0; sigma_robust TRUE N -> 0 (x% of edge rows had passed); sigma_robust TRUE over the table 24.4% -> x%>.
+> sigma_se and dgamma_dsigma were published for the discarded sigma = 50 point
+> beside the fallback sigma. Census of the correction on the shipped table:
+> 13,804 of the 13,810 edge cells present (300,515 rows, all at sigma 2.30595);
+> sigma_se finite on 81,401 rows -> 0, dgamma_dsigma finite on 80,521 -> 0,
+> gamma_se_total finite on 0, sigma_robust TRUE on 0 -- the pole test rejected
+> every corner cell, so the v0.9.0 sentence "sigma_robust FALSE on the 13,810
+> edge cells" held in fact (by the test's outcome, not by construction) and
+> the table-level sigma_robust share (24.4%) is unchanged; the published error
+> was two columns on 1.2% of rows. Applied by `scripts/apply_sigma_edge_se_rule.R`
+> without re-estimation: gamma, gamma_se and every other v0.9.0 column are
+> identical to v0.9.0; on the edge cells sigma_se and dgamma_dsigma are NA, as
+> on every other fallback cell.
 > Two schema additions, both computed locally and both NA-safe for a consumer
 > that ignores them (patch 0093): `gamma_v_resid` = |ln gamma - ln gamma_prev|
 > between the last two gamma_V passes (filled on <fill: N> rows; p50 <fill>,

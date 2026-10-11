@@ -625,13 +625,21 @@ clamp cells (adjust 4) and the σ-cap-edge boundary cells that SE is NA and
 the screen fails as documented; on the ω-edge corner cells — boundary optima
 on the ω floor or cap whose free σ landed within 1e-3 of the cap, flagged
 `sigma_capped` by value, adjust 6/8 — the HNCS edge SE for σ is finite, so
-`sigma_se`, `dgamma_dsigma` and `gamma_se_total` were published for an
-estimate the row does not carry and `sigma_robust` could pass. The 2026-10-10
-fresh-eyes review reproduced it on the synthetic fixture (a dropped cell with
-a planted SE of 0.3 and adjust 6 published σ 2.306, `sigma_se` 0.3,
-`sigma_robust` TRUE and a finite `gamma_se_total` on every estimated row);
-the v0.9.0 README and card sentence "sigma_robust FALSE on the 13,810 edge
-cells" held only for the cells whose SE was NA.
+`sigma_se` and `dgamma_dsigma` were published for an estimate the row does
+not carry, and `sigma_robust` could have passed had that SE been small. The
+2026-10-10 fresh-eyes review reproduced the code path on the synthetic
+fixture (a dropped cell with a planted SE of 0.3 and adjust 6 published σ
+2.306, `sigma_se` 0.3, `sigma_robust` TRUE and a finite `gamma_se_total` on
+every estimated row). On the shipped v0.9.0 table the census of the
+correction (2026-10-11, `docs/results/sigma_edge_se_correction_v091.txt`) is:
+13,804 of the 13,810 edge cells present, 300,515 rows, all at σ = 2.30595;
+`sigma_se` finite on 81,401 of them → 0, `dgamma_dsigma` finite on 80,521 →
+0, `gamma_se_total` finite on 0, `sigma_robust` TRUE on 0 — the pole test
+(σ − 2.5·SE > 1 with σ = 2.306 needs SE < 0.52) rejected every corner cell,
+so the v0.9.0 sentence "sigma_robust FALSE on the 13,810 edge cells" held
+in fact, by the test's outcome rather than by construction, and the
+table-level `sigma_robust` share (24.4%) is unchanged. The published error
+was two columns on 1.2% of rows.
 
 Patch 0090 does three things. `stage2b_sigma_lookups()`
 (`R/iteration_helpers.R`) builds the σ, σ_se, adjust and σ_V lookups from the
