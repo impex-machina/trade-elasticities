@@ -104,6 +104,8 @@ build_config <- function(opts) {
     # patch 0086: exporter-specific gamma_V passes (1 = <= v0.8.3) and the sigma-edge rule
     stage2_gamma_v_passes = opts$stage2_gamma_v_passes %||% 3L,
     stage2_sigma_edge = opts$stage2_sigma_edge %||% "fallback",           # patch 0087: v0.9.0 default (publish = <= v0.8.3)
+    stage2_sigma_pole_rule = opts$stage2_sigma_pole_rule %||% "none",    # patch 0099: absent == none (every release)
+    stage2_sigma_pole_se   = opts$stage2_sigma_pole_se %||% 1,
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
     stage1_cf_admissibility = opts$stage1_cf_admissibility %||% "legacy",

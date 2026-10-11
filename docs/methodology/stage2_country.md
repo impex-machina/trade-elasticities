@@ -937,3 +937,32 @@ local parity A/B before any session (open; not scheduled). The full-run
 record of v0.9.0 is the seven-column kind on S3
 (`v090rel_run_20261010`); the subsample finding is large enough (σ median
 1.17 vs 2.31) that it is not expected to differ.
+
+### The σ-pole rule: `--stage2-sigma-pole-rule {none|fallback}` (patch 0099, experiment flag)
+
+The other end of the σ axis gets the cap rule's treatment, default-off. A
+Stage-1 cell whose σ is within $c$ standard errors of the pole,
+$\sigma - 1 < c \cdot \text{SE}(\sigma)$, leaves the clean set under
+`fallback` (`--stage2-sigma-pole-se c`, default 1): Stage 2 gives it the
+fallback σ, it supplies no σ_V and its ω leaves the priors, exactly as a
+cap-edge cell does since v0.9.0. A cell with no finite σ SE cannot be
+assessed and is kept. `none` is the identity and every release reproduces.
+The motivation is the measurement of patch 0098: the γ tails the trim
+removes are σ-pole cells, and Eq. (10)'s $1/(\sigma-1)$ coefficients make
+the γ of such a cell uninformative whatever the optimizer returns. The rule
+is not a trim: it changes the σ the cell's γ is estimated at, so it moves
+every exporter in the cell and, through the σ_V lookup and the priors,
+cells elsewhere — on the 2% subsample about a quarter of published rows sit
+in cells within one SE of the pole, so at $c = 1$ it is a large change and a
+box change.
+
+Measurement before any default moves, as for the fn-14 flags: single-pass
+subsample runs at $c = 1$ and $c = 0.5$ against the existing `v091_base`,
+the step census (expected large by construction), and the split-half parity
+reliability against the existing `v091_base_odd/even`; the rule ships only
+if $r_{\text{within}}$ improves on base by at least 0.03 with the rank
+correlation not lower. If it ships, the session is Stage 2a + 2b (the
+priors and the regional σ medians move too) and can carry
+`--stage2a-gamma-v-default priors` and `--stage2-trim-action flag`.
+`tests/testthat/test-sigma-pole-rule.R` locks the identity, the drop set
+and the plumbing.

@@ -117,10 +117,12 @@ cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" els
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "best" else opts$stage2_fallback))   # patch 0077/0080
 cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source))   # patch 0079/0080
 cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts$stage2_trim)) "legacy" else opts$stage2_trim))   # patch 0083
-cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s\n",   # patch 0085/0086
+cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s | sigma pole: %s\n",   # patch 0085/0086/0099
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
             if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
-            if (is.null(opts$stage2_sigma_edge)) "fallback" else opts$stage2_sigma_edge))
+            if (is.null(opts$stage2_sigma_edge)) "fallback" else opts$stage2_sigma_edge,
+            if (is.null(opts$stage2_sigma_pole_rule) || identical(opts$stage2_sigma_pole_rule, "none")) "none"
+            else sprintf("%s (c = %s SE)", opts$stage2_sigma_pole_rule, if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se)))
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
@@ -337,6 +339,15 @@ sigma_clean <- apply_sigma_edge_rule(sigma_clean, if (is.null(opts$stage2_sigma_
 if (isTRUE(attr(sigma_clean, "n_edge_dropped") > 0L)) {
   cat(sprintf("  sigma-edge cells dropped from the clean set (fallback sigma, no sigma_V, out of the priors): %s\n",
               format(attr(sigma_clean, "n_edge_dropped"), big.mark = ",")))
+}
+# (patch 0099) --stage2-sigma-pole-rule fallback: cells whose sigma is within
+# --stage2-sigma-pole-se SEs of the pole (sigma - 1 < c * SE) leave the clean
+# set the same way. Default "none" (every release).
+sigma_clean <- apply_sigma_pole_rule(sigma_clean, if (is.null(opts$stage2_sigma_pole_rule)) "none" else opts$stage2_sigma_pole_rule,
+                                     if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se)
+if (isTRUE(attr(sigma_clean, "n_pole_dropped") > 0L)) {
+  cat(sprintf("  sigma-pole cells dropped from the clean set (sigma - 1 < %s * SE; fallback sigma, no sigma_V, out of the priors): %s\n",
+              if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se, format(attr(sigma_clean, "n_pole_dropped"), big.mark = ",")))
 }
 sigma_fallback <- median(sigma_clean$sigma, na.rm = TRUE)
 # (patch 0084) --stage2-sigma-fallback-pin: hold the fallback sigma at a given

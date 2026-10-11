@@ -286,6 +286,10 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Stage-2b passes of the exporter-specific gamma_V iteration: pass 1 uses --stage2-gamma-v-source, each further pass takes gamma_jV from the previous pass's own table (patch 0086). 1 = single pass (every release through v0.8.3). Default: %default"),
     optparse::make_option(c("--stage2-sigma-edge"), type = "character", default = "fallback", metavar = "RULE",
       help = "Stage-1 cells whose published sigma is a box edge (sigma_capped): 'fallback' (v0.9.0 default, patch 0087: treat as no estimate -- fallback sigma, sigma_robust FALSE, no sigma_V, out of the priors) or 'publish' (keep sigma = cap in Stage 2; every release through v0.8.3). Default: %default"),
+    optparse::make_option(c("--stage2-sigma-pole-rule"), type = "character", default = "none", metavar = "RULE",
+      help = "Stage-1 cells whose sigma is within --stage2-sigma-pole-se standard errors of the pole (sigma - 1 < c * sigma_se): 'none' (every release) or 'fallback' (treat as no estimate, as --stage2-sigma-edge fallback does at the cap; patch 0099, experiment flag -- the gamma tails the trim removes are sigma-pole cells). Default: %default"),
+    optparse::make_option(c("--stage2-sigma-pole-se"), type = "double", default = 1, metavar = "C",
+      help = "Threshold c, in SE units, for --stage2-sigma-pole-rule. Default: %default"),
     optparse::make_option(c("--stage2-trim"), type = "character", default = "v2", metavar = "MODE",
       help = "Stage-2 tail-trim semantics: 'legacy' (sigma bounds as row quantiles although sigma is cell-level; Stage-2a plateau replacement on; every release through v0.8.3) or 'v2' (sigma bounds over cells, plateau replacement off; patch 0083). Both record the removed rows in <prefix>_stage2_trimmed.csv. Default: %default"),
     optparse::make_option(c("--stage2b-prior-source"), type = "character", default = "estimated", metavar = "ROWS",
@@ -413,6 +417,8 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_export_period_count %in% c("rows", "panel")) fail(sprintf("--stage2-export-period-count must be 'rows' or 'panel', got: '%s'", opts$stage2_export_period_count))   # patch 0085
   if (is.na(opts$stage2_gamma_v_passes) || opts$stage2_gamma_v_passes < 1L) fail(sprintf("--stage2-gamma-v-passes must be an integer >= 1, got: '%s'", opts$stage2_gamma_v_passes))   # patch 0086
   if (!opts$stage2_sigma_edge %in% c("publish", "fallback")) fail(sprintf("--stage2-sigma-edge must be 'publish' or 'fallback', got: '%s'", opts$stage2_sigma_edge))   # patch 0086
+  if (!opts$stage2_sigma_pole_rule %in% c("none", "fallback")) fail(sprintf("--stage2-sigma-pole-rule must be 'none' or 'fallback', got: '%s'", opts$stage2_sigma_pole_rule))   # patch 0099
+  if (!is.finite(opts$stage2_sigma_pole_se) || opts$stage2_sigma_pole_se <= 0) fail(sprintf("--stage2-sigma-pole-se must be a positive number, got: %s", opts$stage2_sigma_pole_se))
   if (!(is.finite(opts$stage1_sigma_cap) && opts$stage1_sigma_cap > 1)) fail(sprintf("--stage1-sigma-cap must be a number > 1, got: '%s'", opts$stage1_sigma_cap))   # patch 0084
   if (!opts$stage1_capped_omega %in% c("keep", "drop")) fail(sprintf("--stage1-capped-omega must be 'keep' or 'drop', got: '%s'", opts$stage1_capped_omega))   # patch 0084
   if (!is.na(opts$stage2_sigma_fallback_pin) && !(is.finite(opts$stage2_sigma_fallback_pin) && opts$stage2_sigma_fallback_pin > 1)) fail(sprintf("--stage2-sigma-fallback-pin must be a number > 1 or omitted, got: '%s'", opts$stage2_sigma_fallback_pin))   # patch 0084

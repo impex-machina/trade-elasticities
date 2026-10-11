@@ -84,6 +84,36 @@ apply_sigma_edge_rule <- function(sigma_clean, rule = c("fallback", "publish")) 
 }
 
 
+#' The sigma-pole rule (patch 0099, experiment flag; default "none").
+#'
+#' Mirrors apply_sigma_edge_rule() at the other end of the sigma axis: a
+#' Stage-1 cell whose sigma is within `c` standard errors of the pole,
+#' sigma - 1 < c * sigma_se, leaves the clean set under rule "fallback" --
+#' Stage 2 gives it the fallback sigma, it supplies no sigma_V and its omega
+#' leaves the priors, exactly as the v0.9.0 cap-edge cells do. Motivation
+#' (patch 0098): the gamma tails the trim removes are sigma-pole cells (88%
+#' with sigma < 2, 65% within one SE of sigma = 1), where Eq. (10)'s
+#' 1/(sigma - 1) coefficients send individual gammas to either end. A cell
+#' with no finite SE cannot be assessed and is kept. "none" is the identity
+#' (every release).
+#'
+#' @param sigma_clean the clean Stage-1 table after the edge rule.
+#' @param rule "none" or "fallback".
+#' @param c the threshold in SE units (default 1).
+#' @return the filtered table with attribute n_pole_dropped.
+apply_sigma_pole_rule <- function(sigma_clean, rule = c("none", "fallback"), c = 1) {
+  rule <- match.arg(rule)
+  if (rule == "none" || !"sigma_se" %in% names(sigma_clean)) {
+    data.table::setattr(sigma_clean, "n_pole_dropped", 0L); return(sigma_clean)
+  }
+  if (!is.finite(c) || c <= 0) stop("apply_sigma_pole_rule(): c must be a positive number, got ", c)
+  drop <- is.finite(sigma_clean$sigma_se) & (sigma_clean$sigma - 1) < c * sigma_clean$sigma_se
+  out <- sigma_clean[!drop]
+  data.table::setattr(out, "n_pole_dropped", sum(drop))
+  out
+}
+
+
 #' Published-row mask (patch 0093): TRUE where the row is not a flagged
 #' trimmed row (trim_reason NA, or no such column). Every consumer of a
 #' Stage-2 table reads the published rows through this.
