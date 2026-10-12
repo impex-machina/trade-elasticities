@@ -116,7 +116,7 @@ cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain
 cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "best" else opts$stage2_fallback))   # patch 0077/0080
 cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source))   # patch 0079/0080
-cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts$stage2_trim)) "legacy" else opts$stage2_trim))   # patch 0083
+cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts[["stage2_trim"]])) "legacy" else opts[["stage2_trim"]]))   # patch 0083
 cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s | sigma pole: %s\n",   # patch 0085/0086/0099
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
             if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
@@ -342,8 +342,9 @@ if (isTRUE(attr(sigma_clean, "n_edge_dropped") > 0L)) {
 }
 # (patch 0099) --stage2-sigma-pole-rule fallback: cells whose sigma is within
 # --stage2-sigma-pole-se SEs of the pole (sigma - 1 < c * SE) leave the clean
-# set the same way. Default "none" (every release).
-sigma_clean <- apply_sigma_pole_rule(sigma_clean, if (is.null(opts$stage2_sigma_pole_rule)) "none" else opts$stage2_sigma_pole_rule,
+# set the same way. Default "fallback" with c = 1 since v0.10.0 (patch 0101);
+# "none" reproduces every release through v0.9.1.
+sigma_clean <- apply_sigma_pole_rule(sigma_clean, if (is.null(opts$stage2_sigma_pole_rule)) "fallback" else opts$stage2_sigma_pole_rule,   # patch 0101: absent == fallback
                                      if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se)
 if (isTRUE(attr(sigma_clean, "n_pole_dropped") > 0L)) {
   cat(sprintf("  sigma-pole cells dropped from the clean set (sigma - 1 < %s * SE; fallback sigma, no sigma_V, out of the priors): %s\n",
@@ -439,7 +440,7 @@ if (should_run("2a", opts, paths)) {
     cat("========== STAGE 2a: REGIONAL GAMMA (fixed sigma, light shrinkage) ==========\n")
     cat(sprintf("  Shrinkage lambda=%g (ridge pull toward Stage-1 good-level priors)\n",
                 lambda_2a))
-    cat(if (identical(opts$stage2_trim, "v2")) "  Plateau fallback: off under --stage2-trim v2 (the gamma tail trim handles the extremes)\n\n"
+    cat(if (identical(opts[["stage2_trim"]], "v2")) "  Plateau fallback: off under --stage2-trim v2 (the gamma tail trim handles the extremes)\n\n"
         else "  Plateau fallback: gamma > 20 replaced by Feenstra anchor\n\n")
 
     config_2a <- config_regional
@@ -486,7 +487,7 @@ if (should_run("2a", opts, paths)) {
     # under the log ridge gamma is bounded and the tail trim handles the
     # extremes, and the rows it imputes at the Stage-1 prior read as estimated
     # downstream (they entered the Stage-2b prior medians). Off under v2.
-    if (identical(opts$stage2_trim, "v2")) {
+    if (identical(opts[["stage2_trim"]], "v2")) {
       cat("  Plateau fallback: off under --stage2-trim v2\n")
     } else {
     plateau_threshold <- 20

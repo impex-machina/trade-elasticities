@@ -165,6 +165,8 @@ make_synthetic_cfg <- function() {
   )
   
   cfg <- list(
+    stage2_trim        = "v2",     # patch 0101: explicit (a list without it would partial-match cfg$stage2_trim to stage2_trim_action)
+    stage2_trim_action = "drop",   # patch 0101: the fixture reproduces the v0.9.x drop semantics; flag tests set "flag"
     # required by validate_config (filepath is checked by file.exists)
     filepath          = tempdir(),
     value             = "v",

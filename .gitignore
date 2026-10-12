@@ -116,3 +116,9 @@ grid/
 # ============================================================================
 __pycache__/
 *.pyc
+
+# ============================================================================
+# Test-run byproducts written to the test runner's working directory
+# (records and checkpoints of the synthetic fixture; patch 0101)
+# ============================================================================
+tests/testthat/baci_elast_*

@@ -50,8 +50,8 @@ test_that("stage2a_gamma_v_default(): clean vs priors rows, absent == clean, err
   priors <- clean[gamma > 1e-4 & gamma < 10 & sigma < 50]                   # unfloored, uncapped, no sigma-edge cell
   expect_equal(stage2a_gamma_v_default(clean, priors, "clean"), median(clean$gamma))
   expect_equal(stage2a_gamma_v_default(clean, priors, "priors"), median(priors$gamma))
-  expect_equal(stage2a_gamma_v_default(clean, priors, NULL), median(clean$gamma))
-  expect_equal(stage2a_gamma_v_default(clean, priors), median(clean$gamma))
+  expect_equal(stage2a_gamma_v_default(clean, priors, NULL), median(priors$gamma))   # patch 0101: absent == priors
+  expect_equal(stage2a_gamma_v_default(clean, priors), median(priors$gamma))
   expect_false(stage2a_gamma_v_default(clean, priors, "clean") == stage2a_gamma_v_default(clean, priors, "priors"))
   expect_error(stage2a_gamma_v_default(clean, priors, "all"), "rule")
   expect_error(stage2a_gamma_v_default(clean, priors[0], "priors"), "finite gamma")
@@ -61,7 +61,8 @@ test_that("stage2a_gamma_v_default(): clean vs priors rows, absent == clean, err
   fake <- file.path(tempdir(), paste0("fake_baci_h92_", sample.int(1e6, 1))); dir.create(fake, showWarnings = FALSE)
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
-  cfg <- build_config(parse_cli(base)); expect_identical(cfg$stage2a_gamma_v_default, "clean"); expect_silent(validate_config(cfg))
+  cfg <- build_config(parse_cli(base)); expect_identical(cfg$stage2a_gamma_v_default, "priors"); expect_silent(validate_config(cfg))   # patch 0101 default
+  r <- build_config(parse_cli(c(base, "--stage2a-gamma-v-default", "clean"))); expect_identical(r$stage2a_gamma_v_default, "clean")
   e <- build_config(parse_cli(c(base, "--stage2a-gamma-v-default", "priors"))); expect_identical(e$stage2a_gamma_v_default, "priors"); expect_silent(validate_config(e))
   expect_error(parse_cli(c(base, "--stage2a-gamma-v-default", "all")), "stage2a-gamma-v-default")
   bad <- cfg; bad$stage2a_gamma_v_default <- "all"; expect_error(validate_config(bad), "stage2a_gamma_v_default")

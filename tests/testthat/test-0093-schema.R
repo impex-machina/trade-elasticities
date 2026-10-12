@@ -124,7 +124,8 @@ test_that("CLI, config and validation accept --stage2-trim-action and keep the d
   fake <- file.path(tempdir(), paste0("fake_baci_s93_", sample.int(1e6, 1))); dir.create(fake, showWarnings = FALSE)
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
-  cfg <- build_config(parse_cli(base)); expect_identical(cfg$stage2_trim_action, "drop"); expect_silent(validate_config(cfg))
+  cfg <- build_config(parse_cli(base)); expect_identical(cfg$stage2_trim_action, "flag"); expect_silent(validate_config(cfg))   # patch 0101 default
+  r <- build_config(parse_cli(c(base, "--stage2-trim-action", "drop"))); expect_identical(r$stage2_trim_action, "drop")
   e <- build_config(parse_cli(c(base, "--stage2-trim-action", "flag"))); expect_identical(e$stage2_trim_action, "flag"); expect_silent(validate_config(e))
   expect_error(parse_cli(c(base, "--stage2-trim-action", "keep")), "stage2-trim-action")
   bad <- cfg; bad$stage2_trim_action <- "keep"; expect_error(validate_config(bad), "stage2_trim_action")

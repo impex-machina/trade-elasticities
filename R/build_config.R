@@ -96,7 +96,7 @@ build_config <- function(opts) {
     # patch 0079/0080: Stage-2a rows behind the 2b priors; absent key == estimated (v0.8.3 default; all = <= v0.8.2 reproducer).
     stage2b_prior_source = opts$stage2b_prior_source %||% "estimated",
     # patch 0083: tail-trim semantics; absent key == legacy (<= v0.8.3 reproducer).
-    stage2_trim = opts$stage2_trim %||% "v2",                            # patch 0086: v0.9.0 default (legacy = <= v0.8.3)
+    stage2_trim = opts[["stage2_trim"]] %||% "v2",                            # patch 0086: v0.9.0 default (legacy = <= v0.8.3)
     # patch 0085: gamma_V source (regional = <= v0.8.3), its table, and the export-side BW period count (rows = <= v0.8.3)
     stage2_gamma_v_source = opts$stage2_gamma_v_source %||% "regional",
     stage2_gamma_v_table = opts$stage2_gamma_v_table %||% "",
@@ -104,7 +104,7 @@ build_config <- function(opts) {
     # patch 0086: exporter-specific gamma_V passes (1 = <= v0.8.3) and the sigma-edge rule
     stage2_gamma_v_passes = opts$stage2_gamma_v_passes %||% 3L,
     stage2_sigma_edge = opts$stage2_sigma_edge %||% "fallback",           # patch 0087: v0.9.0 default (publish = <= v0.8.3)
-    stage2_sigma_pole_rule = opts$stage2_sigma_pole_rule %||% "none",    # patch 0099: absent == none (every release)
+    stage2_sigma_pole_rule = opts$stage2_sigma_pole_rule %||% "fallback",   # patch 0101: absent == fallback (v0.10.0; none through v0.9.1)
     stage2_sigma_pole_se   = opts$stage2_sigma_pole_se %||% 1,
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in
     # the config for provenance). Absent key == legacy, like bw_lag.
@@ -125,8 +125,8 @@ build_config <- function(opts) {
 
     # --- Across-exporter weighting (methodological) ---
     exporter_weight     = opts$exporter_weight %||% "trade_value",   # patch 0091: absent == trade_value (every release)
-    stage2a_gamma_v_default = opts$stage2a_gamma_v_default %||% "clean",   # patch 0092: absent == clean (every release)
-    stage2_trim_action  = opts$stage2_trim_action %||% "drop",   # patch 0093: absent == drop (every release through v0.9.1)
+    stage2a_gamma_v_default = opts$stage2a_gamma_v_default %||% "priors",   # patch 0101: absent == priors (v0.10.0; clean through v0.9.1)
+    stage2_trim_action  = opts$stage2_trim_action %||% "flag",   # patch 0101: absent == flag (v0.10.0; drop through v0.9.1)
     weight_period_floor = 10L,
 
     # --- Tier thresholds (methodological) ---

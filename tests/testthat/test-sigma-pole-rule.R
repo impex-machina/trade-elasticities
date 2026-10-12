@@ -47,7 +47,8 @@ test_that("CLI, config and validation accept the pole-rule flags and keep the de
   fake <- file.path(tempdir(), paste0("fake_baci_sp_", sample.int(1e6, 1))); dir.create(fake, showWarnings = FALSE)
   on.exit(unlink(fake, recursive = TRUE), add = TRUE)
   base <- c("--data", fake)
-  cfg <- build_config(parse_cli(base)); expect_identical(cfg$stage2_sigma_pole_rule, "none"); expect_equal(cfg$stage2_sigma_pole_se, 1); expect_silent(validate_config(cfg))
+  cfg <- build_config(parse_cli(base)); expect_identical(cfg$stage2_sigma_pole_rule, "fallback"); expect_equal(cfg$stage2_sigma_pole_se, 1); expect_silent(validate_config(cfg))   # patch 0101 default
+  r <- build_config(parse_cli(c(base, "--stage2-sigma-pole-rule", "none"))); expect_identical(r$stage2_sigma_pole_rule, "none")   # the v0.9.1 reproducer
   e <- build_config(parse_cli(c(base, "--stage2-sigma-pole-rule", "fallback", "--stage2-sigma-pole-se", "0.5")))
   expect_identical(e$stage2_sigma_pole_rule, "fallback"); expect_equal(e$stage2_sigma_pole_se, 0.5); expect_silent(validate_config(e))
   expect_error(parse_cli(c(base, "--stage2-sigma-pole-rule", "drop")), "sigma-pole-rule")

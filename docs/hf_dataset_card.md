@@ -45,6 +45,26 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.10.0 (2026-10-XX).** Methodology release, Stage 1 unchanged (the v0.9.x
+> Stage-1 table, sha256 908c8f53...). Three defaults flipped (patch 0101), every
+> one reversible by flag to the v0.9.1 configuration: (1) the sigma-pole rule
+> -- a Stage-1 cell whose sigma is within one standard error of the pole
+> (sigma - 1 < SE) is treated as no estimate and takes the fallback sigma, as a
+> cap-edge cell has since v0.9.0 (<fill: N> cells; the fallback becomes the
+> clean-set median <fill: value>, on <fill: x>% of rows); measured on the 2% subsample grid of
+> 2026-10-11 (c = 0.5 / 1 / 2 / 2.5): split-half reproducibility of the
+> within-cell gamma 0.333 -> 0.365 at c = 1 with the gain on the moved cells
+> themselves (0.305 -> 0.378 at the unmoved cells' dispersion), non-converged
+> 2.3% -> 0.6%, no gamma <= 0.01 or >= 10 left; (2) Stage 2a's default gamma_V
+> and gamma start are taken over the rows the good-level priors use rather
+> than the whole clean set; (3) trimmed rows stay in the table with
+> `trim_reason` set (<fill: N> flagged rows) -- filter `is.na(trim_reason)`
+> before use. `gamma_v_resid` is filled natively by the gamma_V passes
+> (<fill: N> rows; p50 / p90 / p99 <fill>). Headline: gamma median <fill>,
+> opt_tariff median <fill>, fallback sigma <fill>. Gate: <fill: gate_v0100 PASS>.
+> Data revision: `<fill at the card step after the HF upload>`. **v0.9.1 remains available
+> pinned at revision `134c1cbc80b5e657e45dd92e9c96c4d71155877c`.**
+>
 > **v0.9.1 (2026-10-11).** Correction to the sigma-propagation columns on the
 > 13,810 cells whose Stage-1 sigma is a box edge (patch 0090). Under the v0.9.0
 > sigma-edge rule those cells take the fallback sigma, but the Stage-1 sigma_se

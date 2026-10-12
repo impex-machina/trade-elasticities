@@ -102,27 +102,28 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     ),
     optparse::make_option(
       c("--stage2-trim-action"),
-      type = "character", default = "drop",
+      type = "character", default = "flag",
       help = paste("What happens to a row the Stage-2 tail trim removes:",
-                   "'drop' (the row leaves the table; <prefix>_stage2_trimmed.csv",
-                   "is its record; every release through v0.9.1) or 'flag'",
-                   "(the row stays with trim_reason set; cell statistics, the",
-                   "summary, the gamma_V pass lookup and the analysis scripts",
-                   "read the published rows, trim_reason NA). The trim_reason",
-                   "column is in the schema under both. Patch 0093.",
-                   "Default: %default"),
+                   "'flag' (v0.10.0 default, patch 0101: the row stays with",
+                   "trim_reason set; cell statistics, the summary, the gamma_V",
+                   "pass lookup and the analysis scripts read the published",
+                   "rows, trim_reason NA) or 'drop' (the row leaves the table;",
+                   "<prefix>_stage2_trimmed.csv/.rds is its record; every",
+                   "release through v0.9.1). The trim_reason column is in the",
+                   "schema under both. Patch 0093. Default: %default"),
       metavar = "ACTION"
     ),
     optparse::make_option(
       c("--stage2a-gamma-v-default"),
-      type = "character", default = "clean",
+      type = "character", default = "priors",
       help = paste("Rows behind Stage 2a's default gamma_V (Eq. (11) reference",
                    "destinations without a lookup) and its gamma start:",
-                   "'clean' (the median omega over the whole clean Stage-1",
-                   "set, floored / capped cells included; every release) or",
-                   "'priors' (the median over the rows the good-level priors",
-                   "use: unfloored, uncapped, no sigma-edge cells; patch",
-                   "0092, experiment flag). Default: %default"),
+                   "'priors' (v0.10.0 default, patch 0101: the median over the",
+                   "rows the good-level priors use -- unfloored, uncapped, no",
+                   "sigma-edge or sigma-pole cells) or 'clean' (the median",
+                   "omega over the whole clean Stage-1 set, floored / capped",
+                   "cells included; every release through v0.9.1).",
+                   "Default: %default"),
       metavar = "ROWS"
     ),
     optparse::make_option(
@@ -286,10 +287,10 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Stage-2b passes of the exporter-specific gamma_V iteration: pass 1 uses --stage2-gamma-v-source, each further pass takes gamma_jV from the previous pass's own table (patch 0086). 1 = single pass (every release through v0.8.3). Default: %default"),
     optparse::make_option(c("--stage2-sigma-edge"), type = "character", default = "fallback", metavar = "RULE",
       help = "Stage-1 cells whose published sigma is a box edge (sigma_capped): 'fallback' (v0.9.0 default, patch 0087: treat as no estimate -- fallback sigma, sigma_robust FALSE, no sigma_V, out of the priors) or 'publish' (keep sigma = cap in Stage 2; every release through v0.8.3). Default: %default"),
-    optparse::make_option(c("--stage2-sigma-pole-rule"), type = "character", default = "none", metavar = "RULE",
-      help = "Stage-1 cells whose sigma is within --stage2-sigma-pole-se standard errors of the pole (sigma - 1 < c * sigma_se): 'none' (every release) or 'fallback' (treat as no estimate, as --stage2-sigma-edge fallback does at the cap; patch 0099, experiment flag -- the gamma tails the trim removes are sigma-pole cells). Default: %default"),
+    optparse::make_option(c("--stage2-sigma-pole-rule"), type = "character", default = "fallback", metavar = "RULE",
+      help = "Stage-1 cells whose sigma is within --stage2-sigma-pole-se standard errors of the pole (sigma - 1 < c * sigma_se): 'fallback' (v0.10.0 default, patch 0101: treat as no estimate, as --stage2-sigma-edge fallback does at the cap; measured on the 2% subsample grid, r_within 0.333 -> 0.365 at c = 1) or 'none' (every release through v0.9.1). Default: %default"),
     optparse::make_option(c("--stage2-sigma-pole-se"), type = "double", default = 1, metavar = "C",
-      help = "Threshold c, in SE units, for --stage2-sigma-pole-rule. Default: %default"),
+      help = "Threshold c, in SE units, for --stage2-sigma-pole-rule (v0.10.0 default 1; 2.5 coincides with the sigma_robust pole test). Default: %default"),
     optparse::make_option(c("--stage2-trim"), type = "character", default = "v2", metavar = "MODE",
       help = "Stage-2 tail-trim semantics: 'legacy' (sigma bounds as row quantiles although sigma is cell-level; Stage-2a plateau replacement on; every release through v0.8.3) or 'v2' (sigma bounds over cells, plateau replacement off; patch 0083). Both record the removed rows in <prefix>_stage2_trimmed.csv. Default: %default"),
     optparse::make_option(c("--stage2b-prior-source"), type = "character", default = "estimated", metavar = "ROWS",
@@ -411,7 +412,7 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_import_constant %in% c("off", "on")) fail(sprintf("--stage2-import-constant must be 'off' or 'on', got: '%s'", opts$stage2_import_constant))
   if (!opts$stage2_fallback %in% c("legacy", "best")) fail(sprintf("--stage2-fallback must be 'legacy' or 'best', got: '%s'", opts$stage2_fallback))   # patch 0077
   if (!opts$stage2b_prior_source %in% c("all", "estimated")) fail(sprintf("--stage2b-prior-source must be 'all' or 'estimated', got: '%s'", opts$stage2b_prior_source))   # patch 0079
-  if (!opts$stage2_trim %in% c("legacy", "v2")) fail(sprintf("--stage2-trim must be 'legacy' or 'v2', got: '%s'", opts$stage2_trim))   # patch 0083
+  if (!opts[["stage2_trim"]] %in% c("legacy", "v2")) fail(sprintf("--stage2-trim must be 'legacy' or 'v2', got: '%s'", opts$stage2_trim))   # patch 0083
   if (!opts$stage2_gamma_v_source %in% c("regional", "table")) fail(sprintf("--stage2-gamma-v-source must be 'regional' or 'table', got: '%s'", opts$stage2_gamma_v_source))   # patch 0085
   if (identical(opts$stage2_gamma_v_source, "table") && !(nzchar(opts$stage2_gamma_v_table) && file.exists(opts$stage2_gamma_v_table))) fail(sprintf("--stage2-gamma-v-source table needs --stage2-gamma-v-table pointing at an existing .rds, got: '%s'", opts$stage2_gamma_v_table))   # patch 0085
   if (!opts$stage2_export_period_count %in% c("rows", "panel")) fail(sprintf("--stage2-export-period-count must be 'rows' or 'panel', got: '%s'", opts$stage2_export_period_count))   # patch 0085

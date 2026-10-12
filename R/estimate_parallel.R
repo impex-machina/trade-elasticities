@@ -544,7 +544,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_import_constant)) cfg$stage2_import_constant <- "on"       # patch 0073
   if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "best"                     # patch 0080: absent == best (v0.8.3)
   if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "estimated"       # patch 0080: absent == estimated (v0.8.3)
-  if (is.null(cfg$stage2_trim)) cfg$stage2_trim <- "v2"                               # patch 0086: absent == v2 (v0.9.0)
+  if (is.null(cfg[["stage2_trim"]])) cfg[["stage2_trim"]] <- "v2"   # [[ ]]: exact match (patch 0101)                               # patch 0086: absent == v2 (v0.9.0)
   if (is.null(cfg$stage2_gamma_v_source)) cfg$stage2_gamma_v_source <- "regional"      # patch 0085: absent == regional
   if (is.null(cfg$stage2_export_period_count)) cfg$stage2_export_period_count <- "panel" # patch 0086: absent == panel (v0.9.0)
   if (is.null(cfg$stage2_sigma_edge)) cfg$stage2_sigma_edge <- "fallback"              # patch 0087: absent == fallback (v0.9.0)
@@ -819,13 +819,14 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   # removes are recorded (run_meta$trimmed_rows and
   # <prefix>_stage2_trimmed.csv beside the fallback table), so the removal is
   # no longer silent.
-  trim_mode <- if (is.null(cfg$stage2_trim)) "v2" else cfg$stage2_trim   # patch 0086: absent == v2 (v0.9.0)
-  # (patch 0093) what happens to a trimmed row: "drop" (every release through
-  # v0.9.1: the row leaves the table and the CSV is its record) or "flag" (the
-  # row stays, with trim_reason set; every cell statistic, the summary, the
-  # gamma_V pass lookup and the analysis scripts read the published rows,
-  # i.e. trim_reason NA). The trim_reason column is in the schema under both.
-  trim_action <- if (is.null(cfg$stage2_trim_action)) "drop" else cfg$stage2_trim_action
+  trim_mode <- if (is.null(cfg[["stage2_trim"]])) "v2" else cfg[["stage2_trim"]]   # [[ ]]: exact match (patch 0101)   # patch 0086: absent == v2 (v0.9.0)
+  # (patch 0093) what happens to a trimmed row: "flag" (the v0.10.0 default,
+  # patch 0101: the row stays, with trim_reason set; every cell statistic, the
+  # summary, the gamma_V pass lookup and the analysis scripts read the
+  # published rows, i.e. trim_reason NA) or "drop" (every release through
+  # v0.9.1: the row leaves the table and the record is the CSV/.rds). The
+  # trim_reason column is in the schema under both.
+  trim_action <- if (is.null(cfg[["stage2_trim_action"]])) "flag" else cfg[["stage2_trim_action"]]   # patch 0101: absent == flag (v0.10.0); drop through v0.9.1
   trimmed_rows <- NULL
   # (patch 0093) the record carries the FULL row (every column the table
   # publishes, as of this point) plus the reason, so a drop-mode table and
