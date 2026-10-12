@@ -40,6 +40,7 @@ repo_root <- normalizePath(file.path(.this_dir, ".."), mustWork = FALSE)
 sink(tempfile()); source(file.path(repo_root, "R", "feen94_het_baci.R")); sink()
 
 reg <- readRDS(stage2a_path); setDT(reg)
+if ("trim_reason" %in% names(reg)) reg <- reg[is.na(trim_reason)]   # patch 0102: published rows
 regional_clean <- reg[!is.na(sigma) & !is.na(gamma) & gamma > 0]
 
 # --- row composition of what the medians run over ---------------------------

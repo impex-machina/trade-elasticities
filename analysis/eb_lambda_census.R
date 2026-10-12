@@ -78,6 +78,7 @@ for (p in c(p_odd, p_even, p_2a)) if (!file.exists(p)) stop("not found: ", p)
 
 read_half <- function(p, tag) {
   x <- readRDS(p); setDT(x)
+  if ("trim_reason" %in% names(x)) x <- x[is.na(trim_reason)]   # patch 0102: published rows
   x <- x[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0 &
          is.finite(gamma_shrink_wt) & gamma_shrink_wt >= 0 & gamma_shrink_wt <= s_max,
          .(importer = as.character(importer), exporter = as.character(exporter), good = as.character(good),
@@ -88,6 +89,7 @@ read_half <- function(p, tag) {
 odd  <- read_half(p_odd, "o")
 even <- read_half(p_even, "e")
 reg <- readRDS(p_2a); setDT(reg)
+if ("trim_reason" %in% names(reg)) reg <- reg[is.na(trim_reason)]   # patch 0102
 regional_clean <- reg[!is.na(sigma) & !is.na(gamma) & gamma > 0]
 prior <- stage2b_priors_from_regional(regional_clean, rows = prior_rows)$country_priors
 prior[, good := as.character(good)]

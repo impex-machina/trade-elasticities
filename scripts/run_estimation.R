@@ -723,6 +723,13 @@ cat(sprintf("  CSV: %s_fixed_sigma.csv\n", out_base_country))
 
 cat("\n================================================================\n")
 cat("  THREE-STAGE ESTIMATION COMPLETE\n")
+# (patch 0102) the summary below is over the PUBLISHED rows: under the v0.10.0
+# default --stage2-trim-action flag the tables carry the trimmed rows with
+# trim_reason set, and through patch 0101 this block counted them (the 2b
+# line read 6,892,008 estimates and Tier 0 232,246 where 6,801,807 / 222,804
+# were published). The saved summary files always used the published rows.
+regional_results <- regional_results[is_published_row(regional_results)]
+country_results  <- country_results[is_published_row(country_results)]
 cat("================================================================\n\n")
 
 cat(sprintf("  Stage 1 (Feenstra sigma):    %s cells, sigma=%.3f, gamma_common=%.3f\n",

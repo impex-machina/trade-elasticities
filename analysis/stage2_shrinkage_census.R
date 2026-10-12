@@ -208,8 +208,8 @@ if (sys.nframe() == 0L && !exists("SHRINKAGE_CENSUS_NO_MAIN")) {
   out_md   <- get_arg("--md",  "docs/results/stage2_shrinkage_census.md")
   swd      <- get_arg("--shrink-wt-def", "legacy")
   for (p in c(s2b_path, s2a_path)) if (!file.exists(p)) stop("input not found: ", p)
-  cat("reading", s2b_path, "\n"); s2b <- readRDS(s2b_path)
-  cat("reading", s2a_path, "\n"); s2a <- readRDS(s2a_path)
+  cat("reading", s2b_path, "\n"); s2b <- readRDS(s2b_path); if ("trim_reason" %in% names(s2b)) { s2b <- data.table::as.data.table(s2b); s2b <- s2b[is.na(trim_reason)] }   # patch 0102
+  cat("reading", s2a_path, "\n"); s2a <- readRDS(s2a_path); if ("trim_reason" %in% names(s2a)) { s2a <- data.table::as.data.table(s2a); s2a <- s2a[is.na(trim_reason)] }   # patch 0102
   res <- shrinkage_census(s2b, s2a, shrink_wt_def = swd)
   res$meta$stage2b <- s2b_path; res$meta$stage2a <- s2a_path; res$meta$shrink_wt_def <- swd
   res$meta$git_rev <- tryCatch(system2("git", c("rev-parse", "--short", "HEAD"), stdout = TRUE, stderr = NULL)[1], error = function(e) NA_character_)

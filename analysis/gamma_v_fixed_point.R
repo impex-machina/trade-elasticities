@@ -39,6 +39,7 @@ sink(tempfile()); source(file.path(repo_root, "R", "feen94_het_baci.R")); sink()
 key <- c("importer", "exporter", "good")
 load_pass <- function(p) {
   x <- readRDS(p); setDT(x)
+  if ("trim_reason" %in% names(x)) x <- x[is.na(trim_reason)]   # patch 0102: published rows
   for (k in key) x[[k]] <- as.character(x[[k]])
   x
 }

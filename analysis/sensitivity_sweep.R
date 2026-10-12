@@ -26,6 +26,7 @@ if (!file.exists(f)) {
 }
 
 b2  <- readRDS(f); setDT(b2)
+if ("trim_reason" %in% names(b2)) b2 <- b2[is.na(trim_reason)]   # patch 0102: published rows
 eps <- 1e-6
 
 # Estimated cells only: the screen was applied where sigma_robust is not NA.

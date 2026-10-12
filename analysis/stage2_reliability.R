@@ -61,7 +61,7 @@ reliability_report <- function(runs, priors) {
   for (cf in cfgs) {
     r <- runs[config == cf]
     for (sp in intersect(c("full", "A", "B"), r$split)) {
-      p <- r[split == sp, path][1]; if (!p %in% names(tabs)) tabs[[p]] <- readRDS(p)
+      p <- r[split == sp, path][1]; if (!p %in% names(tabs)) { tt <- as.data.table(readRDS(p)); tabs[[p]] <- if ("trim_reason" %in% names(tt)) tt[is.na(trim_reason)] else tt }   # patch 0102: published rows
     }
     if ("full" %in% r$split) out_full[[cf]] <- c(list(config = cf), reliability_summary(tabs[[r[split == "full", path][1]]], priors))
     if (all(c("A", "B") %in% r$split))
@@ -85,7 +85,7 @@ if (sys.nframe() == 0L && !exists("RELIABILITY_NO_MAIN")) {
   runs_path <- get_arg("--runs"); s2a_path <- get_arg("--stage2a")
   out_json <- get_arg("--out", "results/stage2_reliability.json"); out_md <- get_arg("--md", "docs/results/stage2_reliability.md")
   if (is.null(runs_path) || is.null(s2a_path)) stop("--runs and --stage2a are required")
-  runs <- fread(runs_path); s2a <- readRDS(s2a_path); setDT(s2a); s2a[, good := as.character(good)]
+  runs <- fread(runs_path); s2a <- readRDS(s2a_path); setDT(s2a); if ("trim_reason" %in% names(s2a)) s2a <- s2a[is.na(trim_reason)]; s2a[, good := as.character(good)]
   priors <- s2a[!is.na(sigma) & !is.na(gamma) & gamma > 0, .(ln_gamma_prior = median(log(gamma))), by = good]
   res <- reliability_report(runs, priors)
   dir.create(dirname(out_json), showWarnings = FALSE, recursive = TRUE); dir.create(dirname(out_md), showWarnings = FALSE, recursive = TRUE)

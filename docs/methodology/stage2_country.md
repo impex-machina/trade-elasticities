@@ -1025,3 +1025,75 @@ with `--stage2a-gamma-v-default priors` and `--stage2-trim-action flag`
 flipped in the same patch (0101), every flag reversible to the v0.9.1
 configuration. The subsample grid above is the attribution record; there
 is no full-sample ladder.
+
+
+### v0.10.0, the full run: attribution of the level shift and the shipped configuration's reproducibility (patch 0102)
+
+One box session on 2026-10-12 (`r7a.16xlarge`, S3 `v0100rel_run_20261012/`):
+the v0.9.x Stage-1 table loaded (sha256 908c8f53…), Stage 2a re-estimated,
+three Stage-2b γ_V passes, all v0.10.0 defaults (`out_H/`, ~1 h 55 of
+estimation). The run dropped 13,810 σ-edge and 55,396 σ-pole cells (113,706
+clean of 280,649; fallback σ 2.473), published 6,801,807 rows with 90,201
+flagged trimmed rows beside them, and filled `gamma_v_resid` on 4,911,380
+rows (p50 2.3e-04, p90 0.014, p99 0.245). The γ_V iteration settles faster
+with the pole cells out: pass 2→3 Tier-1 step p99 0.23 and 88% of rows below
+1e-2, against 0.40 and 83% in v0.9.0 — the pole cells were feeding unstable
+γ_V's into Eq. (11).
+
+**The level shift and its attribution.** The headline γ median moved 0.644 →
+0.806 and `opt_tariff` 0.733 → 0.869, far more than the subsample grid
+suggested, because that grid held Stage 2a at the v0.9.x table. Two
+single-pass Stage-2b runs on the box (`out_H1/`, `out_H2/`) split it:
+
+| configuration | γ median | `opt_tariff` median | Nelder–Mead fallback cells |
+|---|---|---|---|
+| v0.9.1 (no rule, v0.9.x Stage 2a) | 0.644 | 0.733 | — |
+| H1: rule in 2b, v0.9.x Stage 2a | 0.662 | 0.766 | 2,940 |
+| H2: rule off in 2b, new Stage 2a | 0.777 | 0.828 | 8,056 |
+| v0.10.0 (rule in 2b, new Stage 2a; pass 1) | 0.806 | 0.869 | 2,963 |
+
+The rule's own cells account for about a seventh of the shift; the
+re-estimated Stage 2a for the rest. Stage 2a moves because its regional σ's
+no longer include pole-σ cells (regional 1/(σ−1) 0.766 → 0.679), while the
+regional composite γ/((1+γ)(σ−1)) stays put (0.293 → 0.290): the import
+moments pin the composite, so a higher σ is carried by a higher γ, and the
+regional γ's are both the Stage-2b priors (good-level prior median 0.635 →
+0.758, per-good |Δ ln| p50 0.17) and the Eq. (11) γ_V's. Row by row on the
+4.74M directly estimated rows shared by both tables (convergence 0):
+
+| Stage-1 class | share | σ moved | γ median | composite median | \|Δ ln γ\| p50 | \|Δ ln composite\| p50 |
+|---|---|---|---|---|---|---|
+| `no_estimate` | 10% | fallback 2.306 → 2.473 | 0.742 → 0.921 | 0.326 → 0.325 | 0.182 | 0.065 |
+| `sigma_edge` | 4% | fallback 2.306 → 2.473 | 0.688 → 0.844 | 0.312 → 0.311 | 0.178 | 0.066 |
+| `sigma_pole` | 24% | ~1 → 2.473 | 0.583 → 0.809 | 0.385 → 0.304 | 0.361 | 1.161 |
+| `other` | 62% | no | 0.633 → 0.766 | 0.223 → 0.246 | 0.153 | 0.088 |
+
+On the fallback classes the composite is unchanged and γ absorbs the higher
+σ — the trade-off exactly. On the pole cells the composite moves because their
+old σ was not an estimate (that is the rule). On `other` cells σ is unchanged
+and γ rises through the priors and γ_V's of the re-estimated Stage 2a; those
+were biased low by pole-σ regional cells (a σ near 1 forces a small γ through
+the composite). Optimizer non-convergence among directly estimated rows is
+0.42% in both releases; the v0.10.0 gate's first FAIL ("non-converged share
+rose", 26.73% → 26.75%) counted the Tier-3 rows, whose convergence is −1 by
+construction, and was a defect of the gate, fixed here.
+
+**Reproducibility of the shipped configuration.** The subsample grid was re-run
+locally with the new Stage-2a table (`te_grid/v0100_cfg*`;
+`docs/results/stage2_reliability_v0100_cfg.md`,
+`docs/results/v0100_cfg_reliability_decomposition.txt`): $r_{\text{within}}$
+0.369 (base 0.333, rule with the v0.9.x Stage 2a 0.365), rank ρ 0.368,
+$r_{\text{raw}}$ 0.543 (0.473 / 0.507); moved cells 0.379 at sd 0.638,
+unmoved cells 0.366 at sd 0.639 (base unmoved 0.352). The Stage-2a channel
+adds no noise — the levels across halves agree better under the new priors.
+The pre-registered ship rule (r ≥ 0.365, rank not lower, unmoved ≥ 0.352) is
+met on all three counts. **Decision: v0.10.0 ships as run.**
+
+Also in patch 0102, so the first table with flagged rows is read correctly
+everywhere: `recompute_opt_tariff()` recomputes over published rows only and
+leaves the flagged rows' cell values untouched; `compare_runs.R`,
+`stage2_reliability.R`, `gamma_v_fixed_point.R`, the shrinkage / EB-λ / λ /
+prior-rows censuses and the sensitivity sweep read published rows; the run's
+console summary counts published rows (it printed 6,892,008 estimates where
+6,801,807 were published); `tests/testthat/test-flag-readers-0102.R` locks the
+recompute and the gate metric.

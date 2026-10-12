@@ -45,23 +45,35 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.10.0 (2026-10-XX).** Methodology release, Stage 1 unchanged (the v0.9.x
+> **v0.10.0 (2026-10-12).** Methodology release, Stage 1 unchanged (the v0.9.x
 > Stage-1 table, sha256 908c8f53...). Three defaults flipped (patch 0101), every
 > one reversible by flag to the v0.9.1 configuration: (1) the sigma-pole rule
 > -- a Stage-1 cell whose sigma is within one standard error of the pole
 > (sigma - 1 < SE) is treated as no estimate and takes the fallback sigma, as a
-> cap-edge cell has since v0.9.0 (<fill: N> cells; the fallback becomes the
-> clean-set median <fill: value>, on <fill: x>% of rows); measured on the 2% subsample grid of
+> cap-edge cell has since v0.9.0 (55,396 cells; the fallback becomes the
+> clean-set median 2.473, on 41.0% of published rows); measured on the 2% subsample grid of
 > 2026-10-11 (c = 0.5 / 1 / 2 / 2.5): split-half reproducibility of the
 > within-cell gamma 0.333 -> 0.365 at c = 1 with the gain on the moved cells
 > themselves (0.305 -> 0.378 at the unmoved cells' dispersion), non-converged
 > 2.3% -> 0.6%, no gamma <= 0.01 or >= 10 left; (2) Stage 2a's default gamma_V
 > and gamma start are taken over the rows the good-level priors use rather
 > than the whole clean set; (3) trimmed rows stay in the table with
-> `trim_reason` set (<fill: N> flagged rows) -- filter `is.na(trim_reason)`
-> before use. `gamma_v_resid` is filled natively by the gamma_V passes
-> (<fill: N> rows; p50 / p90 / p99 <fill>). Headline: gamma median <fill>,
-> opt_tariff median <fill>, fallback sigma <fill>. Gate: <fill: gate_v0100 PASS>.
+> `trim_reason` set (90,201 flagged rows beside 6,801,807 published) -- filter
+> `is.na(trim_reason)` before use. `gamma_v_resid` is filled natively by the
+> gamma_V passes (4,911,380 rows; p50 2.3e-04 / p90 0.014 / p99 0.245 -- the
+> iteration settles faster with the pole cells out: pass 2->3 p99 0.23 vs 0.40
+> in v0.9.0). Headline: gamma median 0.644 -> 0.806, opt_tariff median 0.733 ->
+> 0.869, fallback sigma 2.306 -> 2.473. Attribution (single-pass 2b runs on the
+> box): the rule in Stage 2b alone moves the gamma median to 0.662; the
+> re-estimated Stage 2a, whose regional sigmas no longer include pole cells,
+> carries the rest (0.777 with the new Stage 2a and the rule off in 2b). The
+> import moments pin the composite gamma/((1+gamma)(sigma-1)): on cells whose
+> sigma moved only through the fallback it is unchanged (0.326 -> 0.325), so the
+> level shift is the sigma-gamma trade-off of a less pole-biased sigma, not new
+> information about gamma. Reproducibility of the shipped configuration on the
+> subsample grid: within-cell r 0.333 -> 0.369, rank 0.343 -> 0.368. Optimizer
+> non-convergence among directly estimated rows 0.42% in both releases. Gate
+> (`analysis/gate_v0100.R`): PASS.
 > Data revision: `<fill at the card step after the HF upload>`. **v0.9.1 remains available
 > pinned at revision `134c1cbc80b5e657e45dd92e9c96c4d71155877c`.**
 >

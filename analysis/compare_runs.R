@@ -64,6 +64,7 @@ if (is.null(opts$old_label) || is.null(opts$new_label)) {
 read_table <- function(path) {
   if (!file.exists(path)) stop(sprintf("File not found: %s", path), call. = FALSE)
   dt <- readRDS(path)
+  if ("trim_reason" %in% names(dt)) { dt <- data.table::as.data.table(dt); dt <- dt[is.na(trim_reason)] }   # patch 0102: published rows
   setDT(dt)
   dt
 }

@@ -69,6 +69,8 @@ cat(sprintf("lambda_diagnostic | label: %s\n  2a: %s\n  2b: %s\n", label, p2a, p
 
 s2a <- as.data.table(readRDS(p2a))
 s2b <- as.data.table(readRDS(p2b))
+if ("trim_reason" %in% names(s2a)) s2a <- s2a[is.na(trim_reason)]   # patch 0102: published rows
+if ("trim_reason" %in% names(s2b)) s2b <- s2b[is.na(trim_reason)]
 cat(sprintf("  rows: 2a %s | 2b %s\n",
             format(nrow(s2a), big.mark = ","), format(nrow(s2b), big.mark = ",")))
 

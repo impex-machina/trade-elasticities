@@ -175,17 +175,22 @@ recompute_opt_tariff <- function(dt) {
             "opt_tariff", "opt_tariff_all")
   miss <- setdiff(need, names(dt))
   if (length(miss)) stop("recompute_opt_tariff(): missing columns: ", paste(miss, collapse = ", "))
+  # (patch 0102) published rows only: on a --stage2-trim-action flag table the
+  # trimmed rows (trim_reason set) are neither inputs to nor targets of the
+  # recompute -- they keep their pre-trim cell values, as the pipeline wrote
+  # them. Without a trim_reason column every row is published (identity).
+  pub <- if ("trim_reason" %in% names(dt)) is.na(dt$trim_reason) else rep(TRUE, nrow(dt))
   cell_view <- function(d) d[, .(ot = opt_tariff[1], ota = opt_tariff_all[1],
                                  gmax = suppressWarnings(max(gamma, na.rm = TRUE))), by = .(importer, good)]
-  before <- cell_view(dt)
-  dt[, `:=`(
+  before <- cell_view(dt[pub])
+  dt[pub, `:=`(
     opt_tariff = {
       est <- is_estimated_row(tier, convergence)
       if (any(est)) optimal_tariff(gamma[est], sigma[est][1], avg_trade[est]) else NA_real_
     },
     opt_tariff_all = optimal_tariff(gamma, sigma[1], avg_trade)
   ), by = .(importer, good)]
-  after <- cell_view(dt)
+  after <- cell_view(dt[pub])
   dif <- function(a, b) !((is.na(a) & is.na(b)) | (!is.na(a) & !is.na(b) & abs(a - b) <= 1e-9 * pmax(abs(a), 1)))
   invisible(list(
     n_cells = nrow(after),
