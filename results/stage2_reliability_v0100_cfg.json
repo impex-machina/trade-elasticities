@@ -1,0 +1,83 @@
+{
+  "full": [
+    {
+      "config": "base",
+      "rows": 151779,
+      "n_estimated": 112645,
+      "share_non_converged": 0.02327726,
+      "share_gamma_le_0_01": 0.00392383,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.00442985,
+      "shrink_wt_median": 0.91514191,
+      "within_cell_sd_median": 0.65484489,
+      "abs_dev_median": 0.294671,
+      "abs_dev_p90": 1.38867617,
+      "opt_tariff_median": 0.58497485,
+      "gamma_median": 0.53876682
+    },
+    {
+      "config": "pole1_old2a",
+      "rows": 151780,
+      "n_estimated": 112617,
+      "share_non_converged": 0.00623929,
+      "share_gamma_le_0_01": 0,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0,
+      "shrink_wt_median": 0.93364818,
+      "within_cell_sd_median": 0.54572638,
+      "abs_dev_median": 0.27732488,
+      "abs_dev_p90": 1.02106784,
+      "opt_tariff_median": 0.60636038,
+      "gamma_median": 0.55623401
+    },
+    {
+      "config": "v0100_cfg",
+      "rows": 151774,
+      "n_estimated": 112611,
+      "share_non_converged": 0.00628566,
+      "share_gamma_le_0_01": 0,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.00005328,
+      "shrink_wt_median": 0.9310761,
+      "within_cell_sd_median": 0.55840384,
+      "abs_dev_median": 0.08107914,
+      "abs_dev_p90": 0.9995439,
+      "opt_tariff_median": 0.67180457,
+      "gamma_median": 0.64714253
+    }
+  ],
+  "split": [
+    {
+      "config": "base",
+      "n_keys": 85274,
+      "n_cells": 4033,
+      "r_within": 0.33295488,
+      "rho_rank": 0.34256213,
+      "r_raw": 0.47330427,
+      "sd_within_a": 0.82607607,
+      "sd_within_b": 0.83790362
+    },
+    {
+      "config": "pole1_old2a",
+      "n_keys": 85124,
+      "n_cells": 4020,
+      "r_within": 0.36490096,
+      "rho_rank": 0.36361266,
+      "r_raw": 0.50656821,
+      "sd_within_a": 0.62121218,
+      "sd_within_b": 0.62574116
+    },
+    {
+      "config": "v0100_cfg",
+      "n_keys": 85113,
+      "n_cells": 4021,
+      "r_within": 0.36910823,
+      "rho_rank": 0.36830092,
+      "r_raw": 0.54296398,
+      "sd_within_a": 0.63852659,
+      "sd_within_b": 0.64444287
+    }
+  ],
+  "generated": "2026-10-12 17:41:43 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\v0100_cfg_runs.csv"
+}
