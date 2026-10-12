@@ -508,7 +508,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   }
 
   # --- Reference-differencing and import-side moments ---
-  ref_exporter <- choose_reference(dt)
+  ref_exporter <- choose_reference(dt, cfg[["stage2_reference_rule"]])   # patch 0105: absent == periods_value
   ref_vals <- dt[exporter == ref_exporter,
                  .(t, ref_ls_dif = ls_imp_dif, ref_lp_dif = lp_dif)]
   dt <- ref_vals[dt, on = "t"]

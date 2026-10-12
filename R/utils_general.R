@@ -21,12 +21,26 @@
 
 #' Choose reference exporter within an import market.
 #' Selects the largest, most persistent exporter.
-choose_reference <- function(dt) {
+choose_reference <- function(dt, rule = "periods_value") {
+  # (patch 0105) rule:
+  #   "periods_value"  -- most periods, then the largest total value (every release);
+  #   "periods_stable" -- most periods, then the least variance of the price
+  #                       difference lp_dif (the reference's noise enters every
+  #                       other exporter's differenced moments), ties by value;
+  #   "value"          -- the largest total value, periods ignored.
+  if (is.null(rule)) rule <- "periods_value"
+  if (!rule %in% c("periods_value", "periods_stable", "value")) stop("choose_reference(): unknown rule ", rule)
   stats <- dt[, .(n_periods = uniqueN(t),
-                   total_value = sum(cusval, na.rm = TRUE)),
-              by = exporter]
+                   total_value = sum(cusval, na.rm = TRUE),
+                   price_var = if ("lp_dif" %in% names(.SD) && sum(is.finite(lp_dif)) >= 2L) stats::var(lp_dif[is.finite(lp_dif)]) else Inf),
+              by = exporter, .SDcols = intersect("lp_dif", names(dt))]
+  if (rule == "value") return(stats$exporter[which.max(stats$total_value)])
   max_pd <- max(stats$n_periods)
   candidates <- stats[n_periods >= max_pd]
+  if (rule == "periods_stable") {
+    candidates <- candidates[order(price_var, -total_value)]
+    return(candidates$exporter[1])
+  }
   candidates$exporter[which.max(candidates$total_value)]
 }
 

@@ -104,6 +104,7 @@ build_config <- function(opts) {
     # patch 0086: exporter-specific gamma_V passes (1 = <= v0.8.3) and the sigma-edge rule
     stage2_gamma_v_passes = opts$stage2_gamma_v_passes %||% 3L,
     stage2_sigma_edge = opts$stage2_sigma_edge %||% "fallback",           # patch 0087: v0.9.0 default (publish = <= v0.8.3)
+    stage2_reference_rule = opts$stage2_reference_rule %||% "periods_value",   # patch 0105: absent == every release
     stage2_sigma_pole_rule = opts$stage2_sigma_pole_rule %||% "fallback",   # patch 0101: absent == fallback (v0.10.0; none through v0.9.1)
     stage2_sigma_pole_se   = opts$stage2_sigma_pole_se %||% 1,
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in

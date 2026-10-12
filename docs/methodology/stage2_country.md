@@ -1143,3 +1143,37 @@ reconstructs every row's σ from the Stage-1 table through
 imply, if a fallback row claims `sigma_robust`, or if `sigma_source` disagrees
 with the reconstruction. `tests/testthat/test-gate-release.R` locks the PASS
 path and the H3 / H4 / H5 failures.
+
+
+### Two measurements for the paper: the reference exporter and λ (patch 0105, design fixed before the numbers)
+
+**The reference exporter.** Every cell's moments are differenced against one
+reference exporter, chosen as the exporter with the most periods and then the
+largest total value (`choose_reference()`). Its noise enters every other
+exporter's differenced moments. `--stage2-reference-rule` (default
+`periods_value`, every release reproduces bit for bit) adds `periods_stable`
+(most periods, then the least variance of Δln p) and `value` (largest total
+value, periods ignored). The rule acts in Stage 2a as well as 2b — the
+regional cells run the same cell estimator — so the measurement re-estimates
+Stage 2a on the subsample for every configuration, including a re-run of the
+default; the 2026-10-12 attribution showed what holding Stage 2a fixed misses.
+
+**λ.** The Stage-2b ridge weight is fixed at 0.1 (Stage 2a's at 0.05); the EB
+census found its level unidentified by the data. `--shrinkage-lambda` acts in
+Stage 2b only, so the λ rungs (0.03, 0.3) reuse the v0.10.0 Stage-2a table and
+compare against the existing `v0100_cfg` halves (λ = 0.1, same table).
+
+**Design.** The 2% product subsample (seed 20260926), single γ_V pass, trim
+action `drop` for comparability with the earlier grids, odd/even parity
+halves, `analysis/stage2_reliability.R` on the within-cell-demeaned log γ.
+Ship rule for either flag: $r_{\text{within}}$ at least 0.03 above its base
+with the rank correlation not lower; for λ additionally the within-cell sd
+may not fall by more than 25% (a gain bought by shrinkage alone is not
+identification). If neither alternative λ clears, the paper's stance is that
+λ = 0.1 is a regularizer whose level the data do not pin and whose
+neighbours do not improve reproducibility; if neither reference rule clears,
+the reference note documents the current rule with the measured
+alternatives. A rule that clears waits for one batched session (v0.11.0)
+with any other cleared item, re-measured as shipped.
+`tests/testthat/test-reference-rule.R` locks the rules and the bit-identity
+of the default.

@@ -86,6 +86,7 @@ validate_config <- function(cfg) {
   if (!is.null(cfg$stage2_export_period_count) && !cfg$stage2_export_period_count %in% c("rows", "panel")) stop("stage2_export_period_count must be 'rows' or 'panel', got: ", cfg$stage2_export_period_count)   # patch 0085
   if (!is.null(cfg$stage2_gamma_v_passes) && !(is.finite(cfg$stage2_gamma_v_passes) && cfg$stage2_gamma_v_passes >= 1)) stop("stage2_gamma_v_passes must be an integer >= 1, got: ", cfg$stage2_gamma_v_passes)   # patch 0086
   if (!is.null(cfg$stage2_sigma_edge) && !cfg$stage2_sigma_edge %in% c("publish", "fallback")) stop("stage2_sigma_edge must be 'publish' or 'fallback', got: ", cfg$stage2_sigma_edge)   # patch 0086
+  if (!is.null(cfg[["stage2_reference_rule"]]) && !cfg[["stage2_reference_rule"]] %in% c("periods_value", "periods_stable", "value")) stop("stage2_reference_rule must be 'periods_value', 'periods_stable' or 'value', got: ", cfg[["stage2_reference_rule"]])   # patch 0105
   if (!is.null(cfg$stage2_sigma_pole_rule) && !cfg$stage2_sigma_pole_rule %in% c("none", "fallback")) stop("stage2_sigma_pole_rule must be 'none' or 'fallback', got: ", cfg$stage2_sigma_pole_rule)   # patch 0099
   if (!is.null(cfg$stage2_sigma_pole_se) && (!is.finite(cfg$stage2_sigma_pole_se) || cfg$stage2_sigma_pole_se <= 0)) stop("stage2_sigma_pole_se must be a positive number, got: ", cfg$stage2_sigma_pole_se)
   if (!is.null(cfg$stage1_sigma_cap) && !(is.finite(cfg$stage1_sigma_cap) && cfg$stage1_sigma_cap > 1)) stop("stage1_sigma_cap must be a number > 1, got: ", cfg$stage1_sigma_cap)   # patch 0084
