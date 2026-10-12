@@ -1126,3 +1126,20 @@ exporter column name, which on a hand-built config without it would have
 returned `exporter_weight` ("trade_value"). Production configs always carry
 every key, so no published number was affected. Also: the run log's "Stage
 2a starting values / plateau fallback" line drops the retired plateau wording.
+
+
+### Box tooling and the generic release gate (patch 0104)
+
+`scripts/box/setup.sh` (placement: credentials, packages, the raw cache from
+S3 with a size check, the released tables hash-verified, Stage 1 placed so the
+run loads it) and `scripts/box/preflight.sh` (the gate in front of every
+launch: refuses outside tmux, checks the role, packages, cache and the Stage-1
+hash, and prints the expected durations) replace the pasted blocks of earlier
+runbooks; `docs/box_session_template.md` is the session shape they fit.
+`analysis/gate_release.R` replaces the version-specific `gate_v0100.R` (kept
+for the record): beyond schema, row-count and optimizer-convergence checks, it
+reconstructs every row's σ from the Stage-1 table through
+`stage2_sigma_clean()` and fails if any row carries a σ the rules do not
+imply, if a fallback row claims `sigma_robust`, or if `sigma_source` disagrees
+with the reconstruction. `tests/testthat/test-gate-release.R` locks the PASS
+path and the H3 / H4 / H5 failures.
