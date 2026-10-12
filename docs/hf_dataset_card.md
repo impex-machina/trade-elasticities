@@ -55,7 +55,7 @@ under another cleaning rule must say which rule.
 > carries its cell's Stage-1 sigma and every fallback row the fallback sigma
 > before writing; census in `docs/results/sigma_source_v0101.txt`. Every
 > v0.10.0 value is unchanged; 23 columns.
-> Data revision: `<fill at the card step after the HF upload>`. **v0.10.0 remains available
+> Data revision: `6882f00d1a2b9924838d6bb6846076c5e5d54fa0`. **v0.10.0 remains available
 > pinned at revision `31bc1fcfc64aa4475f70ce135262b9cacdd9c257`.**
 >
 > **v0.10.0 (2026-10-12).** Methodology release, Stage 1 unchanged (the v0.9.x
