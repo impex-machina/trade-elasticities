@@ -74,7 +74,7 @@ under another cleaning rule must say which rule.
 > subsample grid: within-cell r 0.333 -> 0.369, rank 0.343 -> 0.368. Optimizer
 > non-convergence among directly estimated rows 0.42% in both releases. Gate
 > (`analysis/gate_v0100.R`): PASS.
-> Data revision: `<fill at the card step after the HF upload>`. **v0.9.1 remains available
+> Data revision: `31bc1fcfc64aa4475f70ce135262b9cacdd9c257`. **v0.9.1 remains available
 > pinned at revision `134c1cbc80b5e657e45dd92e9c96c4d71155877c`.**
 >
 > **v0.9.1 (2026-10-11).** Correction to the sigma-propagation columns on the
