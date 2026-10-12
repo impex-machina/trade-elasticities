@@ -85,7 +85,7 @@ build_config <- function(opts) {
     # patch 0069/0070: Stage-2 gamma variance formula. Absent key == sandwich (v0.7.4 default).
     stage2_se = opts$stage2_se %||% "sandwich",   # patch 0070: default sandwich
     # patch 0071/0073: absent == the v0.8.0 default (log prior, maxit 500, both moments on)
-    stage2_prior = opts$stage2_prior %||% "log",
+    stage2_prior = opts[["stage2_prior"]] %||% "log",
     stage2_prior_eps = opts$stage2_prior_eps %||% 0.01,   # patch 0074
     t_parity = opts$t_parity %||% "all",                   # patch 0074
     stage2_maxit = opts$stage2_maxit %||% 5000L,   # patch 0075: v0.8.1 default (500 through v0.8.0)

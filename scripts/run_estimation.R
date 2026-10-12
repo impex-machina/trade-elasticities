@@ -100,7 +100,7 @@ cat(sprintf("  Years:            %d -- %s\n",
 cat(sprintf("  Aggregation:      %s\n", opts$agg_level))
 cat(sprintf("  Cores:            %d\n", opts$ncores))
 cat(sprintf("  Shrinkage lambda: %g\n", opts$shrinkage_lambda))
-cat(sprintf("  Stage:            %s\n", opts$stage))
+cat(sprintf("  Stage:            %s\n", opts[["stage"]]))
 cat(sprintf("  BW lag mode:      %s | exporter weight: %s\n", opts$bw_lag, opts$exporter_weight))   # patch 0091
 cat(sprintf("  Stage-1 HLIML:    %s\n", opts$stage1_hliml))
 cat(sprintf("  Stage-1 CF rule:  %s\n", opts$stage1_cf_admissibility))
@@ -124,7 +124,7 @@ cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: 
             if (is.null(opts$stage2_sigma_pole_rule) || identical(opts$stage2_sigma_pole_rule, "none")) "none"
             else sprintf("%s (c = %s SE)", opts$stage2_sigma_pole_rule, if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se)))
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
-            if (is.null(opts$stage2_prior)) "log" else opts$stage2_prior, if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
+            if (is.null(opts[["stage2_prior"]])) "log" else opts[["stage2_prior"]], if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,
             if (is.null(opts$stage2_ref_export_moment)) "on" else opts$stage2_ref_export_moment,
             if (is.null(opts$stage2_import_constant)) "on" else opts$stage2_import_constant,
@@ -160,8 +160,8 @@ cat(sprintf("  Regional output base: %s\n\n", out_base_regional))
 #' Decide whether a stage should run, and assert upstream outputs exist
 #' when a specific stage is requested.
 should_run <- function(stage, opts, paths) {
-  if (opts$stage == "all") return(TRUE)
-  if (opts$stage != stage) return(FALSE)
+  if (opts[["stage"]] == "all") return(TRUE)
+  if (opts[["stage"]] != stage) return(FALSE)
 
   # Specific stage requested: assert upstream files exist
   upstream <- switch(
@@ -253,7 +253,7 @@ paths <- list(
 if (should_run("1", opts, paths)) {
   sigma_file <- paths$sigma_file
   
-  if (file.exists(sigma_file) && opts$stage == "all") {
+  if (file.exists(sigma_file) && opts[["stage"]] == "all") {
     cat("\n========== STAGE 1: LOADING SIGMA ESTIMATES ==========\n")
     cat(sprintf("  Found: %s\n\n", sigma_file))
     sigma_estimates <- readRDS(sigma_file)
@@ -332,23 +332,27 @@ if (should_run("1", opts, paths)) {
   cat(sprintf("Loaded Stage 1 output: %s\n", paths$sigma_file))
 }
 
-sigma_clean <- sigma_estimates[!is.na(sigma) & sigma > 1 & convergence == 0]
-# (patch 0086) --stage2-sigma-edge fallback: cells whose published sigma is a
-# box edge leave the clean set (fallback sigma, no sigma_V, out of the priors).
-sigma_clean <- apply_sigma_edge_rule(sigma_clean, if (is.null(opts$stage2_sigma_edge)) "fallback" else opts$stage2_sigma_edge)   # patch 0087: absent == fallback
-if (isTRUE(attr(sigma_clean, "n_edge_dropped") > 0L)) {
+# The clean set: converged Stage-1 cells with sigma > 1, then (patch 0086)
+# --stage2-sigma-edge fallback -- cells whose sigma is a box edge leave it --
+# then (patch 0099) --stage2-sigma-pole-rule fallback -- cells whose sigma is
+# within --stage2-sigma-pole-se SEs of the pole leave it; both take the
+# fallback sigma, supply no sigma_V and leave the priors. Built by
+# stage2_sigma_clean() (patch 0103), which also returns each cell's sigma
+# provenance for the sigma_source column -- the same code path
+# scripts/add_sigma_source.R uses on an existing table.
+.sc <- stage2_sigma_clean(sigma_estimates,
+                          edge_rule = if (is.null(opts$stage2_sigma_edge)) "fallback" else opts$stage2_sigma_edge,               # patch 0087: absent == fallback
+                          pole_rule = if (is.null(opts$stage2_sigma_pole_rule)) "fallback" else opts$stage2_sigma_pole_rule,     # patch 0101: absent == fallback
+                          pole_c    = if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se)
+sigma_clean <- .sc$clean
+sigma_source_lookup <- .sc$source
+if (isTRUE(.sc$n_edge_dropped > 0L)) {
   cat(sprintf("  sigma-edge cells dropped from the clean set (fallback sigma, no sigma_V, out of the priors): %s\n",
-              format(attr(sigma_clean, "n_edge_dropped"), big.mark = ",")))
+              format(.sc$n_edge_dropped, big.mark = ",")))
 }
-# (patch 0099) --stage2-sigma-pole-rule fallback: cells whose sigma is within
-# --stage2-sigma-pole-se SEs of the pole (sigma - 1 < c * SE) leave the clean
-# set the same way. Default "fallback" with c = 1 since v0.10.0 (patch 0101);
-# "none" reproduces every release through v0.9.1.
-sigma_clean <- apply_sigma_pole_rule(sigma_clean, if (is.null(opts$stage2_sigma_pole_rule)) "fallback" else opts$stage2_sigma_pole_rule,   # patch 0101: absent == fallback
-                                     if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se)
-if (isTRUE(attr(sigma_clean, "n_pole_dropped") > 0L)) {
+if (isTRUE(.sc$n_pole_dropped > 0L)) {
   cat(sprintf("  sigma-pole cells dropped from the clean set (sigma - 1 < %s * SE; fallback sigma, no sigma_V, out of the priors): %s\n",
-              if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se, format(attr(sigma_clean, "n_pole_dropped"), big.mark = ",")))
+              if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se, format(.sc$n_pole_dropped, big.mark = ",")))
 }
 sigma_fallback <- median(sigma_clean$sigma, na.rm = TRUE)
 # (patch 0084) --stage2-sigma-fallback-pin: hold the fallback sigma at a given
@@ -402,7 +406,7 @@ feenstra_priors <- feenstra_gamma_clean[, .(
   ln_gamma_prior = median(log(gamma), na.rm = TRUE)
 ), by = good]
 
-cat(sprintf("Stage 2a starting values / plateau fallback from Feenstra: %d products, median gamma=%.3f\n\n",
+cat(sprintf("Stage 2a starting values from Feenstra: %d products, median gamma=%.3f\n\n",   # patch 0103: the plateau replacement was retired in v0.9.0
             nrow(feenstra_priors),
             exp(median(feenstra_priors$ln_gamma_prior))))
 
@@ -410,7 +414,7 @@ cat(sprintf("Stage 2a starting values / plateau fallback from Feenstra: %d produ
 # Without this, the script falls through to Stage 2a code at line 326,
 # which tries to readRDS the regional_file that doesn't exist when stages
 # 2a/2b haven't been run yet.
-if (opts$stage == "1") {
+if (opts[["stage"]] == "1") {
   cat("========== STAGE 1 ONLY: PIPELINE EXITING ==========\n")
   cat(sprintf("  Stage 1 output:   %s\n", paths$sigma_file))
   cat(sprintf("  Rich LIML output: %s\n", liml_output_path))
@@ -424,7 +428,7 @@ if (opts$stage == "1") {
 if (should_run("2a", opts, paths)) {
   regional_file <- paths$regional_file
 
-  if (file.exists(regional_file) && opts$stage == "all") {
+  if (file.exists(regional_file) && opts[["stage"]] == "all") {
     cat("========== STAGE 2a: LOADING REGIONAL ESTIMATES ==========\n")
     cat(sprintf("  Found: %s\n\n", regional_file))
     regional_results <- readRDS(regional_file)
@@ -571,7 +575,7 @@ cat(sprintf("Stage 2b priors (from Stage 2a, rows = %s: %s of %s rows): %d produ
 # Exit cleanly if only Stage 2a was requested. Same crash pattern as
 # above: Stage 2b's else-branch tries to readRDS a country_file that
 # doesn't exist when Stage 2b hasn't been run.
-if (opts$stage == "2a") {
+if (opts[["stage"]] == "2a") {
   cat("========== STAGE 2a ONLY: PIPELINE EXITING ==========\n")
   cat(sprintf("  Stage 2a output: %s\n", paths$regional_file))
   quit(save = "no", status = 0L)
@@ -584,7 +588,7 @@ if (opts$stage == "2a") {
 if (should_run("2b", opts, paths)) {
   country_file <- paths$country_file
 
-  if (file.exists(country_file) && opts$stage == "all") {
+  if (file.exists(country_file) && opts[["stage"]] == "all") {
     cat("========== STAGE 2b: LOADING COUNTRY ESTIMATES ==========\n")
     cat(sprintf("  Found: %s\n\n", country_file))
     country_results <- readRDS(country_file)
@@ -697,6 +701,11 @@ if (should_run("2b", opts, paths)) {
       fwrite(rbindlist(pass_log), paste0(out_base_country, "_gamma_v_passes.csv"))
       cat(sprintf("  gamma_V pass log: %s_gamma_v_passes.csv (final table = pass %d)\n", out_base_country, gv_passes))
     }
+    # (patch 0103) sigma_source: where each row's sigma comes from
+    ssc <- attach_sigma_source(country_results, sigma_source_lookup)
+    cat(sprintf("  sigma_source (published rows): estimated %s | fallback_no_estimate %s | fallback_sigma_edge %s | fallback_sigma_pole %s\n",
+                format(ssc$estimated, big.mark = ","), format(ssc$fallback_no_estimate, big.mark = ","),
+                format(ssc$fallback_sigma_edge, big.mark = ","), format(ssc$fallback_sigma_pole, big.mark = ",")))
     saveRDS(finalize_saved_output(country_results), country_file)
   }
 } else {

@@ -1097,3 +1097,32 @@ prior-rows censuses and the sensitivity sweep read published rows; the run's
 console summary counts published rows (it printed 6,892,008 estimates where
 6,801,807 were published); `tests/testthat/test-flag-readers-0102.R` locks the
 recompute and the gate metric.
+
+
+### `sigma_source`, and exact reads of prefix config keys (patch 0103)
+
+**`sigma_source`.** Since v0.10.0, 41% of published rows carry the single
+fallback σ — cells with no usable Stage-1 estimate, cells on the (σ, ω) box
+edge, and cells within one SE of the pole — and a consumer could tell them
+from estimates only by matching the value. `stage2_sigma_clean()` is now the
+one code path for the clean set (the runner used the same three steps inline:
+converged σ > 1, the edge rule, the pole rule) and returns each cell's
+provenance; the runner attaches `sigma_source` before saving the Stage-2b
+table, and `scripts/add_sigma_source.R` attaches it to an existing table,
+verifying that every `estimated` row carries its cell's Stage-1 σ and every
+fallback row the fallback σ before writing (a rule set that does not reproduce
+the table's σ column is refused). v0.10.1 is the v0.10.0 table plus this
+column, produced that way without re-estimation.
+
+**Exact reads of prefix keys.** R's `$` partial-matches list names, so on a
+list without `stage2_trim`, `cfg$stage2_trim` returns `cfg$stage2_trim_action`
+(patch 0101 found it when the synthetic fixture gained the longer key).
+`tests/testthat/test-config-partial-match.R` now fails on any `cfg$` /
+`opts$` / `config$` read of a key that is a strict prefix of another config
+key; it found four more, all converted to `[[ ]]`: `opts$stage` (prefix of
+the `stage1_*` / `stage2_*` options), `opts$stage2_prior` (prefix of
+`stage2_prior_*`), a remaining `opts$stage2_trim`, and `cfg$exporter` — the
+exporter column name, which on a hand-built config without it would have
+returned `exporter_weight` ("trade_value"). Production configs always carry
+every key, so no published number was affected. Also: the run log's "Stage
+2a starting values / plateau fallback" line drops the retired plateau wording.

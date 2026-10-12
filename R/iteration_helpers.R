@@ -84,6 +84,54 @@ apply_sigma_edge_rule <- function(sigma_clean, rule = c("fallback", "publish")) 
 }
 
 
+#' The Stage-2 clean sigma set and each cell's sigma provenance (patch 0103).
+#'
+#' One code path for what run_estimation.R does to the Stage-1 table before
+#' Stage 2: keep converged cells with sigma > 1, apply the sigma-edge rule,
+#' apply the sigma-pole rule. Returns the clean set (exactly as the runner
+#' used it since patch 0099) and the provenance of every Stage-1 cell:
+#'   "estimated"            -- in the clean set: Stage 2 uses the cell's own sigma;
+#'   "fallback_sigma_edge"  -- dropped by the edge rule (sigma on a box edge);
+#'   "fallback_sigma_pole"  -- dropped by the pole rule (sigma - 1 < c * SE);
+#' a cell absent from the lookup -- no converged Stage-1 sigma > 1, or not in
+#' the Stage-1 table at all -- is "fallback_no_estimate" (attach_sigma_source()).
+#'
+#' @param sigma_estimates the Stage-1 table.
+#' @param edge_rule,pole_rule,pole_c as --stage2-sigma-edge,
+#'   --stage2-sigma-pole-rule, --stage2-sigma-pole-se.
+#' @return list(clean, source, n_edge_dropped, n_pole_dropped).
+stage2_sigma_clean <- function(sigma_estimates, edge_rule = "fallback", pole_rule = "fallback", pole_c = 1) {
+  base <- sigma_estimates[!is.na(sigma) & sigma > 1 & convergence == 0]
+  after_edge <- apply_sigma_edge_rule(base, edge_rule)
+  n_edge <- attr(after_edge, "n_edge_dropped")
+  clean <- apply_sigma_pole_rule(after_edge, pole_rule, pole_c)
+  n_pole <- attr(clean, "n_pole_dropped")
+  key <- function(x) paste(as.character(x$importer), as.character(x$good), sep = "\r")
+  k_base <- key(base); k_edge <- key(after_edge); k_clean <- key(clean)
+  src <- data.table::data.table(importer = as.character(base$importer), good = as.character(base$good),
+                                sigma_source = data.table::fifelse(k_base %in% k_clean, "estimated",
+                                               data.table::fifelse(k_base %in% k_edge, "fallback_sigma_pole", "fallback_sigma_edge")))
+  list(clean = clean, source = src, n_edge_dropped = n_edge, n_pole_dropped = n_pole)
+}
+
+
+#' Attach the sigma_source column to a Stage-2b table (patch 0103).
+#'
+#' @param dt the table (modified by reference).
+#' @param source the `source` element of stage2_sigma_clean().
+#' @return invisibly, the row census by source over the published rows.
+attach_sigma_source <- function(dt, source) {
+  k_dt <- paste(as.character(dt$importer), as.character(dt$good), sep = "\r")
+  k_src <- paste(source$importer, source$good, sep = "\r")
+  m <- match(k_dt, k_src)
+  v <- source$sigma_source[m]
+  v[is.na(v)] <- "fallback_no_estimate"
+  dt[, sigma_source := v]
+  pub <- is_published_row(dt)
+  invisible(as.list(table(factor(v[pub], levels = c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole")))))
+}
+
+
 #' The sigma-pole rule (patch 0099, experiment flag; default "none").
 #'
 #' Mirrors apply_sigma_edge_rule() at the other end of the sigma axis: a

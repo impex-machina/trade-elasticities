@@ -28,7 +28,7 @@ prepare_raw_data <- function(cfg) {
   raw <- load_baci(cfg$filepath)
 
   setnames(raw,
-    old = c(cfg$value, cfg$quan, cfg$good, cfg$importer, cfg$exporter, cfg$time),
+    old = c(cfg$value, cfg$quan, cfg$good, cfg$importer, cfg[["exporter"]], cfg$time),
     new = c("cusval", "quantity", "good", "importer", "exporter", "year"),
     skip_absent = TRUE)
 
@@ -77,7 +77,7 @@ prepare_data <- function(cfg, raw_cache = NULL) {
     raw <- load_baci(cfg$filepath)
 
   setnames(raw,
-    old = c(cfg$value, cfg$quan, cfg$good, cfg$importer, cfg$exporter, cfg$time),
+    old = c(cfg$value, cfg$quan, cfg$good, cfg$importer, cfg[["exporter"]], cfg$time),
     new = c("cusval", "quantity", "good", "importer", "exporter", "year"),
     skip_absent = TRUE)
 

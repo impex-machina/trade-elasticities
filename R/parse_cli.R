@@ -377,9 +377,9 @@ validate_cli_opts <- function(opts, parser = NULL) {
     fail(sprintf("--agg-level must be 'hs4' or 'hs6', got: '%s'",
                  opts$agg_level))
   }
-  if (!opts$stage %in% c("all", "1", "2a", "2b")) {
+  if (!opts[["stage"]] %in% c("all", "1", "2a", "2b")) {
     fail(sprintf("--stage must be one of 'all', '1', '2a', '2b', got: '%s'",
-                 opts$stage))
+                 opts[["stage"]]))
   }
   if (!opts$bw_lag %in% c("legacy", "calendar", "raw")) {
     fail(sprintf("--bw-lag must be 'legacy', 'calendar' or 'raw', got: '%s'",
@@ -404,7 +404,7 @@ validate_cli_opts <- function(opts, parser = NULL) {
     fail(sprintf("--stage2-se must be 'legacy', 'posterior' or 'sandwich', got: '%s'",
                  opts$stage2_se))
   }
-  if (!opts$stage2_prior %in% c("log", "level", "share", "shiftlog")) fail(sprintf("--stage2-prior must be 'log', 'level', 'share' or 'shiftlog', got: '%s'", opts$stage2_prior))
+  if (!opts[["stage2_prior"]] %in% c("log", "level", "share", "shiftlog")) fail(sprintf("--stage2-prior must be 'log', 'level', 'share' or 'shiftlog', got: '%s'", opts[["stage2_prior"]]))
   if (!is.numeric(opts$stage2_prior_eps) || opts$stage2_prior_eps <= 0) fail("--stage2-prior-eps must be positive")
   if (!opts$t_parity %in% c("all", "odd", "even")) fail(sprintf("--t-parity must be 'all', 'odd' or 'even', got: '%s'", opts$t_parity))
   if (!is.numeric(opts$stage2_maxit) || opts$stage2_maxit < 1) fail("--stage2-maxit must be a positive integer")
@@ -412,7 +412,7 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_import_constant %in% c("off", "on")) fail(sprintf("--stage2-import-constant must be 'off' or 'on', got: '%s'", opts$stage2_import_constant))
   if (!opts$stage2_fallback %in% c("legacy", "best")) fail(sprintf("--stage2-fallback must be 'legacy' or 'best', got: '%s'", opts$stage2_fallback))   # patch 0077
   if (!opts$stage2b_prior_source %in% c("all", "estimated")) fail(sprintf("--stage2b-prior-source must be 'all' or 'estimated', got: '%s'", opts$stage2b_prior_source))   # patch 0079
-  if (!opts[["stage2_trim"]] %in% c("legacy", "v2")) fail(sprintf("--stage2-trim must be 'legacy' or 'v2', got: '%s'", opts$stage2_trim))   # patch 0083
+  if (!opts[["stage2_trim"]] %in% c("legacy", "v2")) fail(sprintf("--stage2-trim must be 'legacy' or 'v2', got: '%s'", opts[["stage2_trim"]]))   # patch 0083
   if (!opts$stage2_gamma_v_source %in% c("regional", "table")) fail(sprintf("--stage2-gamma-v-source must be 'regional' or 'table', got: '%s'", opts$stage2_gamma_v_source))   # patch 0085
   if (identical(opts$stage2_gamma_v_source, "table") && !(nzchar(opts$stage2_gamma_v_table) && file.exists(opts$stage2_gamma_v_table))) fail(sprintf("--stage2-gamma-v-source table needs --stage2-gamma-v-table pointing at an existing .rds, got: '%s'", opts$stage2_gamma_v_table))   # patch 0085
   if (!opts$stage2_export_period_count %in% c("rows", "panel")) fail(sprintf("--stage2-export-period-count must be 'rows' or 'panel', got: '%s'", opts$stage2_export_period_count))   # patch 0085
