@@ -1,0 +1,133 @@
+{
+  "full": [
+    {
+      "config": "base",
+      "rows": 151779,
+      "n_estimated": 112645,
+      "share_non_converged": 0.02327726,
+      "share_gamma_le_0_01": 0.00392383,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.00442985,
+      "shrink_wt_median": 0.91514191,
+      "within_cell_sd_median": 0.65484489,
+      "abs_dev_median": 0.10814775,
+      "abs_dev_p90": 1.30133339,
+      "opt_tariff_median": 0.58497485,
+      "gamma_median": 0.53876682
+    },
+    {
+      "config": "pole05",
+      "rows": 151788,
+      "n_estimated": 112620,
+      "share_non_converged": 0.00816929,
+      "share_gamma_le_0_01": 0,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0.00085242,
+      "shrink_wt_median": 0.92606828,
+      "within_cell_sd_median": 0.57255302,
+      "abs_dev_median": 0.08741274,
+      "abs_dev_p90": 1.06099167,
+      "opt_tariff_median": 0.59443916,
+      "gamma_median": 0.54758148
+    },
+    {
+      "config": "pole1",
+      "rows": 151780,
+      "n_estimated": 112617,
+      "share_non_converged": 0.00623929,
+      "share_gamma_le_0_01": 0,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0,
+      "shrink_wt_median": 0.93364818,
+      "within_cell_sd_median": 0.54572638,
+      "abs_dev_median": 0.07721152,
+      "abs_dev_p90": 0.95862861,
+      "opt_tariff_median": 0.60636038,
+      "gamma_median": 0.55623401
+    },
+    {
+      "config": "pole2",
+      "rows": 151676,
+      "n_estimated": 112530,
+      "share_non_converged": 0.00199768,
+      "share_gamma_le_0_01": 0,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0,
+      "shrink_wt_median": 0.94364226,
+      "within_cell_sd_median": 0.49804918,
+      "abs_dev_median": 0.06565296,
+      "abs_dev_p90": 0.8375727,
+      "opt_tariff_median": 0.61822923,
+      "gamma_median": 0.56230894
+    },
+    {
+      "config": "pole25",
+      "rows": 151817,
+      "n_estimated": 112660,
+      "share_non_converged": 0.00253595,
+      "share_gamma_le_0_01": 0,
+      "share_gamma_le_1e_4": 0,
+      "share_gamma_ge_10": 0,
+      "shrink_wt_median": 0.94701532,
+      "within_cell_sd_median": 0.48232351,
+      "abs_dev_median": 0.06193368,
+      "abs_dev_p90": 0.79457402,
+      "opt_tariff_median": 0.62091741,
+      "gamma_median": 0.56505121
+    }
+  ],
+  "split": [
+    {
+      "config": "base",
+      "n_keys": 85274,
+      "n_cells": 4033,
+      "r_within": 0.33295488,
+      "rho_rank": 0.34256213,
+      "r_raw": 0.47330427,
+      "sd_within_a": 0.82607607,
+      "sd_within_b": 0.83790362
+    },
+    {
+      "config": "pole05",
+      "n_keys": 85133,
+      "n_cells": 4029,
+      "r_within": 0.35495903,
+      "rho_rank": 0.35531534,
+      "r_raw": 0.49665198,
+      "sd_within_a": 0.67201789,
+      "sd_within_b": 0.67616832
+    },
+    {
+      "config": "pole1",
+      "n_keys": 85124,
+      "n_cells": 4020,
+      "r_within": 0.36490096,
+      "rho_rank": 0.36361266,
+      "r_raw": 0.50656821,
+      "sd_within_a": 0.62121218,
+      "sd_within_b": 0.62574116
+    },
+    {
+      "config": "pole2",
+      "n_keys": 85042,
+      "n_cells": 4014,
+      "r_within": 0.368169,
+      "rho_rank": 0.36644369,
+      "r_raw": 0.52022792,
+      "sd_within_a": 0.55351575,
+      "sd_within_b": 0.55734436
+    },
+    {
+      "config": "pole25",
+      "n_keys": 85162,
+      "n_cells": 4015,
+      "r_within": 0.37242305,
+      "rho_rank": 0.36962973,
+      "r_raw": 0.52667398,
+      "sd_within_a": 0.53194432,
+      "sd_within_b": 0.5344932
+    }
+  ],
+  "generated": "2026-10-11 21:53:11 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\v091_pole_runs.csv"
+}
