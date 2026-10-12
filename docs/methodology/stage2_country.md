@@ -966,3 +966,62 @@ priors and the regional σ medians move too) and can carry
 `--stage2a-gamma-v-default priors` and `--stage2-trim-action flag`.
 `tests/testthat/test-sigma-pole-rule.R` locks the identity, the drop set
 and the plumbing.
+
+
+### The σ-pole rule, measured: the 2% subsample grid of 2026-10-11 — c = 1 ships as v0.10.0's default
+
+Five single-pass runs (`base` = v0.9.1 defaults; the rule at c = 0.5, 1, 2,
+2.5) on the 2% product subsample, each with its odd/even parity halves, the
+split-half reliability harness (`docs/results/stage2_reliability_v091_pole.md`,
+`results/stage2_reliability_v091_pole.json`) and a decomposition of
+$r_{\text{within}}$ by whether the rule moved the cell
+(`docs/results/v091_pole_reliability_decomposition.txt`; it replicates the
+harness totals). The step census against base
+(`docs/results/v091_pole_step_census.txt`) cleared the magnitude screen by
+construction (c = 1: p50 1.6e-03, p90 0.39, p99 2.45).
+
+| c | cells moved (of the full clean set) | fallback σ → share of rows at it | $r_{\text{within}}$ (Δ vs base) | rank ρ | $r_{\text{raw}}$ | within-cell sd | non-converged | shrink wt | `opt_tariff` median |
+|---|---|---|---|---|---|---|---|---|---|
+| base | — | 2.306 → 11.8% | 0.333 | 0.343 | 0.473 | 0.826 | 2.3% | 0.915 | 0.653 |
+| 0.5 | 28,737 | 2.405 → 24.9% | 0.355 (+0.022) | 0.355 | 0.497 | 0.672 | 0.8% | 0.926 | 0.654 |
+| **1** | **55,396** | **2.473 → 36.8%** | **0.365 (+0.032)** | 0.364 | 0.507 | 0.621 | 0.6% | 0.934 | 0.662 |
+| 2 | 94,769 | 2.585 → 56.8% | 0.368 (+0.035) | 0.366 | 0.520 | 0.554 | 0.2% | 0.944 | 0.664 |
+| 2.5 | 108,457 | 2.628 → 64.7% | 0.372 (+0.039) | 0.370 | 0.527 | 0.532 | 0.3% | 0.947 | 0.664 |
+
+Decomposition (split-half keys; the rule's own c defines "moved"):
+
+| c | moved: keys / cells / r / sd | unmoved: keys / cells / r / sd |
+|---|---|---|
+| base (c = 1 classes) | 20,208 / 1,133 / 0.305 / 1.092 | 65,066 / 2,900 / 0.352 / 0.724 |
+| 0.5 | 11,359 / 643 / 0.376 / 0.638 | 73,774 / 3,386 / 0.352 / 0.677 |
+| 1 | 21,342 / 1,158 / 0.378 / 0.619 | 63,782 / 2,862 / 0.361 / 0.622 |
+| 2 | 38,687 / 1,966 / 0.381 / 0.565 | 46,355 / 2,048 / 0.357 / 0.544 |
+| 2.5 | 45,673 / 2,254 / 0.384 / 0.546 | 39,489 / 1,761 / 0.357 / 0.515 |
+
+**Reading.** This is the identification signature at every c, not the
+shrinkage one: under base the pole cells reproduce worse than the rest
+(0.305 vs 0.352) with far wider dispersion (sd 1.09 vs 0.72); once estimated
+at a σ away from the pole they reproduce at or above the unmoved cells
+(0.376–0.384) at an equal sd. The caveat on record: the unmoved cells also
+tighten (sd 0.724 → 0.622 at c = 1, r +0.009) through the priors (the moved
+cells' ω leave them), the σ_V lookup and the shifted fallback value; small,
+and not where the gain lives. With c the gain flattens while the cost does
+not: from c = 1 to c = 2.5 is +0.007 in r for moving another 28 points of
+rows onto one global σ (65% of the table), with the within-cell sd still
+falling — homogenization rather than identification at that end. The
+pre-registered selection rule ("the largest c within 0.005 of the best with
+the identification signature") would have picked c = 2.5; it did not weigh
+what c does to the σ column, which is a product decision, and it was set
+aside for that reason. **Decision (MC, 2026-10-11): c = 1.** It takes 82% of
+the available reproducibility gain, the non-converged share to 0.6%, the
+γ ≤ 0.01 and γ ≥ 10 populations to zero, keeps a cell σ on 63% of rows, and
+has the plain statement that a σ within one standard error of 1 is not an
+estimate. c = 2.5 remains the "coincides with the `sigma_robust` pole test"
+alternative, available by flag.
+
+**What ships (v0.10.0, one Stage 2a + 2b×3 session, Stage 1 untouched):**
+`--stage2-sigma-pole-rule fallback --stage2-sigma-pole-se 1` as the default,
+with `--stage2a-gamma-v-default priors` and `--stage2-trim-action flag`
+flipped in the same patch (0101), every flag reversible to the v0.9.1
+configuration. The subsample grid above is the attribution record; there
+is no full-sample ladder.
