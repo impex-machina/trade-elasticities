@@ -41,6 +41,10 @@ fi
 [ "$(stat -c %s "$OUT/$CACHE")" = "$CACHE_BYTES" ] || { echo "setup.sh: cache size is not $CACHE_BYTES"; exit 1; }
 echo "  cache OK ($CACHE_BYTES bytes)"
 
+echo "== export totals (only read under --stage2-export-total all; patch 0107)"
+ET="baci_hs92_v202601_elast_country_hs4_export_totals.rds"
+if aws s3 cp "$BUCKET/cache/$ET" "$OUT/$ET" --only-show-errors 2>/dev/null; then echo "  placed $OUT/$ET"; else echo "  not on S3 (fine unless the run uses --stage2-export-total all)"; fi
+
 echo "== released tables (hash-verified) and Stage 1 placement"
 Rscript scripts/download_outputs.R
 cp "data/derived/stage1/$S1" "$OUT/"

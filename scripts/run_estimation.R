@@ -101,7 +101,7 @@ cat(sprintf("  Aggregation:      %s\n", opts$agg_level))
 cat(sprintf("  Cores:            %d\n", opts$ncores))
 cat(sprintf("  Shrinkage lambda: %g\n", opts$shrinkage_lambda))
 cat(sprintf("  Stage:            %s\n", opts[["stage"]]))
-cat(sprintf("  BW lag mode:      %s | exporter weight: %s | reference rule: %s\n", opts$bw_lag, opts$exporter_weight, opts$stage2_reference_rule))   # patch 0091 / 0105
+cat(sprintf("  BW lag mode:      %s | exporter weight: %s | reference rule: %s | export total: %s\n", opts$bw_lag, opts$exporter_weight, opts$stage2_reference_rule, opts$stage2_export_total))   # patch 0091 / 0105 / 0107
 cat(sprintf("  Stage-1 HLIML:    %s\n", opts$stage1_hliml))
 cat(sprintf("  Stage-1 CF rule:  %s\n", opts$stage1_cf_admissibility))
 cat(sprintf("  Stage-1 neg-omega: %s\n", opts$stage1_negative_omega))
@@ -199,6 +199,15 @@ if (file.exists(raw_cache_file)) {
   raw_cache <- prepare_raw_data(config_raw)
   saveRDS(raw_cache, raw_cache_file)
   cat(sprintf("  Cached to: %s\n\n", raw_cache_file))
+}
+
+# (patch 0107) --stage2-export-total all: read the all-value export totals once
+# for both panels (prepare_data() maps them to regions for Stage 2a).
+if (identical(opts$stage2_export_total, "all")) {
+  .et_path <- if (!is.null(opts$export_totals_path) && nzchar(opts$export_totals_path)) opts$export_totals_path else paste0(out_base_country, "_export_totals.rds")
+  if (!file.exists(.et_path)) stop("--stage2-export-total all: export-totals table not found at ", .et_path, " (build it with scripts/build_export_totals.R)")
+  config$export_totals_tbl <- data.table::as.data.table(readRDS(.et_path))
+  cat(sprintf("Export totals (all value, incl. flows without a quantity): %s rows from %s\n\n", format(nrow(config$export_totals_tbl), big.mark = ","), .et_path))
 }
 
 cat("Preparing country-level estimation data...\n")

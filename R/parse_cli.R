@@ -287,6 +287,10 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Stage-2b passes of the exporter-specific gamma_V iteration: pass 1 uses --stage2-gamma-v-source, each further pass takes gamma_jV from the previous pass's own table (patch 0086). 1 = single pass (every release through v0.8.3). Default: %default"),
     optparse::make_option(c("--stage2-sigma-edge"), type = "character", default = "fallback", metavar = "RULE",
       help = "Stage-1 cells whose published sigma is a box edge (sigma_capped): 'fallback' (v0.9.0 default, patch 0087: treat as no estimate -- fallback sigma, sigma_robust FALSE, no sigma_V, out of the priors) or 'publish' (keep sigma = cap in Stage 2; every release through v0.8.3). Default: %default"),
+    optparse::make_option(c("--stage2-export-total"), type = "character", default = "quantity", metavar = "TOTAL",
+      help = "Exporter total exports V_j in the export-side shares of Eq. (11): 'quantity' (sum of the flows with an observed quantity; every release) or 'all' (all value, including flows without a quantity, from --export-totals-path; patch 0107, experiment flag). The import-side total cancels in Eq. (10) and is unchanged. Default: %default"),
+    optparse::make_option(c("--export-totals-path"), type = "character", default = NULL, metavar = "PATH",
+      help = "Export-totals table from scripts/build_export_totals.R, read under --stage2-export-total all. Default: <out-dir>/<prefix>_export_totals.rds beside the raw cache."),
     optparse::make_option(c("--stage2-reference-rule"), type = "character", default = "periods_value", metavar = "RULE",
       help = "How Stage 2 picks a cell's reference exporter: 'periods_value' (most periods, then largest total value; every release), 'periods_stable' (most periods, then the least variance of the price difference -- the reference's noise enters every exporter's differenced moments) or 'value' (largest total value). Patch 0105, experiment flag. Default: %default"),
     optparse::make_option(c("--stage2-sigma-pole-rule"), type = "character", default = "fallback", metavar = "RULE",
@@ -420,6 +424,7 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_export_period_count %in% c("rows", "panel")) fail(sprintf("--stage2-export-period-count must be 'rows' or 'panel', got: '%s'", opts$stage2_export_period_count))   # patch 0085
   if (is.na(opts$stage2_gamma_v_passes) || opts$stage2_gamma_v_passes < 1L) fail(sprintf("--stage2-gamma-v-passes must be an integer >= 1, got: '%s'", opts$stage2_gamma_v_passes))   # patch 0086
   if (!opts$stage2_sigma_edge %in% c("publish", "fallback")) fail(sprintf("--stage2-sigma-edge must be 'publish' or 'fallback', got: '%s'", opts$stage2_sigma_edge))   # patch 0086
+  if (!opts$stage2_export_total %in% c("quantity", "all")) fail(sprintf("--stage2-export-total must be 'quantity' or 'all', got: '%s'", opts$stage2_export_total))   # patch 0107
   if (!opts$stage2_reference_rule %in% c("periods_value", "periods_stable", "value")) fail(sprintf("--stage2-reference-rule must be 'periods_value', 'periods_stable' or 'value', got: '%s'", opts$stage2_reference_rule))   # patch 0105
   if (!opts$stage2_sigma_pole_rule %in% c("none", "fallback")) fail(sprintf("--stage2-sigma-pole-rule must be 'none' or 'fallback', got: '%s'", opts$stage2_sigma_pole_rule))   # patch 0099
   if (!is.finite(opts$stage2_sigma_pole_se) || opts$stage2_sigma_pole_se <= 0) fail(sprintf("--stage2-sigma-pole-se must be a positive number, got: %s", opts$stage2_sigma_pole_se))

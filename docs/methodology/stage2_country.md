@@ -1222,3 +1222,55 @@ conditional on it. The README states this for consumers.
 **Outcome.** Both flags stay default-off; no v0.11.0 session is warranted by
 them. The export-share denominator remains the one unmeasured item (it needs
 a cache rebuild from the BACI CSVs).
+
+
+### The export-share denominator: `--stage2-export-total {quantity|all}` (patch 0107, design fixed before the numbers)
+
+**The issue.** BACI carries some flows with a value but no quantity. They
+cannot enter a unit value, so dropping them from the price moments is right;
+but the raw cache drops them at the HS6 line *before* any total is formed, so
+the share denominators exclude them too — and a value-only HS6 line inside
+an HS4 flow is dropped from that flow's own value as well. On the import side
+(Eq. (10), and all of Stage 1) shares enter only as differences against the
+reference exporter in the same importer-year, so the importer total cancels
+exactly. On the export side, exporter j's share of its own total exports
+$s^J_{ij} = x_{ij}/V_j$ enters Eq. (11) separately for destination $i$ and
+for the reference destination $v$, with coefficients built from $\gamma_I$
+and $\gamma_V$. With measured $V_j(1 - m_{jt})$, where $m_{jt}$ is the value
+share of j's exports lacking a quantity, the mismeasurement contributes a
+term proportional to $(\gamma_I - \gamma_V)\,\Delta\ln(1 - m_{jt})$: it
+cancels only where $\gamma_I = \gamma_V$, i.e. it sits in exactly the
+variation that identifies exporter-specific γ. Expected small on average
+(value-only flows are a small share of value, only the *change* in the
+excluded share enters, scaled by the γ gap); the risk is concentrated —
+reporting changes produce spikes in $\Delta\ln(1-m)$ for particular
+exporter-years.
+
+**The fix, default-off.** `scripts/build_export_totals.R` reads the BACI year
+files one at a time with the cache's rules except the quantity filter and
+writes, per (year, good, exporter), the value of all flows (`value_all`) and
+of the flows with a quantity (`value_qobs`), plus the census of value-only
+flows (`docs/results/export_totals_census.md`). Under
+`--stage2-export-total all`, `prepare_data()` replaces the exporter total with
+`value_all` (mapped to regions for Stage 2a) after checking that `value_qobs`
+reproduces the panel's own exporter totals to 1e-9 — a table built with other
+rules, or missing a panel cell, is refused. Numerators, unit values and the
+import side are untouched; `quantity` (default) reproduces every release bit
+for bit.
+
+**Measurement and decision rule (fixed now).** Two half-runs on the 2%
+product subsample (seed 20260926; `--stage all` with the v0.10.x Stage 1
+loaded, so Stage 2a is re-estimated under the option; single γ_V pass; trim
+action `drop`) against the existing `m_ref_base` halves — the shipped
+configuration estimated the same way — with the split-half harness and the
+step census on the odd halves. Decision:
+- $\Delta r_{\text{within}} \ge +0.03$ with rank ρ not lower: default flip
+  at the next batched session;
+- $-0.01 < \Delta r_{\text{within}} < +0.03$: the corrected denominator is
+  the model's definition and costs nothing to carry; it becomes the default
+  at the next Stage-2 session that happens for another reason, with no
+  session for it alone;
+- $\Delta r_{\text{within}} \le -0.01$: keep `quantity` and record the census.
+The census is recorded whichever way it goes. `tests/testthat/
+test-export-totals.R` locks the table, the replacement, the refusals, the
+regional mapping and the bit-identity of the default.

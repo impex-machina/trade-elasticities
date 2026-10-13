@@ -185,6 +185,13 @@ prepare_data <- function(cfg, raw_cache = NULL) {
   dt[, imp_total := sum(cusval), by = .(t, importer, good)]
   dt[, `:=`(s_imp = cusval / imp_total, ls_imp = log(cusval / imp_total))]
   dt[, exp_total := sum(cusval), by = .(t, exporter, good)]
+  # (patch 0107) --stage2-export-total all: the exporter's total exports of the
+  # good include the value of flows without a quantity (dropped from the panel
+  # at the HS6 line because they have no unit value), as Eq. (11)'s share
+  # s^J_ij = x_ij / V_j defines V_j. The table comes from
+  # scripts/build_export_totals.R; apply_export_totals() checks that its
+  # quantity-observed column reproduces the panel's exp_total before use.
+  if (identical(cfg[["stage2_export_total"]], "all")) dt <- apply_export_totals(dt, cfg)
   dt[, `:=`(s_exp = cusval / exp_total, ls_exp = log(cusval / exp_total))]
 
   setorder(dt, importer, exporter, good, t)
@@ -265,3 +272,50 @@ prepare_data <- function(cfg, raw_cache = NULL) {
 #' @param cfg Config list.
 #' @param ncores Number of CPU cores. NULL = detectCores() - 2.
 #' @return data.table of estimates.
+
+
+#' Country code -> region, exactly as prepare_data()'s regional aggregation
+#' maps importers and exporters (unmapped codes -> "OTHER"). Patch 0107.
+region_of <- function(codes, cfg) {
+  rmap <- if (!is.null(cfg$custom_region_map)) data.table::copy(data.table::as.data.table(cfg$custom_region_map)) else build_region_map()
+  rmap[, cty_code := as.integer(cty_code)]
+  m <- rmap[data.table::data.table(cty_code = as.integer(codes)), on = "cty_code"]
+  m[is.na(region), region := "OTHER"]
+  m$region
+}
+
+
+#' Replace the panel's exporter totals with all-value totals (patch 0107).
+#'
+#' @param dt the panel after the exp_total step of prepare_data().
+#' @param cfg needs `export_totals_tbl`: a table from scripts/build_export_totals.R
+#'   with year, good, exporter (country codes), value_all, value_qobs.
+#' @return dt with exp_total replaced; stops if the table's quantity-observed
+#'   totals do not reproduce the panel's (the table was not built with the
+#'   cache's rules) or if a panel cell has no total.
+apply_export_totals <- function(dt, cfg) {
+  tot <- cfg[["export_totals_tbl"]]
+  if (is.null(tot)) stop("stage2_export_total = 'all' needs the export-totals table (scripts/build_export_totals.R; --export-totals-path)")
+  tot <- data.table::as.data.table(tot)
+  need <- c("year", "good", "exporter", "value_all", "value_qobs")
+  if (length(setdiff(need, names(tot)))) stop("export-totals table is missing: ", paste(setdiff(need, names(tot)), collapse = ", "))
+  tot <- tot[, .(year = as.integer(year), good = as.character(good), exporter = as.character(exporter), value_all, value_qobs)]
+  if (isTRUE(cfg$use_regions)) {
+    tot[, exporter := region_of(exporter, cfg)]
+    tot <- tot[, .(value_all = sum(value_all), value_qobs = sum(value_qobs)), by = .(year, good, exporter)]
+  }
+  keys <- unique(dt[, .(year = as.integer(year), good = as.character(good), exporter = as.character(exporter), exp_total)])
+  m <- tot[keys, on = .(year, good, exporter)]
+  if (anyNA(m$value_all)) stop(sprintf("export-totals table has no row for %d panel (year, good, exporter) cells", sum(is.na(m$value_all))))
+  rel <- abs(m$value_qobs - m$exp_total) / pmax(abs(m$exp_total), 1e-12)
+  if (max(rel) > 1e-9) stop(sprintf("export-totals table was not built with the cache's rules: its quantity-observed value differs from the panel's exporter totals on %d of %d cells (max relative difference %.3g)", sum(rel > 1e-9), nrow(m), max(rel)))
+  m[, yr := year]
+  dt[, `:=`(.yr = as.integer(year), .gd = as.character(good), .ex = as.character(exporter))]
+  dt[m, exp_total := i.value_all, on = .(.yr = yr, .gd = good, .ex = exporter)]
+  dt[, c(".yr", ".gd", ".ex") := NULL]
+  data.table::setattr(dt, "export_totals_census",
+                      list(cells = nrow(m), cells_raised = sum(m$value_all > m$value_qobs * (1 + 1e-12)),
+                           value_share_added = sum(m$value_all - m$value_qobs) / sum(m$value_all)))
+  dt
+}
+
