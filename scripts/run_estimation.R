@@ -102,6 +102,7 @@ cat(sprintf("  Cores:            %d\n", opts$ncores))
 cat(sprintf("  Shrinkage lambda: %g\n", opts$shrinkage_lambda))
 cat(sprintf("  Stage:            %s\n", opts[["stage"]]))
 cat(sprintf("  BW lag mode:      %s | exporter weight: %s | reference rule: %s | export total: %s\n", opts$bw_lag, opts$exporter_weight, opts$stage2_reference_rule, opts$stage2_export_total))   # patch 0091 / 0105 / 0107
+cat(sprintf("  Export moment:    %s | Stage-2a handoff rows: %s\n", opts$stage2_export_moment, opts$stage2a_handoff_rows))   # patch 0110
 cat(sprintf("  Stage-1 HLIML:    %s\n", opts$stage1_hliml))
 cat(sprintf("  Stage-1 CF rule:  %s\n", opts$stage1_cf_admissibility))
 cat(sprintf("  Stage-1 neg-omega: %s\n", opts$stage1_negative_omega))
@@ -554,7 +555,14 @@ if (should_run("2a", opts, paths)) {
 
 # Save regional summary + CSV (cheap; run regardless of stage gating)
 cat("\nSaving regional summary...\n")
-regional_clean <- regional_results[!is.na(sigma) & !is.na(gamma) & gamma > 0]
+# (patch 0110) --stage2a-handoff-rows: which Stage-2a rows build Stage 2b's
+# priors, regional gamma_V and starting values ('all' = every release).
+regional_handoff <- stage2a_handoff_rows(regional_results, opts$stage2a_handoff_rows)
+if (nrow(regional_handoff) < nrow(regional_results))
+  cat(sprintf("  Stage-2a handoff: %s published rows (%s flagged rows left out)\n",
+              format(nrow(regional_handoff), big.mark = ","),
+              format(nrow(regional_results) - nrow(regional_handoff), big.mark = ",")))
+regional_clean <- regional_handoff[!is.na(sigma) & !is.na(gamma) & gamma > 0]
 write_estimation_summary(regional_results, config, out_base_regional,
                          step1_results = NULL, scope = "regional")
 fwrite(regional_results, paste0(out_base_regional, "_fixed_sigma.csv"))
@@ -661,7 +669,7 @@ if (should_run("2b", opts, paths)) {
                   format(nrow(gv_tab), big.mark = ","), opts$stage2_gamma_v_table))
     }
 
-    config_2b <- init_from_regional(config_2b, regional_results)
+    config_2b <- init_from_regional(config_2b, regional_handoff)   # patch 0110 ('all' == regional_results)
 
     country_results <- estimate_all_fixed_sigma(
       config_2b, ncores = ncores, prepared_dt = dt_country)

@@ -193,6 +193,14 @@ prepare_data <- function(cfg, raw_cache = NULL) {
   # quantity-observed column reproduces the panel's exp_total before use.
   if (identical(cfg[["stage2_export_total"]], "all")) dt <- apply_export_totals(dt, cfg)
   dt[, `:=`(s_exp = cusval / exp_total, ls_exp = log(cusval / exp_total))]
+  # (patch 0110) --stage2-export-moment value: Eq. (11)'s export "share" terms on
+  # log export VALUES. From Eq. (7), ln p_ij = eta/(1+g_ij) + rho_ij ln(p_ij x_ij)
+  # exactly, so Eq. (8) holds on values; on shares it omits
+  # (rho_I - rho_V) * dln V_j, V_j the exporter's total sales, which moves with
+  # the Eq. (9) demand residual whenever gamma_I != gamma_V. Eq. (9) is a
+  # difference across destinations, identical on either. The exporter total
+  # then enters nothing (--stage2-export-total is moot). 'share' = every release.
+  if (identical(cfg[["stage2_export_moment"]], "value")) dt[, ls_exp := log(cusval)]
 
   setorder(dt, importer, exporter, good, t)
   dt[, `:=`(lp_dif = lp - shift(lp, 1L),

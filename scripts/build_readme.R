@@ -224,6 +224,13 @@ dgp_harness_line <- function(dgp) {
   else
     "import side only, Eq. (10)"
   quick_note <- if (isTRUE(meta$quick)) " QUICK run -- not release grade;" else ""
+  # (patch 0110) Test F: the export side against the model's primitives
+  if (!is.null(dgp$test_F)) {
+    fg <- dgp$test_F$grid
+    sh <- max(vapply(fg, function(x) if (!isTRUE(all.equal(x$gam_I, x$gam_V))) x$resid_ratio_share else 0, 0))
+    va <- max(vapply(fg, function(x) x$resid_ratio_value, 0))
+    coverage <- sprintf("%s; Test F, the export side against the primitives: exact on export values (residual at the truth at most %.1f%% of the outcome), the shipped share form misses by up to %.1f%% when gamma_I != gamma_V", coverage, 100 * va, 100 * sh)
+  }
   sprintf("%s at rev `%s`, %s (%s%s; seed %s). Regenerate with `Rscript validation/stage2_structural_dgp.R`.",
           verdict, req(meta, "git_rev"),
           substr(req(meta, "timestamp"), 1, 10),

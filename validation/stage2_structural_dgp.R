@@ -331,7 +331,58 @@ cat(sprintf("  median |gamma bias| = %.3f (tol %.2f) -> %s\n",
             biasE, tol_E, ifelse(passE, "PASS", "FAIL")))
 
 # ---- summary ---------------------------------------------------------------
-all_pass <- passA_true && passA_power && passB && passC &&
+# ---- Test F (patch 0110): the export side against the model's primitives ----
+# Tests A-E draw data from the reduced-form curves, so they check the algebra
+# from Eqs. (5)-(6) and (8)-(9) to Eqs. (10)-(11), not those curves. Eq. (8)
+# (prices on export shares) does not follow from the primitives -- CES demand
+# in each destination, supply p = exp(eta) x^gamma with destination-specific
+# gamma, Eq. (7) -- unless gamma_I = gamma_V: inverting Eq. (7) leaves
+# (rho_I - rho_V) * dln V_j, V_j the exporter's total sales, which moves with
+# the Eq. (9) demand residual. On log export values the supply curve is exact,
+# ln p = eta / (1 + gamma) + rho * ln(p x). Test F simulates one exporter
+# selling to D destinations from the primitives and evaluates the shipped
+# Eq. (11) residual at the truth on export shares (--stage2-export-moment
+# share) and on export values (value). PASS: the value form stays below tol_D
+# at every grid point and the share form misses by more than tol_D and more
+# than 3x the value form's largest residual (the power control).
+simulate_export_primitives <- function(sigma_I, sigma_V, gam_I, gam_V, A_I, A_V, T_len,
+                                       D = 6L, sd_b = 0.4, sd_eta = 0.4, sd_A = 0.2) {
+  sig <- c(sigma_I, sigma_V, rep(3, D - 2L)); gam <- c(gam_I, gam_V, rep(0.8, D - 2L))
+  n <- T_len + 1
+  lnA <- matrix(log(c(A_I, A_V, rep(0.7, D - 2L))), n, D, byrow = TRUE) + matrix(rnorm(n * D, 0, sd_A), n, D)
+  lnb <- matrix(rnorm(n * D, 0, sd_b), n, D); eta <- matrix(rnorm(n * D, 0, sd_eta), n, D)
+  G <- matrix(gam, n, D, byrow = TRUE); S <- matrix(sig, n, D, byrow = TRUE)
+  lnp <- (eta + G * (lnb + lnA)) / (1 + G * S)        # destination equilibria
+  lnR <- (1 - S) * lnp + lnb + lnA                     # log revenue, ln(p x)
+  dlV <- diff(log(rowSums(exp(lnR))))                  # the exporter's total sales
+  P <- diff(lnp[, 1]); Q <- diff(lnp[, 2]); dRi <- diff(lnR[, 1]); dRv <- diff(lnR[, 2])
+  mom <- function(a, b) list(Y = mean((P - Q)^2),
+    X = matrix(c(mean(a * a), mean(a * P), mean(b * b), mean(b * P), mean(b * Q),
+                 mean(a * Q), mean(a * b), mean(Q * Q), mean(Q * P)), 1L, 9L))
+  list(share = mom(dRi - dlV, dRv - dlV), value = mom(dRi, dRv))
+}
+cat("\n== Test F: EXPORT side against the primitives (shares vs values) ==\n")
+gridF <- data.frame(sigma = c(3, 3, 3, 2.2, 3), sigma_V = c(3, 3, 3, 4, 3),
+                    gam_I = c(0.3, 1.5, 1.5, 1.5, 0.8), gam_V = c(1.5, 0.3, 0.3, 0.3, 0.8),
+                    A_I = c(5, 0.15, 1, 1, 1), A_V = c(2, 2, 2, 2, 2))
+rowsF <- vector("list", nrow(gridF))
+for (g in seq_len(nrow(gridF))) {
+  x <- gridF[g, ]
+  momF <- simulate_export_primitives(x$sigma, x$sigma_V, x$gam_I, x$gam_V, x$A_I, x$A_V, T_len)
+  rowsF[[g]] <- data.frame(x, resid_ratio_share = exp_resid_ratio(x$gam_I, x$sigma, x$sigma_V, x$gam_V, momF$share),
+                           resid_ratio_value = exp_resid_ratio(x$gam_I, x$sigma, x$sigma_V, x$gam_V, momF$value))
+  cat(sprintf("  sigma=%.1f sigma_V=%.1f gamma_I=%.1f gamma_V=%.1f : resid/Y shares = %.4f | values = %.4f\n",
+              x$sigma, x$sigma_V, x$gam_I, x$gam_V, rowsF[[g]]$resid_ratio_share, rowsF[[g]]$resid_ratio_value))
+}
+Fg <- do.call(rbind, rowsF)
+hetF <- Fg$gam_I != Fg$gam_V
+passF_value <- max(Fg$resid_ratio_value) < tol_D
+passF_power <- max(Fg$resid_ratio_share[hetF]) > max(tol_D, 3 * max(Fg$resid_ratio_value))
+cat(sprintf("  F verdict: max value-form ratio %.4f < %.2f -> %s | share form misses by up to %.3f (need > tol_D and > 3x the value form) -> %s\n",
+            max(Fg$resid_ratio_value), tol_D, ifelse(passF_value, "PASS", "FAIL"),
+            max(Fg$resid_ratio_share[hetF]), ifelse(passF_power, "PASS", "FAIL")))
+
+all_pass <- passF_value && passF_power && passA_true && passA_power && passB && passC &&
             passD_true && passD_power && passE
 cat(sprintf("\n== OVERALL: %s ==\n", ifelse(all_pass, "PASS", "FAIL")))
 
@@ -353,6 +404,7 @@ summary_obj <- list(
                 pass = passC),
   test_D = list(grid = D, pass_truth = passD_true, pass_power = passD_power),
   test_E = list(median_abs_bias = biasE, pass = passE),
+  test_F = list(grid = Fg, pass_value = passF_value, pass_power = passF_power),   # patch 0110
   overall_pass = all_pass
 )
 if (opt_json) {

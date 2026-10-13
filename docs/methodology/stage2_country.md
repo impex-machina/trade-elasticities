@@ -1316,3 +1316,88 @@ periods, and sits mostly in thin cells that carry little trade weight.
 definition, costless to carry — become the default at the next Stage-2
 session that happens for another reason; there is no session for this
 alone. The flip is queued in `docs/next_session_queue.md`.
+
+### The export moment on values: `--stage2-export-moment {share|value}` (patch 0110, design fixed before the numbers)
+
+**The issue.** Soderbery's Eq. (8) writes the export supply curve with prices
+on export shares, $D^v\ln p_{ij} = \rho_I\,\Delta\ln s^J_{ij} - \rho_V\,\Delta\ln s^J_{vj} + \delta$.
+His own Eq. (7) gives $\ln p_{ij} = \eta_{ij}/(1+\gamma_{ij}) + \rho_{ij}\ln s^J_{ij} + \rho_{ij}\ln V_j$,
+so the reference-differenced curve carries $(\rho_I - \rho_V)\,\Delta\ln V_j$, with
+$V_j$ the exporter's total sales. Eq. (8) leaves that term in the error, where
+it is correlated with the Eq. (9) demand residual through $V_j$ whenever
+$\gamma_I \neq \gamma_V$ -- the variation the model exists to estimate. The
+import side has no such term: Eq. (6) is written shares-on-prices and the
+importer total cancels. Patch 0107's denominator finding was the
+measurement-error face of the same term. Tests A-E of the structural-DGP
+harness draw data from Eqs. (8)-(9) themselves and could not see it.
+
+**The fix, default-off.** With $R = p\,x$ the supply curve is exact on log
+values, $\ln p = \eta/(1+\gamma) + \rho\ln R$, so Eq. (8) holds with
+$\Delta\ln R$ in place of $\Delta\ln s^J$; Eq. (9) is a difference across
+destinations and is unchanged. The nine-term Eq. (11), its coefficients, the
+C++ objective, the Jacobian and the SEs are untouched: under `value`,
+`prepare_data()` puts log export value where the export share was. The
+exporter total then enters nothing, so `--stage2-export-total` is moot under
+`value`. `share` (default) reproduces every release bit for bit.
+
+**Evidence before the flag (sandbox, 2026-10-13).** Harness Test F (the export
+side simulated from the primitives): at the truth the share form misses by up
+to about a tenth of the outcome when $\gamma_I \neq \gamma_V$, the value form
+stays at noise. In a cell simulation from the primitives (one importer, 16
+exporters each selling to six destinations, every γ estimated jointly with σ
+at the truth; 300 cells at T = 30 with λ = 0.1 and 50 at T = 3,000 without the
+ridge), median log bias / median |log error| / median within-cell rank
+correlation with the truth:
+
+| export side | baseline, T = 3,000 | baseline, T = 30, λ = 0.1 (rank) | stress, T = 3,000 | stress, T = 30, λ = 0.1 (rank) |
+|---|---|---|---|---|
+| shares (shipped) | −0.052 / 0.115 / 0.943 | 0.318 | −0.131 / 0.207 / 0.928 | 0.325 |
+| values (`value`) | −0.006 / 0.101 / 0.959 | 0.328 | −0.032 / 0.133 / 0.965 | 0.350 |
+| total differenced out (not implemented) | −0.009 / 0.114 / 0.941 | 0.285 | −0.037 / 0.157 / 0.951 | 0.244 |
+
+The stress design has concentrated export shares and heterogeneity sd 1.0.
+The value form removes the population bias and ranks at least as well at the
+pipeline's operating point; differencing the total out instead is unbiased but
+discards share variation and ranks worse at T = 30. The simulation omits the
+BW weights, unit-value measurement error and the import constant, and gives
+γ_V at the truth, so the magnitude on BACI is the A/B's question.
+
+**Measurement and decision rule (fixed now).** As patch 0107: two `--stage all`
+half-runs on the 2% product subsample (seed 20260926; the v0.10.x Stage 1
+loaded, so Stage 2a is re-estimated under the option; single γ_V pass; trim
+action `drop`) as `m_expval_odd/even` against the existing `m_ref_base`
+halves, with the split-half harness and the step census on the odd halves.
+Decision:
+- $\Delta r_{\text{within}} \ge +0.03$ with rank ρ not lower: default flip at
+  the next batched session;
+- $-0.01 < \Delta r_{\text{within}} < +0.03$: `value` is the model's own form
+  and costs nothing to carry; it becomes the default at the next Stage-2
+  session held for another reason, and replaces the queued
+  `--stage2-export-total all` flip, which is moot under `value`;
+- $\Delta r_{\text{within}} \le -0.01$: keep `share`, record the result, and
+  state the misspecification in the paper.
+
+
+### Stage-2a rows handed to Stage 2b: `--stage2a-handoff-rows {all|published}` (patch 0110)
+
+**The bug.** Since v0.10.0 (`--stage2-trim-action flag`) the Stage-2a table
+keeps the rows its tail trim flagged. `run_estimation.R` builds Stage 2b's
+good-level priors and regional γ_V (`stage2b_priors_from_regional()`) and the
+starting values (`init_from_regional()`) from that table, and
+`is_estimated_row()` does not read `trim_reason`, so the flagged tails entered
+all three; only the γ_V pass lookups and the console summary filtered
+(patches 0093/0102). The flag action was meant to change what the table
+shows, not what Stage 2b estimates. Medians bound the effect -- each one-sided
+flagged row moves a median by one order statistic -- but it also confounds the
+v0.10.0 attribution: run H2's "new Stage 2a" changed the pole rule, the γ_V
+default and this at once.
+
+**The fix.** `stage2a_handoff_rows()` (`R/iteration_helpers.R`): `published`
+hands over the `trim_reason`-NA rows only; `all` (default) reproduces every
+release; the two coincide under `drop`. `analysis/handoff_rows_census.R`
+recomputes the priors and regional γ_V both ways from the shipped Stage-2a
+table (`results/stage2a_handoff_census.json`).
+
+**Decision.** A correctness fix, not a methodology choice: `published` becomes
+the default at the next Stage-2 session whatever the census shows; the census
+is recorded with it.

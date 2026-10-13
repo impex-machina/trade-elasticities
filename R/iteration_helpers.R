@@ -162,6 +162,27 @@ apply_sigma_pole_rule <- function(sigma_clean, rule = c("none", "fallback"), c =
 }
 
 
+#' Stage-2a rows handed to Stage 2b (patch 0110).
+#'
+#' run_estimation.R builds Stage 2b's good-level priors, the regional gamma_V
+#' (stage2b_priors_from_regional()) and the starting values (init_from_regional())
+#' from the Stage-2a table. Under --stage2-trim-action flag (the v0.10.0
+#' default) that table also carries the rows its tail trim flagged, and
+#' is_estimated_row() does not read trim_reason, so the trimmed tails entered
+#' all three -- the flag action was meant to change what the table shows, not
+#' what Stage 2b estimates. "published" hands over the trim_reason-NA rows only;
+#' "all" (every release) the whole table. The two coincide under drop.
+#' @param regional_results the Stage-2a table.
+#' @param rule "all" or "published"; NULL == "all".
+#' @return the rows Stage 2b's inputs are built from.
+stage2a_handoff_rows <- function(regional_results, rule = "all") {
+  if (is.null(rule)) rule <- "all"
+  if (!rule %in% c("all", "published")) stop("stage2a_handoff_rows(): rule must be 'all' or 'published', got: ", rule)
+  if (rule == "all") return(regional_results)
+  regional_results[is_published_row(regional_results)]
+}
+
+
 #' Published-row mask (patch 0093): TRUE where the row is not a flagged
 #' trimmed row (trim_reason NA, or no such column). Every consumer of a
 #' Stage-2 table reads the published rows through this.

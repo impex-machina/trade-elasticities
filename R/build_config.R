@@ -106,6 +106,8 @@ build_config <- function(opts) {
     stage2_sigma_edge = opts$stage2_sigma_edge %||% "fallback",           # patch 0087: v0.9.0 default (publish = <= v0.8.3)
     stage2_reference_rule = opts$stage2_reference_rule %||% "periods_value",   # patch 0105: absent == every release
     stage2_export_total = opts$stage2_export_total %||% "quantity",   # patch 0107: absent == every release
+    stage2_export_moment = opts$stage2_export_moment %||% "share",    # patch 0110: absent == every release
+    stage2a_handoff_rows = opts$stage2a_handoff_rows %||% "all",      # patch 0110: absent == every release
     stage2_sigma_pole_rule = opts$stage2_sigma_pole_rule %||% "fallback",   # patch 0101: absent == fallback (v0.10.0; none through v0.9.1)
     stage2_sigma_pole_se   = opts$stage2_sigma_pole_se %||% 1,
     # patch 0043: closed-form admissibility rule (Stage 1 only; carried in

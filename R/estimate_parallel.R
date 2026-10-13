@@ -518,6 +518,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_sigma_edge",                                      # patch 0086
             "stage2_reference_rule",                                  # patch 0105
             "stage2_export_total",                                    # patch 0107
+            "stage2_export_moment",                                   # patch 0110
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
@@ -547,6 +548,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
   if (is.null(cfg$stage2_fallback)) cfg$stage2_fallback <- "best"                     # patch 0080: absent == best (v0.8.3)
   if (is.null(cfg[["stage2_reference_rule"]])) cfg[["stage2_reference_rule"]] <- "periods_value"   # patch 0105: absent == every release
   if (is.null(cfg[["stage2_export_total"]])) cfg[["stage2_export_total"]] <- "quantity"            # patch 0107: absent == every release
+  if (is.null(cfg[["stage2_export_moment"]])) cfg[["stage2_export_moment"]] <- "share"             # patch 0110: absent == every release
   if (is.null(cfg$stage2b_prior_source)) cfg$stage2b_prior_source <- "estimated"       # patch 0080: absent == estimated (v0.8.3)
   if (is.null(cfg[["stage2_trim"]])) cfg[["stage2_trim"]] <- "v2"   # [[ ]]: exact match (patch 0101)                               # patch 0086: absent == v2 (v0.9.0)
   if (is.null(cfg$stage2_gamma_v_source)) cfg$stage2_gamma_v_source <- "regional"      # patch 0085: absent == regional

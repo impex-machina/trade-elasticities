@@ -289,6 +289,10 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Stage-1 cells whose published sigma is a box edge (sigma_capped): 'fallback' (v0.9.0 default, patch 0087: treat as no estimate -- fallback sigma, sigma_robust FALSE, no sigma_V, out of the priors) or 'publish' (keep sigma = cap in Stage 2; every release through v0.8.3). Default: %default"),
     optparse::make_option(c("--stage2-export-total"), type = "character", default = "quantity", metavar = "TOTAL",
       help = "Exporter total exports V_j in the export-side shares of Eq. (11): 'quantity' (sum of the flows with an observed quantity; every release) or 'all' (all value, including flows without a quantity, from --export-totals-path; patch 0107, experiment flag). The import-side total cancels in Eq. (10) and is unchanged. Default: %default"),
+    optparse::make_option(c("--stage2-export-moment"), type = "character", default = "share", metavar = "FORM",
+      help = "Data in Eq. (11)'s export 'share' terms: 'share' (exporter j's share of its total exports, as Soderbery's Eq. (8) is printed; every release) or 'value' (log export value; patch 0110: Eq. (8) holds exactly on values, while on shares it omits (rho_I - rho_V) * dln V_j, V_j the exporter's total sales; Eq. (9) is the same on either). Under 'value' the exporter total enters nothing and --stage2-export-total is moot. Default: share"),
+    optparse::make_option(c("--stage2a-handoff-rows"), type = "character", default = "all", metavar = "ROWS",
+      help = "Stage-2a rows that feed Stage 2b's good-level priors, regional gamma_V and starting values: 'all' (every row of the Stage-2a table, including the rows the tail trim flagged under --stage2-trim-action flag; every release) or 'published' (trim_reason NA only; patch 0110). Identical under --stage2-trim-action drop. Default: all"),
     optparse::make_option(c("--export-totals-path"), type = "character", default = NULL, metavar = "PATH",
       help = "Export-totals table from scripts/build_export_totals.R, read under --stage2-export-total all. Default: <out-dir>/<prefix>_export_totals.rds beside the raw cache."),
     optparse::make_option(c("--stage2-reference-rule"), type = "character", default = "periods_value", metavar = "RULE",
@@ -424,6 +428,8 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!opts$stage2_export_period_count %in% c("rows", "panel")) fail(sprintf("--stage2-export-period-count must be 'rows' or 'panel', got: '%s'", opts$stage2_export_period_count))   # patch 0085
   if (is.na(opts$stage2_gamma_v_passes) || opts$stage2_gamma_v_passes < 1L) fail(sprintf("--stage2-gamma-v-passes must be an integer >= 1, got: '%s'", opts$stage2_gamma_v_passes))   # patch 0086
   if (!opts$stage2_sigma_edge %in% c("publish", "fallback")) fail(sprintf("--stage2-sigma-edge must be 'publish' or 'fallback', got: '%s'", opts$stage2_sigma_edge))   # patch 0086
+  if (!opts$stage2_export_moment %in% c("share", "value")) fail(sprintf("--stage2-export-moment must be 'share' or 'value', got: '%s'", opts$stage2_export_moment))   # patch 0110
+  if (!opts$stage2a_handoff_rows %in% c("all", "published")) fail(sprintf("--stage2a-handoff-rows must be 'all' or 'published', got: '%s'", opts$stage2a_handoff_rows))   # patch 0110
   if (!opts$stage2_export_total %in% c("quantity", "all")) fail(sprintf("--stage2-export-total must be 'quantity' or 'all', got: '%s'", opts$stage2_export_total))   # patch 0107
   if (!opts$stage2_reference_rule %in% c("periods_value", "periods_stable", "value")) fail(sprintf("--stage2-reference-rule must be 'periods_value', 'periods_stable' or 'value', got: '%s'", opts$stage2_reference_rule))   # patch 0105
   if (!opts$stage2_sigma_pole_rule %in% c("none", "fallback")) fail(sprintf("--stage2-sigma-pole-rule must be 'none' or 'fallback', got: '%s'", opts$stage2_sigma_pole_rule))   # patch 0099
