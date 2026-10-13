@@ -66,7 +66,7 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
 
     # --- Checkpoint configuration ---
     checkpoint_every <- 50L  # Save every N products
-    checkpoint_file  <- paste0(build_output_prefix(cfg), "_checkpoint.rds")
+    checkpoint_file  <- paste0(run_record_base(cfg), "_checkpoint.rds")
 
     # --- Resume from checkpoint if available ---
     results_list <- list()
@@ -163,7 +163,7 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
 
     batch_size <- ncores * 2L
     n_batches <- ceiling(n_products / batch_size)
-    checkpoint_file <- paste0(build_output_prefix(cfg), "_checkpoint.rds")
+    checkpoint_file <- paste0(run_record_base(cfg), "_checkpoint.rds")
 
     # --- Resume from checkpoint if available ---
     results_list <- list()
@@ -205,7 +205,7 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
   } else {
     cat("Using forked parallelism (Unix/Mac)...\n")
     # Batch checkpointing for the joint estimator.
-    checkpoint_file <- paste0(build_output_prefix(cfg), "_checkpoint.rds")
+    checkpoint_file <- paste0(run_record_base(cfg), "_checkpoint.rds")
     batch_size <- max(ncores * 4L, 50L)
     n_batches <- ceiling(n_products / batch_size)
 
@@ -249,7 +249,7 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
     # (patch 0092) a run that produced nothing must not leave its checkpoint
     # behind: the next run with a different config would hit the resume guard
     cat("\nNo estimates produced.\n")
-    .remove_stale_run_files(paste0(build_output_prefix(cfg), "_checkpoint.rds"))
+    .remove_stale_run_files(paste0(run_record_base(cfg), "_checkpoint.rds"))
     return(NULL)
   }
 
@@ -381,7 +381,7 @@ estimate_all_parallel <- function(cfg, ncores = NULL) {
   )
 
   # --- Clean up checkpoint file after successful completion ---
-  checkpoint_file_cleanup <- paste0(build_output_prefix(cfg), "_checkpoint.rds")
+  checkpoint_file_cleanup <- paste0(run_record_base(cfg), "_checkpoint.rds")
   if (file.exists(checkpoint_file_cleanup)) {
     file.remove(checkpoint_file_cleanup)
     cat(sprintf("  Checkpoint file removed: %s\n", checkpoint_file_cleanup))
@@ -615,7 +615,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   t_start <- Sys.time()
 
   if (ncores == 1L) {
-    checkpoint_file <- paste0(build_output_prefix(cfg), "_fs_checkpoint.rds")
+    checkpoint_file <- paste0(run_record_base(cfg), "_fs_checkpoint.rds")
     results_list <- list()
     start_idx <- 1L
     if (file.exists(checkpoint_file)) {
@@ -675,7 +675,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
 
     batch_size <- ncores * 2L
     n_batches <- ceiling(n_products / batch_size)
-    checkpoint_file <- paste0(build_output_prefix(cfg), "_fs_checkpoint.rds")
+    checkpoint_file <- paste0(run_record_base(cfg), "_fs_checkpoint.rds")
 
     results_list <- list()
     start_batch <- 1L
@@ -722,7 +722,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     #  effectively zero per-batch overhead (no serialization), so we
     #  want fewer, larger batches to minimize checkpoint I/O.
     # --------------------------------------------------------------
-    checkpoint_file <- paste0(build_output_prefix(cfg), "_fs_checkpoint.rds")
+    checkpoint_file <- paste0(run_record_base(cfg), "_fs_checkpoint.rds")
     batch_size <- max(ncores * 4L, 50L)
     n_batches <- ceiling(n_products / batch_size)
 
@@ -766,7 +766,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     # (patch 0092) same as the joint estimator: no checkpoint, and no stale
     # fallback / trim record from an earlier run masquerading as this run's
     cat("\nNo estimates.\n")
-    .remove_stale_run_files(paste0(build_output_prefix(cfg), c("_fs_checkpoint.rds", "_stage2_fallbacks.csv", "_stage2_trimmed.csv", "_stage2_trimmed.rds")))
+    .remove_stale_run_files(paste0(run_record_base(cfg), c("_fs_checkpoint.rds", "_stage2_fallbacks.csv", "_stage2_trimmed.csv", "_stage2_trimmed.rds")))
     return(NULL)
   }
 
@@ -792,7 +792,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
                 format(gv_totals$default, big.mark = ","),
                 if (is.null(cfg$gamma_V_exporter_lookup)) "regional" else "table"))
   }
-  fallback_file <- paste0(build_output_prefix(cfg), "_stage2_fallbacks.csv")
+  fallback_file <- paste0(run_record_base(cfg), "_stage2_fallbacks.csv")
   if (nrow(fallback_info) > 0L) {
     fwrite(fallback_info, fallback_file)
     cat(sprintf("  Optimizer fallback: %s cells ran Nelder-Mead after L-BFGS-B did not converge; NM point published on %s, NM objective higher than L-BFGS-B's on %s (rule '%s'); table: %s\n",
@@ -901,8 +901,8 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
       cat(sprintf("    Removed by reason: %s\n", paste(sprintf("%s=%s", names(rs), format(as.integer(rs), big.mark = ",")), collapse = " ")))
     }
   }
-  trim_file <- paste0(build_output_prefix(cfg), "_stage2_trimmed.csv")
-  trim_rds  <- paste0(build_output_prefix(cfg), "_stage2_trimmed.rds")   # patch 0093: the bit-exact twin of the CSV
+  trim_file <- paste0(run_record_base(cfg), "_stage2_trimmed.csv")
+  trim_rds  <- paste0(run_record_base(cfg), "_stage2_trimmed.rds")   # patch 0093: the bit-exact twin of the CSV
   if (!is.null(trimmed_rows) && nrow(trimmed_rows) > 0L) {
     fwrite(trimmed_rows, trim_file)
     saveRDS(trimmed_rows, trim_rds)
@@ -993,7 +993,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
   )
 
   # Clean up checkpoint file after successful completion
-  ckpt_cleanup <- paste0(build_output_prefix(cfg), "_fs_checkpoint.rds")
+  ckpt_cleanup <- paste0(run_record_base(cfg), "_fs_checkpoint.rds")
   if (file.exists(ckpt_cleanup)) {
     file.remove(ckpt_cleanup)
     cat(sprintf("  Checkpoint removed: %s\n", ckpt_cleanup))

@@ -40,7 +40,9 @@ the question beats two that cross-check it; say which before launching.
 4. Everything else — checks, quick reads, uploads — from **a second SSH
    connection** (same key, same IP), never by typing into the running window.
    In a `;`-chained launch, Ctrl-C kills the current run and starts the next.
-5. Move the run's records into the output folder:
+5. The run's records (optimizer-fallback and tail-trim tables, per pass) are written into
+   `--out-dir` beside the outputs since patch 0111. On a checkout older than 0111 they land
+   in the working directory; move them into the output folder first:
    `mv baci_hs92_v202601_elast_*_stage2_*.csv baci_hs92_v202601_elast_*_stage2_*.rds /tmp/w/out_H/ 2>/dev/null`
 6. The gate: `Rscript analysis/gate_release.R --old <released 2b> --new /tmp/w/out_H/<2b table> --stage1 /tmp/w/out_H/<stage1> --pass-log /tmp/w/out_H/<passes csv> --out /tmp/w/out_H/gate.md --label <release>` — must PASS.
 7. Upload: `aws s3 cp --recursive /tmp/w/out_H s3://trade-elast-baci-hs92-v202601-hs4/<run folder>/out_H/ --exclude "*raw_cache*" --only-show-errors`.

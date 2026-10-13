@@ -51,3 +51,18 @@ build_output_prefix <- function(cfg, scope = NULL) {
   agg <- cfg$agg_level
   paste(source_id, "elast", scope, agg, sep = "_")
 }
+#' Base path of a run's records (patch 0111): the checkpoints, the Stage-2
+#' optimizer-fallback table (<prefix>_stage2_fallbacks.csv) and the tail-trim
+#' record (<prefix>_stage2_trimmed.csv/.rds). Through patch 0110 these were
+#' written under the bare prefix, i.e. into the working directory, not
+#' --out-dir: box sessions moved them into the output folder by hand
+#' (docs/box_session_template.md) and two local runs from the same directory
+#' overwrote each other's records -- the second run's stale-file sweep
+#' (patch 0092) deleted the first's. scripts/run_estimation.R sets
+#' cfg$run_record_dir to --out-dir; without it (library and test use) the
+#' records stay in the working directory, as in every release.
+run_record_base <- function(cfg) {
+  d <- cfg[["run_record_dir"]]
+  p <- build_output_prefix(cfg)
+  if (is.null(d) || !nzchar(d)) p else file.path(d, p)
+}

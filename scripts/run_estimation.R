@@ -93,7 +93,7 @@ opts <- parse_cli()
 
 cat("Three-stage pipeline\n")
 cat(sprintf("  Data:             %s\n", opts$data))
-cat(sprintf("  Output:           %s\n", opts$out_dir))
+cat(sprintf("  Output:           %s (run records too, patch 0111)\n", opts$out_dir))
 cat(sprintf("  Years:            %d -- %s\n",
             opts$minyear,
             if (is.na(opts$maxyear)) "max" else as.character(opts$maxyear)))
@@ -141,6 +141,11 @@ source(file.path(src_dir, "feen94_het_baci.R"))
 
 # ---- 4. Build config from CLI options -------------------------------------
 config <- build_config(opts)
+# (patch 0111) the run's records -- checkpoints, the optimizer-fallback table,
+# the tail-trim record -- go to --out-dir beside the outputs (every derived
+# stage config copies `config`); through patch 0110 they went to the working
+# directory. run_record_base() in R/output_paths.R.
+config$run_record_dir <- opts$out_dir
 ncores <- opts$ncores
 
 # Output prefixes include --out-dir so all downstream concatenations
@@ -681,7 +686,7 @@ if (should_run("2b", opts, paths)) {
     # reproduces from this one command and each step is on record.
     gv_passes <- if (is.null(opts$stage2_gamma_v_passes)) 1L else as.integer(opts$stage2_gamma_v_passes)
     if (gv_passes > 1L) {
-      prefix_country <- build_output_prefix(config_2b)
+      prefix_country <- run_record_base(config_2b)   # patch 0111: the records live under --out-dir
       rotate_csvs <- function(k) {
         for (f in paste0(prefix_country, c("_stage2_fallbacks.csv", "_stage2_trimmed.csv")))
           if (file.exists(f)) file.rename(f, sub("\\.csv$", sprintf("_pass%d.csv", k), f))

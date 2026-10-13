@@ -14,7 +14,8 @@
 #   Rscript analysis/stage2_fallback_census.R --csv PATH [--label universe|subsample|...]
 #                                             [--out results/stage2_fallback_census.json]
 #                                             [--md docs/results/stage2_fallback_census.md]
-# The default --csv is the country table's file in the working directory; the
+# The default --csv is the country table's file in the working directory (where
+# runs before patch 0111 wrote it; since 0111 it is under the run's --out-dir); the
 # default --out/--md are the UNIVERSE names the README reads -- pass explicit
 # names for a subsample census so it cannot overwrite the shipped one.
 # ============================================================================

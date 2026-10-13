@@ -215,7 +215,7 @@ estimate_all_feenstra_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) 
     })
   } else {
     # Forked parallel path (Unix/Mac) with batch checkpointing.
-    checkpoint_file <- paste0(build_output_prefix(cfg), "_feenstra_checkpoint.rds")
+    checkpoint_file <- paste0(run_record_base(cfg), "_feenstra_checkpoint.rds")
     batch_size <- max(ncores * 4L, 50L)
     n_batches <- ceiling(n_products / batch_size)
 
@@ -258,7 +258,7 @@ estimate_all_feenstra_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) 
   output <- rbindlist(results_list)
 
   # Clean up Feenstra checkpoint after successful completion
-  ckpt_cleanup <- paste0(build_output_prefix(cfg), "_feenstra_checkpoint.rds")
+  ckpt_cleanup <- paste0(run_record_base(cfg), "_feenstra_checkpoint.rds")
   if (file.exists(ckpt_cleanup)) {
     file.remove(ckpt_cleanup)
     cat(sprintf("  Feenstra checkpoint removed: %s\n", ckpt_cleanup))
