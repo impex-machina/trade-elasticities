@@ -1,0 +1,27 @@
+{
+  "full": [],
+  "split": [
+    {
+      "config": "base",
+      "n_keys": 85111,
+      "n_cells": 4021,
+      "r_within": 0.36781071,
+      "rho_rank": 0.36774939,
+      "r_raw": 0.54162971,
+      "sd_within_a": 0.63803591,
+      "sd_within_b": 0.64358001
+    },
+    {
+      "config": "exptot_all",
+      "n_keys": 85114,
+      "n_cells": 4022,
+      "r_within": 0.36739523,
+      "rho_rank": 0.3681307,
+      "r_raw": 0.54166899,
+      "sd_within_a": 0.63823913,
+      "sd_within_b": 0.64331419
+    }
+  ],
+  "generated": "2026-10-13 11:08:13 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\m_exptot.csv"
+}

@@ -1,0 +1,205 @@
+{
+  "rows": 4976887,
+  "years": "1995-2024",
+  "share_value_without_quantity": 0.01327538,
+  "share_cells_with_value_only_flows": 0.28451713,
+  "share_value_in_cells_with_value_only_flows": 0.68334965,
+  "cells_all_value_only": 77523,
+  "m_p50": 0,
+  "m_p90": 0.00310737,
+  "m_p99": 0.60636435,
+  "abs_dln1m": {
+    "n": 4234489,
+    "p50": 0,
+    "p90": 0.01570855,
+    "p99": 1.30974824,
+    "max": 15.54204912,
+    "share_gt_0_01": 0.11403737,
+    "share_gt_0_10": 0.0517687,
+    "value_weighted_p50": 5.72945851e-06,
+    "value_weighted_p90": 0.00363161,
+    "value_weighted_p99": 0.24112317
+  },
+  "by_year": [
+    {
+      "year": 1995,
+      "share_value_noq": 0.06850345,
+      "lines": 4981382,
+      "lines_noq": 401012
+    },
+    {
+      "year": 1996,
+      "share_value_noq": 0.06167308,
+      "lines": 5337010,
+      "lines_noq": 367641
+    },
+    {
+      "year": 1997,
+      "share_value_noq": 0.05311446,
+      "lines": 5616781,
+      "lines_noq": 357983
+    },
+    {
+      "year": 1998,
+      "share_value_noq": 0.05375752,
+      "lines": 5847753,
+      "lines_noq": 369965
+    },
+    {
+      "year": 1999,
+      "share_value_noq": 0.05425386,
+      "lines": 5994574,
+      "lines_noq": 357668
+    },
+    {
+      "year": 2000,
+      "share_value_noq": 0.01361516,
+      "lines": 7272709,
+      "lines_noq": 77932
+    },
+    {
+      "year": 2001,
+      "share_value_noq": 0.01347972,
+      "lines": 7517476,
+      "lines_noq": 106174
+    },
+    {
+      "year": 2002,
+      "share_value_noq": 0.01439547,
+      "lines": 7726247,
+      "lines_noq": 87691
+    },
+    {
+      "year": 2003,
+      "share_value_noq": 0.01423182,
+      "lines": 7981414,
+      "lines_noq": 95871
+    },
+    {
+      "year": 2004,
+      "share_value_noq": 0.01140457,
+      "lines": 8359779,
+      "lines_noq": 91308
+    },
+    {
+      "year": 2005,
+      "share_value_noq": 0.01157512,
+      "lines": 8656742,
+      "lines_noq": 93156
+    },
+    {
+      "year": 2006,
+      "share_value_noq": 0.01112196,
+      "lines": 9002200,
+      "lines_noq": 94373
+    },
+    {
+      "year": 2007,
+      "share_value_noq": 0.00817964,
+      "lines": 9194704,
+      "lines_noq": 146051
+    },
+    {
+      "year": 2008,
+      "share_value_noq": 0.00728087,
+      "lines": 9347080,
+      "lines_noq": 156573
+    },
+    {
+      "year": 2009,
+      "share_value_noq": 0.01444919,
+      "lines": 9218581,
+      "lines_noq": 167622
+    },
+    {
+      "year": 2010,
+      "share_value_noq": 0.01289902,
+      "lines": 9470765,
+      "lines_noq": 186796
+    },
+    {
+      "year": 2011,
+      "share_value_noq": 0.01082261,
+      "lines": 9640712,
+      "lines_noq": 177410
+    },
+    {
+      "year": 2012,
+      "share_value_noq": 0.01181402,
+      "lines": 9937050,
+      "lines_noq": 251423
+    },
+    {
+      "year": 2013,
+      "share_value_noq": 0.00978181,
+      "lines": 10098942,
+      "lines_noq": 194842
+    },
+    {
+      "year": 2014,
+      "share_value_noq": 0.01461236,
+      "lines": 10145672,
+      "lines_noq": 201820
+    },
+    {
+      "year": 2015,
+      "share_value_noq": 0.01248652,
+      "lines": 10499686,
+      "lines_noq": 280396
+    },
+    {
+      "year": 2016,
+      "share_value_noq": 0.00956338,
+      "lines": 10569571,
+      "lines_noq": 254527
+    },
+    {
+      "year": 2017,
+      "share_value_noq": 0.00779578,
+      "lines": 10821738,
+      "lines_noq": 246747
+    },
+    {
+      "year": 2018,
+      "share_value_noq": 0.00799699,
+      "lines": 10924964,
+      "lines_noq": 257770
+    },
+    {
+      "year": 2019,
+      "share_value_noq": 0.00802665,
+      "lines": 11016660,
+      "lines_noq": 265816
+    },
+    {
+      "year": 2020,
+      "share_value_noq": 0.00737486,
+      "lines": 10638241,
+      "lines_noq": 271369
+    },
+    {
+      "year": 2021,
+      "share_value_noq": 0.00712573,
+      "lines": 11146476,
+      "lines_noq": 297160
+    },
+    {
+      "year": 2022,
+      "share_value_noq": 0.009533,
+      "lines": 11154874,
+      "lines_noq": 328375
+    },
+    {
+      "year": 2023,
+      "share_value_noq": 0.00905654,
+      "lines": 11194668,
+      "lines_noq": 391891
+    },
+    {
+      "year": 2024,
+      "share_value_noq": 0.00773839,
+      "lines": 10580049,
+      "lines_noq": 339564
+    }
+  ]
+}
