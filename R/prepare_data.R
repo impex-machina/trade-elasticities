@@ -318,4 +318,3 @@ apply_export_totals <- function(dt, cfg) {
                            value_share_added = sum(m$value_all - m$value_qobs) / sum(m$value_all)))
   dt
 }
-

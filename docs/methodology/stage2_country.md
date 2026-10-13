@@ -1274,3 +1274,42 @@ step census on the odd halves. Decision:
 The census is recorded whichever way it goes. `tests/testthat/
 test-export-totals.R` locks the table, the replacement, the refusals, the
 regional mapping and the bit-identity of the default.
+
+
+### The export-share denominator, measured (patch 0108) — negligible; queued as the next session's default
+
+**The census** (`scripts/build_export_totals.R` over the 30 BACI year files,
+2026-10-13; `docs/results/export_totals_census.md`,
+`results/export_totals_census.json`; the 4,976,887-row table is on S3 under
+`cache/`). Value without a quantity is 1.33% of all value — 5–7% in
+1995–1999, then 0.7–1.5% from 2000, when BACI's quantity coverage improves.
+28.5% of exporter-good-year cells carry some value-only flow (holding 68.3% of
+value); 77,523 cells have no flow with a quantity and are absent from the
+panel. Across panel cells $m = 1 - \text{value}_{qobs}/\text{value}_{all}$
+has p50 0, p90 0.0031, p99 0.61. Between consecutive years of the same
+exporter and good (4,234,489 pairs) $|\Delta\ln(1-m)|$ has p50 0, p90 0.016,
+p99 1.31 (max 15.5), exceeding 0.10 in 5.2% of pairs; value-weighted p50
+5.7e-06, p90 0.0036, p99 0.24. Small on average, with a real tail and a
+1999→2000 break that shifts many exporters' measured totals in the same year.
+
+**The A/B** (patch 0107's design; `m_exptot_odd/even` against
+`m_ref_base_odd/even`; `docs/results/stage2_reliability_m_exptot.md`,
+`docs/results/export_total_step_census.txt`):
+
+| configuration | keys | cells | $r_{\text{within}}$ | rank ρ | $r_{\text{raw}}$ | within-cell sd (A / B) |
+|---|---|---|---|---|---|---|
+| `quantity` (base) | 85,100 | 4,020 | 0.368 | 0.368 | 0.542 | 0.638 / 0.644 |
+| `all` | 85,100 | 4,020 | 0.367 | 0.368 | 0.542 | 0.638 / 0.643 |
+
+Step on the odd halves, 83,652 shared Tier-1 rows: $|\Delta\ln\gamma|$ p50
+2.6e-04, p90 0.0034, p99 0.061 (max 3.0), 95.4% below 1e-2 — the scale of the
+γ_V iteration's own pass-to-pass residual; γ and `opt_tariff` medians
+unchanged. The census tail does not reach the estimates: the error enters
+Eq. (11) scaled by $\gamma_I - \gamma_V$, is averaged within exporter over
+periods, and sits mostly in thin cells that carry little trade weight.
+
+**Decision**, by the rule fixed in patch 0107: $\Delta r_{\text{within}} =
+-0.001$ falls in $(-0.01, +0.03)$, so the all-value totals — the model's own
+definition, costless to carry — become the default at the next Stage-2
+session that happens for another reason; there is no session for this
+alone. The flip is queued in `docs/next_session_queue.md`.
