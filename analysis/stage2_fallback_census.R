@@ -29,6 +29,15 @@ csv_path <- get_arg("--csv", "baci_hs92_v202601_elast_country_hs4_stage2_fallbac
 label    <- get_arg("--label", "universe")
 out_json <- get_arg("--out", "results/stage2_fallback_census.json")
 out_md   <- get_arg("--md",  "docs/results/stage2_fallback_census.md")
+# (patch 0109) --stage2b PATH (optional): the Stage-2b table the run produced,
+# as shipped. Read only for its sha256, recorded in meta, so build_readme.R can
+# tell a census of the shipped run from one of an earlier release.
+s2b_path <- get_arg("--stage2b", "")
+.sha256_file <- function(p) {
+  if (!nzchar(p) || !file.exists(p) || !requireNamespace("openssl", quietly = TRUE)) return(NA_character_)
+  con <- file(p, "rb"); on.exit(close(con), add = TRUE)
+  tolower(unclass(as.character(openssl::sha256(con))))
+}
 if (!file.exists(csv_path)) stop("fallback table not found: ", csv_path)
 
 fb <- fread(csv_path)
@@ -43,7 +52,8 @@ lb_better <- cmp[nm_value > lbfgsb_value]
 out <- list(
   meta = list(csv = csv_path, label = label, rules = sort(unique(fb$rule)),
               git_rev = tryCatch(system2("git", c("rev-parse", "--short", "HEAD"), stdout = TRUE, stderr = NULL)[1], error = function(e) NA_character_),
-              timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
+              timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
+              stage2b = if (nzchar(s2b_path)) s2b_path else NULL, stage2b_sha256 = .sha256_file(s2b_path)),   # patch 0109
   n_cells          = nrow(fb),
   n_comparable     = nrow(cmp),
   n_lbfgsb_error   = sum(!is.finite(fb$lbfgsb_value)),

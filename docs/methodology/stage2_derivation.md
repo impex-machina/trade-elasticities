@@ -1,5 +1,10 @@
 # Sandwich standard errors for Stage 2b fixed-sigma estimator
 
+> **Note (patch 0109).** Design note from v0.4.x. The Jacobians below are the
+> ones the code uses; the variance formula shipped since v0.7.4 is the penalized
+> sandwich described under "What's NOT yet handled", not the White form of the
+> statistical setup.
+
 ## Goal
 
 Compute publication-grade standard errors for $\gamma_k$ and each $\gamma_j$ produced by `feen94_het_baci.R`'s per-cell fixed-sigma optimizer, accounting for trade-value weighting and heteroskedasticity in the residual variance.
@@ -218,7 +223,7 @@ Note $\partial \text{pred}^{exp}_m / \partial \gamma_k$ is zero unless $\gamma_I
 
 ## What's NOT yet handled
 
-- **Shrinkage penalty.** The current objective includes $\lambda \sum_i (\ln \gamma_i - \ln \bar\gamma)^2$. This shifts the optimum away from the unpenalized MLE. The honest treatment is to compute Bayesian credible intervals from the posterior (intractable in closed form) or to add the prior's Hessian into $A$: $A \to A + \lambda \cdot H_{\text{prior}}$ where $H_{\text{prior}} = \text{diag}(1/\gamma_i^2)$ at the optimum. This is the next refinement; first version ignores it (i.e., treats SE as if the unpenalized MLE were the estimator).
+- **Shrinkage penalty (handled since v0.7.4; this note predates it).** The shipped variance is the penalized sandwich $s^2 A^{-1} \mathbf{J}^\top W \mathbf{J} A^{-1}$ with $A = \mathbf{J}^\top W \mathbf{J} + \lambda\,\text{diag}(1/\gamma_i^2)$ -- the log-ridge's curvature in $\gamma$ units -- and $s^2 = \text{SSR}/\text{df}$, i.e. homoskedastic across moment rows rather than the White form $B$ derived above; since v0.8.0 the import-side constant is concentrated out of $\mathbf{J}^\top W \mathbf{J}$ with one degree of freedom. `compute_penalized_gn_se()` is the implementation and Pillar 3 (`validation/monte_carlo_se.R`) the calibration record. The sections above remain the Jacobian derivation the implementation uses.
 - **Tier 3.** Tier 3 rows have prior-assigned $\gamma$ (not optimized). Their SE is the SE of the prior, not computable here. Set $\gamma_{se} = NA$ for Tier 3.
 
 ## Verification plan

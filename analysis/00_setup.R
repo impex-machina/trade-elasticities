@@ -98,6 +98,11 @@ emit_json <- function(obj, name) {
 }
 
 stage1_summary <- list(
+  # (patch 0109) the Stage-1 sigma cap the table was estimated under (the
+  # value on its sigma_capped cells; 10 through v0.8.3, 50 since v0.9.0), so
+  # the README can compare Pillar 2's capture cap with the shipped one.
+  sigma_cap    = if ("sigma_capped" %in% names(stage1) && any(stage1$sigma_capped %in% TRUE))
+                   round(max(stage1$sigma[stage1$sigma_capped %in% TRUE], na.rm = TRUE)) else NA_real_,
   n_cells      = nrow(stage1),
   n_products   = data.table::uniqueN(stage1$good),
   n_importers  = data.table::uniqueN(stage1$importer),
@@ -483,6 +488,9 @@ stopifnot(nrow(tier1b) == 9L)
 data.table::setorder(tier1b, n_obs)
 
 pillar2_summary <- list(
+  # (patch 0109) the capture's sigma cap; absent on captures through v0.10.1
+  # (library default 10), which build_readme.R reads as 10.
+  sigma_cap = if ("sigma_cap" %in% names(tier1a)) unique(tier1a$sigma_cap)[1] else NULL,
   tier1a = lapply(seq_len(nrow(tier1a)), function(i) as.list(tier1a[i])),
   tier1a_summary = list(
     min_success_rate    = min(tier1a$success_rate),

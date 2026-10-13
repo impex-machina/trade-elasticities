@@ -36,7 +36,7 @@ configs:
 **Note on the Stage-1 sample (2026-09-22).** σ is estimated on the untrimmed
 unit-value panel, while γ (Stage 2) drops differenced observations with
 |Δ ln p| ≥ 2. This was tested, not assumed: applying the same rule inside the
-Feenstra stage raises the median σ from 2.46 to 3.73 on the full universe and
+Feenstra stage raises the median σ from 2.46 to 3.73 on the full universe (v0.7.2's Stage 1, σ cap 10) and
 a threshold curve shows σ rising monotonically as the rule tightens (3.00 /
 3.64 / 4.54 at 3.0 / 2.0 / 1.5) with no plateau, while the share of cells at
 the σ cap rises from 14% to 19%. The rule removes identifying price variance
@@ -45,6 +45,25 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.10.2 (<fill: release date>).** Validation-only, no re-estimation (patch 0109): the
+> Pillar-2 synthetic-recovery battery re-captured at the sigma cap the shipped
+> Stage 1 has used since v0.9.0 (50). Through v0.10.1 every validation fit took
+> `estimate_cell_liml()`'s library default (10), so `liml_validation_tier1a.csv`
+> and `liml_validation_tier1b.csv` described a configuration the pipeline no
+> longer shipped. At 50 the estimate yield across the sigma x omega grid is
+> 80.0-100.0% (median 99.2%; 98.0% at 10), the median sigma bias runs
+> -38.0% to +30.4% (-40.4% to +30.4%), negative at 8 of 12 grid points, the worst
+> absolute median bias on either parameter is 47% (omega at sigma = 8, omega = 3;
+> 58% at 10), and the median sigma coverage is 0.916 (0.913). The change sits at
+> sigma = 8, where fits that reached the old cap now resolve in the interior
+> (interior HLIML at (8, 1): 62 -> 82 of 200 replicates; route mix 65.0% interior /
+> 8.9% Step 2 / 26.2% boundary, from 62.7 / 11.5 / 25.8). Tier 1b's yield rises from
+> 93% at n = 150 to 100% at n = 3,000, as at 10. Both CSVs gain a `sigma_cap` column,
+> and `docs/methodology/liml_validation.md` is now written by the capture itself.
+> Estimates, the bootstrap pair and the Pillar-3 files are unchanged; 23 columns.
+> Data revision: <fill>. **v0.10.1 remains available pinned at revision
+> `6882f00d1a2b9924838d6bb6846076c5e5d54fa0`.**
+>
 > **v0.10.1 (2026-10-12).** One schema addition, no re-estimation (patch 0103):
 > `sigma_source` names where each row's sigma comes from -- `estimated`,
 > `fallback_no_estimate`, `fallback_sigma_edge` or `fallback_sigma_pole` --

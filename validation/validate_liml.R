@@ -105,6 +105,17 @@ simulate_one_cell <- function(sigma_true, omega_true,
 }
 
 
+# (patch 0109) The sigma cap of every validation fit. Through patch 0108 the
+# fits took estimate_cell_liml()'s library default (10) while the shipped
+# Stage 1 has run at 50 since v0.9.0 (--stage1-sigma-cap, build_config()), so
+# Pillar 2 described a configuration the pipeline no longer ships; at 50 the
+# change sits at sigma = 8, where fits that reached the old cap resolve in the
+# interior. Default = the shipped cap (tests/testthat/test-validation-sigma-cap.R
+# locks it to build_config()'s); options(te.validation_sigma_cap = 10)
+# reproduces the captures through v0.10.1.
+.validation_sigma_cap <- function() getOption("te.validation_sigma_cap", 50)
+.fit_cell <- function(mom, ...) estimate_cell_liml(mom, ..., sigma_start_cap = .validation_sigma_cap())
+
 # =========================================================================
 # TIER 1: SYNTHETIC RECOVERY BATTERY
 # =========================================================================
@@ -124,7 +135,7 @@ simulate_one_cell <- function(sigma_true, omega_true,
                              seed = seed_base + r * 1009L +
                                as.integer(sigma_true * 100) +
                                as.integer(omega_true * 100))
-    fit <- estimate_cell_liml(mom, ref_exporter = 1L)
+    fit <- .fit_cell(mom, ref_exporter = 1L)
     res$statuses[r] <- fit$status %||% "ok"
     if (isTRUE(fit$status == "ok") && !is.null(fit$sigma) && !is.na(fit$sigma)) {
       res$sigmas[r]    <- fit$sigma
@@ -412,7 +423,7 @@ validate_tier2 <- function(seed = 20260511L, tol = 1e-8) {
   for (s_try in seed + seq_len(n_attempts) - 1L) {
     m_try <- simulate_one_cell(sigma_true = 3, omega_true = 0.5,
                                J = 25, T = 30, seed = s_try)
-    f_try <- estimate_cell_liml(m_try, ref_exporter = 1L)
+    f_try <- .fit_cell(m_try, ref_exporter = 1L)
     if (isTRUE(f_try$status == "ok")) {
       base_fit <- f_try; base_mom <- m_try; base_seed <- s_try
       break
@@ -430,7 +441,7 @@ validate_tier2 <- function(seed = 20260511L, tol = 1e-8) {
     mapping <- c(1L, sample(2:25))
     mom2 <- base_mom
     mom2$exporter <- mapping[base_mom$exporter]
-    fit2 <- estimate_cell_liml(mom2, ref_exporter = 1L)
+    fit2 <- .fit_cell(mom2, ref_exporter = 1L)
     if (!isTRUE(fit2$status == "ok")) {
       cat(sprintf("  FAIL: relabeled cell returned status '%s' where the\n",
                   fit2$status))
@@ -456,7 +467,7 @@ validate_tier2 <- function(seed = 20260511L, tol = 1e-8) {
   } else {
     mom3 <- base_mom
     mom3$t <- base_mom$t + 1000L
-    fit3 <- estimate_cell_liml(mom3, ref_exporter = 1L)
+    fit3 <- .fit_cell(mom3, ref_exporter = 1L)
     if (!isTRUE(fit3$status == "ok")) {
       cat(sprintf("  FAIL: time-shifted cell returned status '%s' where the\n",
                   fit3$status))
@@ -481,7 +492,7 @@ validate_tier2 <- function(seed = 20260511L, tol = 1e-8) {
   for (i in seq_len(20)) {
     m <- simulate_one_cell(sigma_true = 3, omega_true = 1, J = 25, T = 30,
                            seed = seed + 100L + i)
-    f <- estimate_cell_liml(m, ref_exporter = 1L)
+    f <- .fit_cell(m, ref_exporter = 1L)
     kappas[i] <- if (isTRUE(f$status == "ok")) f$kappa else NA_real_
   }
   kappas <- kappas[!is.na(kappas)]
@@ -502,7 +513,7 @@ validate_tier2 <- function(seed = 20260511L, tol = 1e-8) {
     t        = c(1L, 2L, 1L, 2L, 1L, 2L),
     y  = rnorm(6)^2, x1 = rnorm(6)^2, x2 = rnorm(6)
   )
-  bad_fit <- estimate_cell_liml(bad_mom)
+  bad_fit <- .fit_cell(bad_mom)
   if (bad_fit$status != "ok" &&
       grepl("fail|invert|singular|insufficient", bad_fit$status)) {
     cat(sprintf("  PASS: degenerate cell flagged with status '%s'\n",

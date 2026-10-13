@@ -62,7 +62,7 @@ trims and should continue to.
 
 ## Decision
 
-- The Stage-1 sample stays untrimmed. v0.7.2 remains the current release.
+- The Stage-1 sample stays untrimmed. v0.7.2 remained the current release (2026-09-22); every later release keeps the untrimmed Stage-1 sample.
   No threshold can be defended as "the clean σ", so none is shipped as the
   headline.
 - The asymmetry between the stages is a stated design choice: Stage 1

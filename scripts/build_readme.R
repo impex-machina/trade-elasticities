@@ -147,6 +147,65 @@ format_prop_pct <- function(p) sprintf("%.1f%%", 100 * p)
 # Generic numeric to N significant figures (default 3): 2.875208 -> "2.875"
 format_num <- function(x, digits = 3L) formatC(x, digits = digits, format = "f")
 
+# --- Freshness helpers (patch 0109) ------------------------------------------
+# A census describes the shipped table only if it was computed ON the shipped
+# table. From patch 0109 the census scripts record the sha256 of the Stage-2b
+# table they read (meta$stage2b_sha256); data/manifest.csv holds the shipped
+# table's. pick_census() looks at the release-tagged files of a census
+# (results/<prefix>_v<digits>.json, e.g. _v090 = v0.9.0, _v0101 = v0.10.1, plus
+# an untagged file with a declared vintage), returns the one computed on the
+# shipped table if there is one and otherwise the newest, and stale_note() then
+# says in the README which table the numbers come from. Through patch 0108 the
+# template named one census by release (`_v090`) and kept quoting it as the
+# shipped table's after v0.10.0 changed every gamma; a stale census now reads
+# as dated rather than as current.
+.nz <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+MANIFEST <- utils::read.csv(MANIFEST_PATH, stringsAsFactors = FALSE)
+shipped_sha256 <- function(table = "stage2b") {
+  pat <- switch(table,
+                stage2b = "^data/derived/stage2b/.*_fixed_sigma\\.rds$",
+                stage2a = "^data/derived/stage2a/.*_fixed_sigma\\.rds$",
+                stage1  = "^data/derived/stage1/.*_feenstra_sigma\\.rds$",
+                stop("shipped_sha256(): unknown table ", table, call. = FALSE))
+  v <- MANIFEST$sha256[grepl(pat, MANIFEST$local_path)]
+  if (length(v) != 1L) stop(sprintf("shipped_sha256(): expected one manifest row for %s, found %d", table, length(v)), call. = FALSE)
+  tolower(v)
+}
+release_of_suffix <- function(s) {          # "v090" -> "v0.9.0", "v0101" -> "v0.10.1"
+  d <- sub("^v", "", s)
+  if (nchar(d) == 3L) return(sprintf("v%s.%s.%s", substr(d, 1, 1), substr(d, 2, 2), substr(d, 3, 3)))
+  if (nchar(d) == 4L) return(sprintf("v%s.%s.%s", substr(d, 1, 1), substr(d, 2, 3), substr(d, 4, 4)))
+  s
+}
+pick_census <- function(prefix, legacy = character(0), table = "stage2b", res = r) {
+  keys <- grep(sprintf("^%s_v[0-9]{3,4}$", prefix), names(res), value = TRUE)
+  cand <- c(stats::setNames(vapply(sub(paste0("^", prefix, "_"), "", keys), release_of_suffix, ""), keys), legacy)
+  cand <- cand[names(cand) %in% names(res) & !duplicated(names(cand))]
+  if (!length(cand)) stop(sprintf("README needs a %s census in results/", prefix), call. = FALSE)
+  ver <- function(v) sum(as.numeric(strsplit(sub("^v", "", v), ".", fixed = TRUE)[[1]]) * c(1e6, 1e3, 1))
+  cand <- cand[order(-vapply(cand, ver, 0))]
+  sha <- shipped_sha256(table)
+  fresh <- vapply(names(cand), function(k) identical(tolower(.nz(res[[k]]$meta[[paste0(table, "_sha256")]], "")), sha), TRUE)
+  k <- if (any(fresh)) names(cand)[which(fresh)[1L]] else names(cand)[1L]
+  list(data = res[[k]], key = k, vintage = cand[[k]], fresh = any(fresh))
+}
+stale_note <- function(p, open = " (", close = ")") {
+  if (isTRUE(p$fresh)) return("")
+  sprintf("%scensus of the %s table, not yet re-run on the shipped table%s", open, p$vintage, close)
+}
+spearman_brown <- function(r1) 2 * r1 / (1 + r1)
+# Pillar 2's sigma cap. Captures through patch 0108 carry no cap field: they ran
+# estimate_cell_liml()'s library default (10). The shipped cap comes from
+# stage1_summary.json (00_setup.R emits it from patch 0109; 50 since v0.9.0).
+pillar2_cap_note <- function(p2, s1) {
+  cap <- .nz(p2[["sigma_cap"]], 10)
+  shipped <- .nz(s1[["sigma_cap"]], 50)
+  if (isTRUE(all.equal(as.numeric(cap), as.numeric(shipped)))) return("")
+  sprintf(" (captured at a \u03c3 cap of %s, the estimator's library default, while the shipped Stage 1 uses %s)",
+          format(cap), format(shipped))
+}
+# --- end freshness helpers (patch 0109) --------------------------------------
+
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
 # One rendered sentence for the validation section, built from
 # results/stage2_dgp_summary.json. NULL-tolerant on the fields added in
@@ -249,12 +308,17 @@ bootstrap_clause <- function(bs) {
 # empty when the JSON is absent, so the README is byte-identical at apply.
 # The template reads it with r[["stage2_fallback_census"]] (exact): r$... would
 # partial-match any other results/*.json whose name extends it.
-fallback_clause <- function(fc) {
+fallback_clause <- function(p) {
+  # (patch 0109) p is a pick_census() result: "On the shipped table" only when
+  # the census was computed on it, otherwise the table it was computed on.
+  fc <- p$data
   if (is.null(fc) || is.null(fc[["n_cells"]])) return("")
   pc <- function(x) sprintf("%.0f%%", 100 * x)
-  sprintf(" On the shipped table %s cells reached that cap; the restart's objective was higher than the discarded point on %s of them (%s), and it had reported convergence on %s, rows that v0.8.2 labelled `ok` at a stalled point (`docs/results/stage2_fallback_census.md`).",
-          format_int(fc[["n_cells"]] + 0L), format_int(fc[["n_nm_worse"]] + 0L), pc(fc[["share_nm_worse"]]),
-          format_int(fc[["n_nm_converged"]] + 0L))
+  where <- if (isTRUE(p$fresh)) "On the shipped table" else
+    sprintf("On the %s table (the census has not been re-run on the shipped table)", p$vintage)
+  sprintf(" %s %s cells reached that cap; the restart's objective was higher than the discarded point on %s of them (%s), and it had reported convergence on %s, rows that v0.8.2 labelled `ok` at a stalled point (`docs/results/%s.md`).",
+          where, format_int(fc[["n_cells"]] + 0L), format_int(fc[["n_nm_worse"]] + 0L), pc(fc[["share_nm_worse"]]),
+          format_int(fc[["n_nm_converged"]] + 0L), p$key)
 }
 
 boundary_phrase <- function(rs, n_cells, es = NULL) {
@@ -321,6 +385,13 @@ render_env$step2_vce_clause <- step2_vce_clause        # patch 0064
 render_env$bootstrap_clause <- bootstrap_clause        # patch 0064
 render_env$fallback_clause <- fallback_clause          # patch 0080
 render_env$manifest_n_files <- manifest_n_files
+# (patch 0109) census picks for the template: the shipped table's census if
+# one exists, else the newest with its vintage stated (stale_note()).
+render_env$SHRINK   <- pick_census("stage2_shrinkage_census")
+render_env$FALLBACK <- pick_census("stage2_fallback_census", legacy = c(stage2_fallback_census = "v0.9.0"))
+render_env$stale_note <- stale_note
+render_env$spearman_brown <- spearman_brown
+render_env$pillar2_cap_note <- pillar2_cap_note
 
 rendered <- tryCatch(
   glue::glue(template_text,

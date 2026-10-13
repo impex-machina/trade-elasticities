@@ -13,9 +13,12 @@
 > describe the May-2026 legacy run (8.13M rows, 20 columns, 60.7% `ok`,
 > fallback σ 2.91) and are kept as its record. The shipped table's numbers
 > are the README's, regenerated from `results/*.json` at every release; the
-> schema is the README's column table (20 columns since v0.7.x). The dated
+> schema is the README's column table (23 columns since v0.10.1). The dated
 > sections from "## Log-ridge domain" onward are the methodology record of
-> the releases from v0.7.4 on.
+> the releases from v0.7.4 on. From patch 0109 a census the README quotes is
+> checked against the shipped table's sha256 (`pick_census()` in
+> `scripts/build_readme.R`): one computed on an earlier table is printed with
+> its vintage rather than as the shipped table's.
 > The reproducibility section at the end documents the *legacy* workflow
 > as a historical record; the equivalent CLI-driven workflow will be
 > documented once parity is verified. See the Provenance section of

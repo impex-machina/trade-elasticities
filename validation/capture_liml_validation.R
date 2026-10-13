@@ -39,6 +39,17 @@ source("R/hs_codes.R")
 source("R/liml_estimator.R")
 source("validation/validate_liml.R")
 
+# (patch 0109) --sigma-cap N: the sigma cap of the validation fits (default
+# the shipped Stage-1 cap, 50 since v0.9.0; 10 reproduces the captures through
+# v0.10.1). When master.R sources this file the flag is absent and the
+# default applies. The cap is written into both CSVs (column sigma_cap) so
+# analysis/00_setup.R and the README can state which configuration Pillar 2
+# describes.
+.cap_args <- commandArgs(trailingOnly = TRUE)
+.cap_i <- match("--sigma-cap", .cap_args)
+if (!is.na(.cap_i) && length(.cap_args) > .cap_i) options(te.validation_sigma_cap = as.numeric(.cap_args[.cap_i + 1L]))
+cat(sprintf("Validation sigma cap: %g\n", .validation_sigma_cap()))
+
 # --- run validations, capturing console output ---
 cat("Running validate_tier1 and validate_tier2...\n")
 cat("(captured output going to", console_txt, ")\n\n")
@@ -54,6 +65,8 @@ close(console_sink)
 
 # --- write CSVs ---
 # Tier 1a result is the per-(sigma,omega) data frame from validate_tier1a
+tier1_results$tier1a$sigma_cap <- .validation_sigma_cap()   # patch 0109
+tier1_results$tier1b$sigma_cap <- .validation_sigma_cap()
 write.csv(tier1_results$tier1a, tier1a_csv, row.names = FALSE)
 write.csv(tier1_results$tier1b, tier1b_csv, row.names = FALSE)
 cat("\nCSVs written:\n  ", tier1a_csv, "\n  ", tier1b_csv, "\n", sep = "")
@@ -95,6 +108,28 @@ med_success <- median(tier1a$success_rate, na.rm = TRUE)
 success_falls_with_n <- tier1b$success_rate[which.max(tier1b$n_obs)] <
                          tier1b$success_rate[which.min(tier1b$n_obs)]
 
+# (patch 0109) The coverage-by-route paragraph, computed from this capture.
+# Through v0.10.1 it was hand-written into the canonical liml_validation.md
+# and its numbers stayed those of the capture it was written for.
+.rt <- colSums(tier1a[, c("n_hliml", "n_step2", "n_boundary")], na.rm = TRUE)
+.rt <- 100 * .rt / sum(.rt)
+.s2cov <- function(s, o) tier1a$sigma_cov_step2[tier1a$sigma_true == s & tier1a$omega_true == o]
+route_paragraph <- paste0(
+  "**Coverage by route (patch 0063; computed by the capture since patch 0109).** ",
+  "The Tier-1a table pools the three branches `estimate_cell_liml()` can take -- interior HLIML ",
+  "(HNCS sandwich), the Step-2 Fuller LIML fallback (delta-method sandwich, the k-class form from ",
+  "patch 0061, default from patch 0064) and the constrained boundary optimum (HNCS projected onto the ",
+  "edge) -- whose SEs come from different estimators, so pooled coverage can hide an offsetting ",
+  "miscalibration in one branch. `.tier1_inner()` records each replicate's `final_source`; the last ",
+  "six columns of the table are the successful replicates and the sigma coverage by route (NA where ",
+  "the route has no replicate). The verdict logic reads the pooled columns; the per-route columns are ",
+  "reported, not gated. ",
+  sprintf("In this capture (sigma cap %g) the successful replicates route %.1f%% interior HLIML, %.1f%% Step 2 and %.1f%% boundary, ",
+          .validation_sigma_cap(), .rt[["n_hliml"]], .rt[["n_step2"]], .rt[["n_boundary"]]),
+  sprintf("and the Step-2 coverage of %.2f at (5, 3) and %.2f at (8, 3) is the visible footprint of the k-class ",
+          .s2cov(5, 3), .s2cov(8, 3)),
+  "sandwich: under the OLS meat shipped through v0.7.2 the Step-2 interval covered 100% at every grid point.")
+
 md <- c(
   paste0("# LIML estimator validation -- ", format(Sys.Date(), "%B %d, %Y")),
   "",
@@ -121,7 +156,8 @@ md <- c(
                  100 * min_success, 100 * med_success,
                  100 * max(tier1a$success_rate, na.rm = TRUE)),
          " across the (sigma, omega) parameter grid at J=25 exporters, ",
-         "T=30 periods. (2) **Median sigma bias conditional on success** ",
+         sprintf("T=30 periods, sigma cap %g. (2)", .validation_sigma_cap()),
+         " **Median sigma bias conditional on success** ",
          "ranges from ",
          sprintf("%+.0f%% to %+.0f%%",
                  100 * min(tier1a$sigma_bias, na.rm = TRUE),
@@ -170,6 +206,8 @@ md <- c(
   paste0("Bias is measured as `(median_estimate - true) / true`. ",
          "Coverage is the fraction of replications where ",
          "|estimate - true| <= 1.96 * SE."),
+  "",
+  route_paragraph,
   "",
   "## Tier 1b: Consistency check vs sample size",
   "",
@@ -257,5 +295,7 @@ md <- c(md,
 )
 
 writeLines(md, md_path)
-cat("\nMarkdown written:\n  ", md_path, "\n", sep = "")
+# (patch 0109) the canonical evidence document is this capture, verbatim
+writeLines(md, file.path(out_dir, "liml_validation.md"))
+cat("\nMarkdown written:\n  ", md_path, "\n  ", file.path(out_dir, "liml_validation.md"), "\n", sep = "")
 cat("\nDone. Four files written to", out_dir, "/\n")

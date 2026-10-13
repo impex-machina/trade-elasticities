@@ -104,7 +104,7 @@ with sigma uncertainty propagated) alongside the conditional gamma_se.
 The remaining first-order limitation is the one the coverage table
 documents: conditional small-sample bias of sigma under weak
 identification, predominantly downward and worst where supply is
-inelastic. No patch in the current release addresses it, because it is
+inelastic. No release to date (through v0.10.x) addresses it, because it is
 a property of the estimator class in this data environment rather than
 an implementation defect. Two mitigations are in place -- the published
 per-cell weak-IV statistic lets users condition on identification

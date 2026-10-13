@@ -1,5 +1,12 @@
 # Stage 1 — refactored_run_20260519
 
+> **Note (patch 0109).** This file documents the 2026-05-19 refactored run
+> (σ and ω admissibility box (1, 10)) and is kept as its record. Stage 1 has
+> been re-estimated since -- negative algebraic ω rejected at every inversion
+> from v0.7.0, k-class Step-2 standard errors from v0.7.3, σ cap 50 from
+> v0.9.0 -- and the shipped table's numbers are the README's, regenerated from
+> `results/stage1_summary.json` at every release.
+
 Stage 1 estimates σ, ω, ρ per (importer, HS4) cell on CEPII BACI HS92
 V202601 (1995–2024). This is the canonical refactored output, produced
 2026-05-19 on r7a.16xlarge using the HLIML estimator ported from
