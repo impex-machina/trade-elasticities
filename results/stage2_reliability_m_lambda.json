@@ -1,0 +1,37 @@
+{
+  "full": [],
+  "split": [
+    {
+      "config": "lam010_base",
+      "n_keys": 85113,
+      "n_cells": 4021,
+      "r_within": 0.36910823,
+      "rho_rank": 0.36830092,
+      "r_raw": 0.54296398,
+      "sd_within_a": 0.63852659,
+      "sd_within_b": 0.64444287
+    },
+    {
+      "config": "lam003",
+      "n_keys": 85093,
+      "n_cells": 4014,
+      "r_within": 0.36207022,
+      "rho_rank": 0.35951682,
+      "r_raw": 0.48370635,
+      "sd_within_a": 0.88241734,
+      "sd_within_b": 0.89165344
+    },
+    {
+      "config": "lam030",
+      "n_keys": 85135,
+      "n_cells": 4027,
+      "r_within": 0.36758671,
+      "rho_rank": 0.37504565,
+      "r_raw": 0.6205131,
+      "sd_within_a": 0.45629997,
+      "sd_within_b": 0.45724601
+    }
+  ],
+  "generated": "2026-10-12 23:57:16 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\m_lam.csv"
+}
