@@ -1177,3 +1177,48 @@ alternatives. A rule that clears waits for one batched session (v0.11.0)
 with any other cleared item, re-measured as shipped.
 `tests/testthat/test-reference-rule.R` locks the rules and the bit-identity
 of the default.
+
+
+### The reference exporter and λ, measured: the 2% subsample of 2026-10-12 — both closed, no session (patch 0106)
+
+Ten half-runs on the design patch 0105 fixed (2% product subsample, seed
+20260926, single γ_V pass, trim action `drop`, odd/even halves;
+`docs/results/stage2_reliability_m_reference.md`,
+`docs/results/stage2_reliability_m_lambda.md` and their JSON). Split-half
+reliability of the within-cell-demeaned log γ:
+
+| configuration | keys | cells | $r_{\text{within}}$ | rank ρ | $r_{\text{raw}}$ | within-cell sd (A / B) |
+|---|---|---|---|---|---|---|
+| reference `periods_value` (base; Stage 2a re-estimated on the subsample) | 85,100 | 4,020 | 0.368 | 0.368 | 0.542 | 0.638 / 0.644 |
+| reference `periods_stable` | 85,100 | 4,020 | 0.367 | 0.369 | 0.546 | 0.617 / 0.626 |
+| reference `value` | 83,100 | 3,880 | 0.367 | 0.369 | 0.538 | 0.642 / 0.649 |
+| λ = 0.1 (base, `v0100_cfg`; v0.10.0 Stage 2a) | 85,100 | 4,020 | 0.369 | 0.368 | 0.543 | 0.639 / 0.644 |
+| λ = 0.03 | 85,100 | 4,010 | 0.362 | 0.360 | 0.484 | 0.882 / 0.892 |
+| λ = 0.3 | 85,100 | 4,030 | 0.368 | 0.375 | 0.621 | 0.456 / 0.457 |
+
+**Reference exporter.** All three rules reproduce within 0.001 of each other;
+none approaches the +0.03 bar. The `value` rule also loses ~140 cells (a
+large but short-panelled reference cannot difference the rest of the cell).
+The re-run base (0.368, Stage 2a re-estimated on the subsample) reproduces
+`v0100_cfg` (0.369, full-sample Stage 2a), which confirms that the λ rungs
+could reuse the shipped Stage-2a table. **Stance for the paper:** the
+reference exporter is the exporter with the most periods, then the largest
+total value; the choice is immaterial for what the estimates reproduce —
+the most-stable-price and largest-value alternatives give the same
+reliability.
+
+**λ.** The reproducible part of the within-cell heterogeneity is flat across
+a tenfold range of λ (0.362 / 0.369 / 0.368; neither alternative within 0.03
+of clearing, and λ = 0.3 breaches the 25% sd guard at −29%). What λ governs
+is how much dispersion is shown — within-cell sd 0.88 / 0.64 / 0.46 — and
+$r_{\text{raw}}$ rises with λ (0.484 / 0.543 / 0.621) because shrinking both
+halves toward a common prior makes their levels agree mechanically, not
+because the data say more. **Stance for the paper:** λ = 0.1 is a regularizer
+whose level the data do not pin (as the EB census found) and whose
+neighbours do not improve reproducibility; the within-cell ordering of
+exporters is robust to it, the magnitude of within-cell dispersion is
+conditional on it. The README states this for consumers.
+
+**Outcome.** Both flags stay default-off; no v0.11.0 session is warranted by
+them. The export-share denominator remains the one unmeasured item (it needs
+a cache rebuild from the BACI CSVs).

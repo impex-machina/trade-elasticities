@@ -45,7 +45,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.10.1 (2026-10-XX).** One schema addition, no re-estimation (patch 0103):
+> **v0.10.1 (2026-10-12).** One schema addition, no re-estimation (patch 0103):
 > `sigma_source` names where each row's sigma comes from -- `estimated`,
 > `fallback_no_estimate`, `fallback_sigma_edge` or `fallback_sigma_pole` --
 > since 41% of v0.10.0's published rows carry the one fallback sigma and could
@@ -53,8 +53,11 @@ under another cleaning rule must say which rule.
 > table by the code path the pipeline itself uses
 > (`scripts/add_sigma_source.R`), which verifies that every `estimated` row
 > carries its cell's Stage-1 sigma and every fallback row the fallback sigma
-> before writing; census in `docs/results/sigma_source_v0101.txt`. Every
-> v0.10.0 value is unchanged; 23 columns.
+> before writing; census in `docs/results/sigma_source_v0101.txt`: of 6,801,807
+> published rows, estimated 4,016,300 (59.0%), fallback_sigma_pole 1,751,963
+> (25.8%), fallback_no_estimate 734,207 (10.8%), fallback_sigma_edge 299,337
+> (4.4%); the reconstruction matched the shipped sigma column on every row and
+> `analysis/gate_release.R` passed. Every v0.10.0 value is unchanged; 23 columns.
 > Data revision: `6882f00d1a2b9924838d6bb6846076c5e5d54fa0`. **v0.10.0 remains available
 > pinned at revision `31bc1fcfc64aa4475f70ce135262b9cacdd9c257`.**
 >
