@@ -45,7 +45,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.11.0 (<fill: release date>).** One Stage-2 re-estimation on the v0.9.x
+> **v0.11.0 (2026-10-14).** One Stage-2 re-estimation on the v0.9.x
 > Stage-1 table (patches 0110–0114). Eq. (11)'s export side is built on log
 > export values (`--stage2-export-moment value`), the form of Soderbery's
 > Eq. (8) that his Eq. (7) implies: the printed form on export shares leaves the
@@ -61,7 +61,7 @@ under another cleaning rule must say which rule.
 > import-side constant concentrated out, as the estimator does. `sigma_source`
 > was added after the run with `scripts/add_sigma_source.R` (the in-run labelling
 > landed on a copy and was not saved; fixed in patch 0114); 23 columns.
-> Data revision: <fill>. **v0.10.2 remains available pinned at revision
+> Data revision: `19843d50fb7cf71b437ca52af8f61fe4a8b20f11`. **v0.10.2 remains available pinned at revision
 > `f02707f9e421f6e6c70609d675650da90555ab2b`.**
 >
 > **v0.10.2 (2026-10-13).** Validation-only, no re-estimation (patch 0109): the
