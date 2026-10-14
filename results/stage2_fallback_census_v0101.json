@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "csv": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\v0100_stage2_fallbacks_pass3.csv",
+    "label": "universe",
+    "rules": "best",
+    "git_rev": "1e5d5ac",
+    "timestamp": "2026-10-13 19:38:31 EDT",
+    "stage2b": "data\\derived\\stage2b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "stage2b_sha256": "848a60b9689dffe5fccc29b5391834f904b4978484e69cc88fcd9eecb605a292"
+  },
+  "n_cells": 2730,
+  "n_comparable": 2730,
+  "n_lbfgsb_error": 0,
+  "n_nm_error": 0,
+  "n_nm_worse": 2167,
+  "share_nm_worse": 0.79377289,
+  "n_nm_better": 563,
+  "n_tie": 0,
+  "excess_quantiles": {
+    "p10": -0.00256698,
+    "p25": 2.19658191e-08,
+    "p50": 0.01280469,
+    "p75": 0.09809287,
+    "p90": 0.31454962,
+    "p99": 1.56906661
+  },
+  "excess_quantiles_where_worse": {
+    "p10": 2.16052909e-07,
+    "p25": 0.00334934,
+    "p50": 0.03400372,
+    "p75": 0.14368981,
+    "p90": 0.39816368,
+    "p99": 1.74295964
+  },
+  "n_nm_converged": 1794,
+  "n_relabel_ok_to_nonconverged": 1306,
+  "chosen": {
+    "lbfgsb": 2167,
+    "nelder_mead": 563
+  },
+  "J_quantiles": {
+    "p10": 1,
+    "p50": 13,
+    "p90": 45,
+    "p100": 176
+  },
+  "M_quantiles": {
+    "p10": 2,
+    "p50": 14,
+    "p90": 45,
+    "p100": 162
+  }
+}

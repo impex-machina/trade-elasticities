@@ -4,8 +4,8 @@
     "T_per_exporter": 1000000,
     "seed": 20260717,
     "quick": false,
-    "git_rev": "4a947c0",
-    "timestamp": "2026-07-21T00:59:00-0400"
+    "git_rev": "1e5d5ac",
+    "timestamp": "2026-10-13T19:39:28-0400"
   },
   "tolerances": {
     "tol_A": 0.02,
@@ -124,6 +124,62 @@
   "test_E": {
     "median_abs_bias": 0.00192748,
     "pass": true
+  },
+  "test_F": {
+    "grid": [
+      {
+        "sigma": 3,
+        "sigma_V": 3,
+        "gam_I": 0.3,
+        "gam_V": 1.5,
+        "A_I": 5,
+        "A_V": 2,
+        "resid_ratio_share": 0.10014179,
+        "resid_ratio_value": 0.00073062
+      },
+      {
+        "sigma": 3,
+        "sigma_V": 3,
+        "gam_I": 1.5,
+        "gam_V": 0.3,
+        "A_I": 0.15,
+        "A_V": 2,
+        "resid_ratio_share": 0.09286195,
+        "resid_ratio_value": 0.00117269
+      },
+      {
+        "sigma": 3,
+        "sigma_V": 3,
+        "gam_I": 1.5,
+        "gam_V": 0.3,
+        "A_I": 1,
+        "A_V": 2,
+        "resid_ratio_share": 0.0592553,
+        "resid_ratio_value": 0.00125806
+      },
+      {
+        "sigma": 2.2,
+        "sigma_V": 4,
+        "gam_I": 1.5,
+        "gam_V": 0.3,
+        "A_I": 1,
+        "A_V": 2,
+        "resid_ratio_share": 0.05736706,
+        "resid_ratio_value": 0.00351377
+      },
+      {
+        "sigma": 3,
+        "sigma_V": 3,
+        "gam_I": 0.8,
+        "gam_V": 0.8,
+        "A_I": 1,
+        "A_V": 2,
+        "resid_ratio_share": 0.00194297,
+        "resid_ratio_value": 0.00194297
+      }
+    ],
+    "pass_value": true,
+    "pass_power": true
   },
   "overall_pass": true
 }

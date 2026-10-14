@@ -1,4 +1,5 @@
 {
+  "sigma_cap": 50,
   "n_cells": 280649,
   "n_products": 1240,
   "n_importers": 234,
