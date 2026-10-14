@@ -126,9 +126,19 @@ attach_sigma_source <- function(dt, source) {
   m <- match(k_dt, k_src)
   v <- source$sigma_source[m]
   v[is.na(v)] <- "fallback_no_estimate"
+  # (patch 0114) := adds the column by reference only when the table's
+  # over-allocation is intact. A table that lost it (readRDS without setDT,
+  # copies made along the gamma_V passes) gets the column on a shallow copy
+  # bound to this function's `dt` -- data.table's "shallow copy" warning --
+  # and the caller's object never sees it: the v0.11.0 run printed these
+  # counts and saved a 22-column table. The labelled table is returned and
+  # callers assign it back; if the column still did not stick, it is added
+  # on an explicit copy.
   dt[, sigma_source := v]
+  if (!"sigma_source" %in% names(dt)) { dt <- data.table::copy(dt); dt[, sigma_source := v] }
   pub <- is_published_row(dt)
-  invisible(as.list(table(factor(v[pub], levels = c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole")))))
+  list(table = dt,
+       census = as.list(table(factor(v[pub], levels = c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole")))))
 }
 
 

@@ -40,7 +40,7 @@ test_that("stage2_sigma_clean() reproduces the runner's inline construction and 
   # attach: cells 5, 6 and a cell absent from Stage 1 are fallback_no_estimate; flagged rows are labelled but not counted
   tb <- data.table(importer = as.character(c(1:8, 9L, 1L)), exporter = "e", good = "0101", sigma = 1,
                    trim_reason = c(rep(NA_character_, 9), "gamma_hi"))
-  cen <- attach_sigma_source(tb, sc$source)
+  ssr <- attach_sigma_source(tb, sc$source); tb <- ssr$table; cen <- ssr$census
   expect_equal(tb$sigma_source, c("estimated", "estimated", "fallback_sigma_edge", "fallback_sigma_pole",
                                   "fallback_no_estimate", "fallback_no_estimate", "estimated", "estimated", "fallback_no_estimate", "estimated"))
   expect_equal(cen$estimated, 4L); expect_equal(cen$fallback_no_estimate, 3L); expect_equal(cen$fallback_sigma_edge, 1L); expect_equal(cen$fallback_sigma_pole, 1L)
@@ -68,4 +68,18 @@ test_that("scripts/add_sigma_source.R verifies the reconstruction and refuses a 
   # the v0.9.1 rules do not reproduce this table (cell 4 would be "estimated" at its own sigma): refuse, write nothing
   bad <- suppressWarnings(rs("--stage1", p_s1, "--in", p_in, "--out", p_bad, "--pole-rule", "none"))   # the refusal exits 1 by design
   expect_false(file.exists(p_bad)); expect_true(any(grepl("do not reproduce", bad)))
+})
+
+test_that("attach_sigma_source() returns the labelled table when the input lost its over-allocation (patch 0114)", {
+  .ss_setup()
+  s1 <- .ss_stage1(); sc <- stage2_sigma_clean(s1, "fallback", "fallback", 1)
+  tb <- data.table(importer = as.character(1:9), exporter = "e", good = "0101", sigma = 1)
+  tb2 <- unserialize(serialize(tb, NULL))     # as readRDS() leaves a table: no free column slot
+  ssr <- suppressWarnings(attach_sigma_source(tb2, sc$source))
+  expect_true("sigma_source" %in% names(ssr$table))
+  expect_equal(ncol(ssr$table), ncol(tb) + 1L)
+  expect_equal(sum(unlist(ssr$census)), 9L)
+  run <- readLines(file.path(locate_source_dir(), "..", "scripts", "run_estimation.R"), warn = FALSE)
+  expect_true(any(grepl("country_results <- ssr$table", run, fixed = TRUE)))
+  expect_true(any(grepl("data.table::setDT(country_results)", run, fixed = TRUE)))
 })

@@ -240,7 +240,7 @@ dgp_harness_line <- function(dgp) {
     fg <- dgp$test_F$grid
     sh <- max(vapply(fg, function(x) if (!isTRUE(all.equal(x$gam_I, x$gam_V))) x$resid_ratio_share else 0, 0))
     va <- max(vapply(fg, function(x) x$resid_ratio_value, 0))
-    coverage <- sprintf("%s; Test F, the export side against the primitives: exact on export values (residual at the truth at most %.1f%% of the outcome), the shipped share form misses by up to %.1f%% when \u03b3_I \u2260 \u03b3_V", coverage, 100 * va, 100 * sh)
+    coverage <- sprintf("%s; Test F, the export side against the primitives: exact on export values, the form shipped since v0.11.0 (residual at the truth at most %.1f%% of the outcome), while the share form of the printed Eq. (8) misses by up to %.1f%% when \u03b3_I \u2260 \u03b3_V", coverage, 100 * va, 100 * sh)
   }
   sprintf("%s at rev `%s`, %s (%s%s; seed %s). Regenerate with `Rscript validation/stage2_structural_dgp.R`.",
           verdict, req(meta, "git_rev"),

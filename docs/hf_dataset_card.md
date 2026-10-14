@@ -45,6 +45,25 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+> **v0.11.0 (<fill: release date>).** One Stage-2 re-estimation on the v0.9.x
+> Stage-1 table (patches 0110–0114). Eq. (11)'s export side is built on log
+> export values (`--stage2-export-moment value`), the form of Soderbery's
+> Eq. (8) that his Eq. (7) implies: the printed form on export shares leaves the
+> exporter's total sales in the error. Stage 2b's priors, regional gamma_V and
+> starting values come from Stage 2a's published rows only
+> (`--stage2a-handoff-rows published`); v0.10.x included the 5,798 rows its tail
+> trim flagged, which moved 757 of 1,240 goods' priors (12% at the 99th
+> percentile, 56% at most). Median gamma 0.806 -> 0.804, `opt_tariff` 0.869 ->
+> 0.852; on directly estimated rows gamma moved by a median 0.007-0.010 in log
+> points (p99 0.84-1.06); published rows 6,801,807 -> 6,801,742. The fallback
+> sigma and its share (41.0%), Tier 3 (26.4%), non-convergence (0.42%) and
+> `sigma_robust` (24.2% TRUE) are unchanged. Pillar 3 is re-captured with the
+> import-side constant concentrated out, as the estimator does. `sigma_source`
+> was added after the run with `scripts/add_sigma_source.R` (the in-run labelling
+> landed on a copy and was not saved; fixed in patch 0114); 23 columns.
+> Data revision: <fill>. **v0.10.2 remains available pinned at revision
+> `f02707f9e421f6e6c70609d675650da90555ab2b`.**
+>
 > **v0.10.2 (2026-10-13).** Validation-only, no re-estimation (patch 0109): the
 > Pillar-2 synthetic-recovery battery re-captured at the sigma cap the shipped
 > Stage 1 has used since v0.9.0 (50). Through v0.10.1 every validation fit took

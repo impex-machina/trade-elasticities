@@ -724,7 +724,9 @@ if (should_run("2b", opts, paths)) {
       cat(sprintf("  gamma_V pass log: %s_gamma_v_passes.csv (final table = pass %d)\n", out_base_country, gv_passes))
     }
     # (patch 0103) sigma_source: where each row's sigma comes from
-    ssc <- attach_sigma_source(country_results, sigma_source_lookup)
+    data.table::setDT(country_results)   # patch 0114: restore the over-allocation the passes may have lost
+    ssr <- attach_sigma_source(country_results, sigma_source_lookup)
+    country_results <- ssr$table; ssc <- ssr$census   # patch 0114: the labelled table, assigned back
     cat(sprintf("  sigma_source (published rows): estimated %s | fallback_no_estimate %s | fallback_sigma_edge %s | fallback_sigma_pole %s\n",
                 format(ssc$estimated, big.mark = ","), format(ssc$fallback_no_estimate, big.mark = ","),
                 format(ssc$fallback_sigma_edge, big.mark = ","), format(ssc$fallback_sigma_pole, big.mark = ",")))

@@ -48,7 +48,7 @@ if aws s3 cp "$BUCKET/cache/$ET" "$OUT/$ET" --only-show-errors 2>/dev/null; then
 echo "== released tables (hash-verified) and Stage 1 placement"
 Rscript scripts/download_outputs.R
 cp "data/derived/stage1/$S1" "$OUT/"
-WANT=$(grep "stage1/$S1" data/manifest.csv | awk -F'","' '{print $3}')
+WANT=$(grep "stage1/$S1" data/manifest.csv | grep -o '[0-9a-f]\{64\}')
 GOT=$(sha256sum "$OUT/$S1" | cut -d' ' -f1)
 [ "$GOT" = "$WANT" ] || { echo "setup.sh: Stage-1 sha $GOT is not the manifest's $WANT"; exit 1; }
 echo "  Stage 1 placed and verified (${GOT:0:16})"

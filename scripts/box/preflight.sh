@@ -22,7 +22,7 @@ RENV_CONFIG_AUTOLOADER_ENABLED=FALSE R_LIBS_USER="$HOME/R/library" Rscript -e 'm
 [ "$(stat -c %s "$OUT/baci_hs92_v202601_elast_country_hs4_raw_cache.rds" 2>/dev/null || echo 0)" = "$CACHE_BYTES" ] || fail "raw cache missing or wrong size in $OUT"
 S1="$OUT/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds"
 if [ -f "$S1" ]; then
-  WANT=$(grep "stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds" data/manifest.csv | awk -F'","' '{print $3}')
+  WANT=$(grep "stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds" data/manifest.csv | grep -o '[0-9a-f]\{64\}')
   [ "$(sha256sum "$S1" | cut -d' ' -f1)" = "$WANT" ] || fail "Stage-1 table in $OUT does not match the manifest (the run would use a different Stage 1)"
   S1NOTE="Stage 1 will be LOADED (manifest hash verified)"
 else

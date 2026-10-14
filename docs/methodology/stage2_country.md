@@ -1464,3 +1464,86 @@ until now, the data share $2(1-s)/(2-s)$ of the pre-v0.7.4 SE form --
 (0.153 / 0.304 / 0.548 / 0.064), corrected in `b98134f`. From patch 0112 `half`
 is the default and `scripts/build_readme.R` refuses a shrinkage census computed
 under any other definition.
+
+
+### The v0.11.0 run (patch 0114)
+
+**Before the box** (2026-10-13, local; the 2% product subsample, seed 20260926,
+single γ_V pass, trim action `flag` so the handoff change is exercised;
+`docs/results/stage2_reliability_v0110_cfg.md`):
+
+| config | keys | cells | r_within | rank ρ | r_raw | sd_within (A / B) |
+|---|---|---|---|---|---|---|
+| `v0100_flag` (v0.10.x defaults) | 8.51e4 | 4.02e3 | 0.368 | 0.368 | 0.542 | 0.639 / 0.644 |
+| `v0110_cfg` (v0.11.0 defaults) | 8.51e4 | 4.02e3 | 0.360 | 0.362 | 0.537 | 0.633 / 0.637 |
+| `v0110_period` (1995–2009 vs 2010–2024) | 6.11e4 | 3.53e3 | 0.099 | 0.108 | 0.352 | 0.603 / 0.561 |
+
+Rule fixed in patch 0113: $\Delta r_{\text{within}} = -0.0077$, rank $-0.0062$,
+both above $-0.02$ -- proceed. The new defaults reproduce the value-only A/B to
+the third decimal, so the handoff change adds nothing measurable on the
+subsample, where the regional trim flags only a few dozen rows; the
+cross-period reliability under the new configuration (0.099) matches the v0.8.0
+grid's 0.091.
+
+**The box** (2026-10-14, `r7a.16xlarge`, 62 cores; clone `07681c8`, tree
+`38d3fefa`; header `Export moment: value | Stage-2a handoff rows: published`;
+S3 `v0110rel_run_20261014/out_I/`). Stage 1 loaded, not re-estimated (113,706
+clean cells, σ median 2.473; 13,810 edge and 55,396 pole cells to the
+fallback). Stage 2a 3.8 min, 422,212 published rows beside 5,823 flagged, γ
+median 0.781; Stage 2b's priors from its 393,461 published directly estimated
+rows. Stage 2b's three γ_V passes 39.9, 35.4 and 36.1 min; the step against the
+previous pass p50 / p90 / p99 = 0.0015 / 0.065 / 0.63 (pass 2) and
+2.1e-4 / 0.0125 / 0.22 (pass 3); `gamma_v_resid` filled on 4,920,407 rows;
+2,370 cells reached the Nelder-Mead restart in pass 3. Final table 6,892,008
+rows (6,801,742 published, 90,266 flagged); Tier 0 / 1 / 2 / 3 = 3.3 / 70.1 /
+0.2 / 26.4%; `sigma_source` on published rows: estimated 4,016,326,
+fallback_no_estimate 734,198, fallback_sigma_edge 299,320,
+fallback_sigma_pole 1,751,898.
+
+**The release gate** (v0.11.0 against the v0.10.2 table): PASS. Published rows
+6,801,807 → 6,801,742; median γ 0.8064 → 0.8044; median `opt_tariff`
+0.8687 → 0.8523; σ median 2.4728, fallback share 41.0%, non-converged 0.42%,
+Tier 3 26.4% and `sigma_robust` TRUE 24.2% unchanged. |Δ ln γ| on shared
+directly estimated rows, by σ source:
+
+| σ source | rows | p50 | p90 | p99 | below 1e-2 |
+|---|---|---|---|---|---|
+| estimated | 2,943,963 | 6.98e-3 | 0.108 | 0.884 | 56.6% |
+| fallback_no_estimate | 484,837 | 1.02e-2 | 0.128 | 0.978 | 49.7% |
+| fallback_sigma_edge | 203,190 | 1.03e-2 | 0.134 | 1.059 | 49.4% |
+| fallback_sigma_pole | 1,275,909 | 7.89e-3 | 0.106 | 0.843 | 54.6% |
+
+The tail is wider than the subsample's single-pass step for the export moment
+alone (p99 0.64): the full run adds the handoff change -- which moved 757 of
+1,240 goods' priors, up to 0.447 in logs -- and three γ_V passes.
+
+**Two latent bugs, both met on first real use.**
+- `scripts/box/setup.sh` and `preflight.sh` (patch 0104) read the manifest sha
+  with `awk -F'","' '{print $3}'`, which never matched `data/manifest.csv`
+  (its size column is unquoted, so field 3 ran to the end of the row). The
+  session's `setup.sh` failed its Stage-1 check after placing the table; both
+  scripts were patched in place on the box (`grep -o '[0-9a-f]\{64\}'`) and the
+  table verified before the launch. Patch 0114 makes the same change in the
+  repo; `tests/testthat/test-box-scripts.R` checks both scripts and that every
+  manifest row carries exactly one 64-hex string, its sha256.
+- The runner's `sigma_source` (patch 0103) used `:=` inside
+  `attach_sigma_source()` on a table whose over-allocation the γ_V passes had
+  lost, so the column landed on a copy local to the function (the run's
+  data.table "shallow copy" warning) and the saved table had 22 columns; the
+  counts it printed were right. The release train adds the column with
+  `scripts/add_sigma_source.R` -- the same code path, which verifies that
+  estimated rows carry their cell's Stage-1 σ and fallback rows the fallback --
+  gated on the counts above. Patch 0114: the function returns the labelled
+  table, the runner `setDT()`s and assigns it back, and a test reproduces the
+  lost over-allocation.
+
+**The Eq. (8) correction, for the paper and for the note to Soderbery.** The
+printed Eq. (8) (prices on export shares) omits $(\rho_I - \rho_V)\,\Delta\ln V_j$,
+which inverting his Eq. (7) leaves. His footnote 8 (p. 48) defers how the
+equations are built and the errors defined to an online Appendix A, which is in
+neither copy of the article at hand; his §3.3 (p. 52) describes the export-side
+error as "structurally the reference difference of first-differenced export
+supply shocks for the same exporter" -- a pure supply-shock error, which is what
+the value form delivers and the share form does not. His footnote 11 notes that
+both sets of shares can be built from one reported flow "using the totality of
+world trade", which is BACI's case.

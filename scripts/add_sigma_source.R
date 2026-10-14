@@ -33,7 +33,8 @@ s1 <- readRDS(s1_path); setDT(s1)
 dt <- readRDS(in_path); setDT(dt)
 sc <- stage2_sigma_clean(s1, edge_rule = edge_rule, pole_rule = pole_rule, pole_c = pole_c)
 fallback <- if (!is.na(pin)) pin else median(sc$clean$sigma, na.rm = TRUE)
-cen <- attach_sigma_source(dt, sc$source)
+ssr <- attach_sigma_source(dt, sc$source)   # patch 0114: the function returns the labelled table
+dt <- ssr$table; cen <- ssr$census
 
 # verification: estimated rows carry their cell's Stage-1 sigma, fallback rows the fallback sigma
 s1k <- s1[, .(k = paste(as.character(importer), as.character(good), sep = "\r"), s1_sigma = sigma)]
