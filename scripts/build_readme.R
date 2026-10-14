@@ -209,6 +209,12 @@ pillar2_cap_note <- function(p2, s1) {
 # A census run with --shrink-wt-def legacy reports 2(1-s)/(2-s) instead -- the
 # first v0.10.2 README quoted one (corrected in b98134f) -- so the build refuses it.
 shrink_census_ok <- function(p) identical(p$data$meta$shrink_wt_def, "half")
+# (patch 0113) whether Pillar 3 concentrated the import-side constant out as the
+# shipped estimator does (captures from patch 0113 record it; earlier ones did not).
+pillar3_constant_clause <- function(p3) {
+  if (isTRUE(p3[["import_constant"]])) return("with the import-side constant concentrated out as the shipped estimator does")
+  "that does not include the import-side constant concentrated out since v0.8.0"
+}
 # --- end freshness helpers (patch 0109) --------------------------------------
 
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
@@ -407,6 +413,7 @@ render_env$FALLBACK <- pick_census("stage2_fallback_census", legacy = c(stage2_f
 render_env$stale_note <- stale_note
 render_env$spearman_brown <- spearman_brown
 render_env$pillar2_cap_note <- pillar2_cap_note
+render_env$pillar3_constant_clause <- pillar3_constant_clause   # patch 0113
 
 rendered <- tryCatch(
   glue::glue(template_text,

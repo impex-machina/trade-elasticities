@@ -617,6 +617,9 @@ if (file.exists(BOOT_CELLS_CSV)) {
 emit_json(stage1_summary,  "stage1_summary")
 emit_json(stage2b_summary, "stage2b_summary")
 emit_json(pillar2_summary, "pillar2_summary")
+# (patch 0113) whether the capture concentrated the import-side constant out as
+# the shipped estimator does; captures through v0.10.2 carry no such column.
+if ("import_constant" %in% names(se_summary)) pillar3_summary$import_constant <- isTRUE(unique(se_summary$import_constant)[1])
 emit_json(pillar3_summary, "pillar3_summary")
 
 message("00_setup.R: emitted results/stage1_summary.json (",

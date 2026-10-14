@@ -63,7 +63,7 @@ test_that("prepare_data(): 'all' carries value_all; 'quantity'/absent is bit-ide
   p <- tempfile(fileext = ".rds")
   invisible(system2(file.path(R.home("bin"), "Rscript"), c(script, "--data", dir, "--out", p, "--census-md", tempfile(), "--census-json", tempfile(), "--minyear", "2015"), stdout = TRUE, stderr = TRUE))
   tot <- readRDS(p); setDT(tot)
-  cfg <- build_config(parse_cli(c("--data", dir, "--minyear", "2015")))
+  cfg <- build_config(parse_cli(c("--data", dir, "--minyear", "2015", "--stage2-export-moment", "share")))   # patch 0113: the share denominator only matters under 'share'
   cfg$use_regions <- FALSE                                                               # as the runner sets it for the country panel
   expect_identical(cfg$stage2_export_total, "quantity")
   sink_file <- tempfile(); sink(sink_file); on.exit({ if (sink.number() > 0L) sink(); unlink(sink_file) }, add = TRUE)
@@ -99,7 +99,7 @@ test_that("prepare_data(): 'all' carries value_all; 'quantity'/absent is bit-ide
   expect_gt(nrow(got), 0L)                                                               # the panel keeps differenced years only
   expect_equal(got[order(year)]$exp_total, want[year %in% got$year][order(year)]$v)
   # plumbing
-  e <- build_config(parse_cli(c("--data", dir, "--minyear", "2015", "--stage2-export-total", "all", "--export-totals-path", p)))
+  e <- build_config(parse_cli(c("--data", dir, "--minyear", "2015", "--stage2-export-moment", "share", "--stage2-export-total", "all", "--export-totals-path", p)))
   expect_identical(e$stage2_export_total, "all"); expect_silent(validate_config(e))
   expect_error(parse_cli(c("--data", dir, "--stage2-export-total", "full")), "export-total")
   vb <- cfg; vb$stage2_export_total <- "full"; expect_error(validate_config(vb), "stage2_export_total")

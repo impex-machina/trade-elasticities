@@ -84,3 +84,10 @@ test_that("the README build refuses a shrinkage census on the legacy definition 
   br <- readLines(file.path(root, "scripts", "build_readme.R"), warn = FALSE)
   expect_true(any(grepl("if (!shrink_census_ok(render_env$SHRINK))", br, fixed = TRUE)))
 })
+
+test_that("Pillar 3's import-constant clause follows the capture (patch 0113)", {
+  e <- .fr_env("cc")
+  expect_match(e$pillar3_constant_clause(list()), "does not include the import-side constant")
+  expect_match(e$pillar3_constant_clause(list(import_constant = FALSE)), "does not include")
+  expect_match(e$pillar3_constant_clause(list(import_constant = TRUE)), "concentrated out as the shipped estimator does")
+})

@@ -35,7 +35,7 @@
   dir
 }
 
-test_that("prepare_data(): 'share'/absent bit-identical; 'value' = log export value in ls_exp", {
+test_that("prepare_data(): the default is 'value' (patch 0113); 'value' = log export value in ls_exp", {
   .em_setup(); skip_if_not_installed("optparse")
   dir <- .em_baci(); on.exit(unlink(dir, recursive = TRUE), add = TRUE)
   base <- c("--data", dir, "--minyear", "2014")
@@ -45,12 +45,12 @@ test_that("prepare_data(): 'share'/absent bit-identical; 'value' = log export va
     data.table::as.data.table(prepare_data(cfg)$dt)
   }
   d0 <- prep(character(0)); d1 <- prep(c("--stage2-export-moment", "share")); d2 <- prep(c("--stage2-export-moment", "value"))
-  expect_identical(d0, d1)
+  expect_identical(d0, d2)                          # patch 0113: value is the default
   expect_gt(nrow(d2), 0L)
   expect_equal(d2$ls_exp, log(d2$cusval))
-  for (col in setdiff(names(d0), c("ls_exp", "ls_exp_dif"))) expect_identical(d0[[col]], d2[[col]], info = col)
+  for (col in setdiff(names(d1), c("ls_exp", "ls_exp_dif"))) expect_identical(d1[[col]], d2[[col]], info = col)
   k <- c("importer", "exporter", "good", "t")
-  m <- merge(d0[, c(k, "ls_exp_dif", "exp_total"), with = FALSE], d2[, c(k, "ls_exp_dif"), with = FALSE], by = k, suffixes = c(".s", ".v"))
+  m <- merge(d1[, c(k, "ls_exp_dif", "exp_total"), with = FALSE], d2[, c(k, "ls_exp_dif"), with = FALSE], by = k, suffixes = c(".s", ".v"))
   data.table::setorderv(m, k)
   m[, dlnV := log(exp_total) - shift(log(exp_total)), by = .(importer, exporter, good)]
   m[, gap := t - shift(t), by = .(importer, exporter, good)]
@@ -63,7 +63,7 @@ test_that("CLI, config and validation for the two patch-0110 flags", {
   .em_setup(); skip_if_not_installed("optparse")
   sink(tempfile()); on.exit(sink(), add = TRUE)
   cfg <- build_config(parse_cli(c("--data", tempdir())))
-  expect_identical(cfg$stage2_export_moment, "share"); expect_identical(cfg$stage2a_handoff_rows, "all")
+  expect_identical(cfg$stage2_export_moment, "value"); expect_identical(cfg$stage2a_handoff_rows, "published")   # patch 0113
   cfg2 <- build_config(parse_cli(c("--data", tempdir(), "--stage2-export-moment", "value", "--stage2a-handoff-rows", "published")))
   expect_identical(cfg2$stage2_export_moment, "value"); expect_identical(cfg2$stage2a_handoff_rows, "published")
   expect_error(validate_config(modifyList(cfg, list(stage2_export_moment = "shares"))), "stage2_export_moment")

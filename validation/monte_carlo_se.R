@@ -65,9 +65,19 @@ assemble_jacobian <- function(jac_obj, n_rows, n_cols) {
 # (for penalized) the shrinkage lambda + theta_hat.
 #
 # All three formulas operate on the same J, w, r, just combine them differently.
-compute_ses <- function(residuals, J, weights, theta_hat, lambda) {
+compute_ses <- function(residuals, J, weights, theta_hat, lambda, n_imp_const = 0L) {
+  # (patch 0113) the shipped estimator concentrates a common import-side
+  # constant out of the import block (patch 0071) whenever a cell has >= 2
+  # export rows: compute_penalized_gn_se() demeans the import residuals and the
+  # import rows of the Jacobian (weighted) and gives up one degree of freedom.
+  # n_imp_const = the number of import rows to treat that way (0 = off).
+  if (n_imp_const >= 2L) {
+    ii <- seq_len(n_imp_const); wi <- weights[ii]
+    residuals[ii] <- residuals[ii] - sum(wi * residuals[ii]) / sum(wi)
+    J[ii, ] <- sweep(J[ii, , drop = FALSE], 2L, colSums(J[ii, , drop = FALSE] * wi) / sum(wi))
+  }
   K  <- ncol(J)
-  df <- length(residuals) - K
+  df <- length(residuals) - K - as.integer(n_imp_const >= 2L)
   if (df <= 0L) return(list(unp_gn = NULL, sandwich = NULL, pen_gn = NULL))
 
   # Weighted residual variance (denominator of the GN form)
@@ -146,7 +156,13 @@ set.seed(100)
 # Cell dimensions
 J        <- 10L     # importer (regions) count
 N_exp    <- 60L     # exporter rows
-N_REPS   <- 200L
+N_REPS   <- as.integer(Sys.getenv("TE_MC_REPS", "200"))   # patch 0113: override for smoke runs only
+# (patch 0113) Pillar 3 measures the shipped estimator: the import-side constant
+# is in the DGP (a common shift of the import moments, as unit-value
+# measurement error would add), concentrated out of the fit and of the SE as
+# in production. Through v0.10.2 the harness had neither. TE_MC_IMPORT_CONSTANT=0
+# reproduces the v0.8.2 capture.
+IMPORT_CONSTANT <- !identical(Sys.getenv("TE_MC_IMPORT_CONSTANT"), "0")
 sigma_true   <- 2.5
 gamma_k_true <- 0.4
 gamma_j_true <- runif(J, 0.15, 0.7)
@@ -231,7 +247,7 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1, x_sca
     # 1. Generate noisy moments at theta_true
     eps_imp <- rnorm(J,     mean = 0, sd = noise_sd * noise_imp_mult)
     eps_exp <- rnorm(N_exp, mean = 0, sd = noise_sd * noise_exp_mult)
-    imp_Y_r <- pred_imp_true + eps_imp
+    imp_Y_r <- pred_imp_true + eps_imp + if (IMPORT_CONSTANT) 0.5 * noise_sd else 0   # patch 0113
     exp_Y_r <- pred_exp_true + eps_exp
 
     # 2. Re-estimate via the production NLS objective. Use theta_true as
@@ -249,6 +265,7 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1, x_sca
         wt_imp = wt_imp_const, wt_exp = wt_exp_const,
         ln_gamma_prior = ln_gamma_prior,
         shrinkage_lambda = shrinkage_lambda,
+        import_constant = IMPORT_CONSTANT,       # patch 0113
         method = "L-BFGS-B",
         lower = rep(1e-4, K),
         upper = rep(50, K),
@@ -281,7 +298,7 @@ run_mc_regime <- function(label, hetero, shrinkage_lambda, noise_sd = 0.1, x_sca
 
     J_dense <- assemble_jacobian(jac, n_rows = J + N_exp, n_cols = K)
     ses <- compute_ses(jac$residuals, J_dense, jac$weights,
-                       theta_hat, shrinkage_lambda)
+                       theta_hat, shrinkage_lambda, n_imp_const = if (IMPORT_CONSTANT) J else 0L)
     if (!is.null(ses$unp_gn)) {
       se_unp_gn[r, ]   <- ses$unp_gn
       se_sandwich[r, ] <- ses$sandwich
@@ -390,12 +407,14 @@ dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 today <- format(Sys.Date(), "%Y%m%d")
 
 summary_csv <- file.path(out_dir, "se_calibration_mc_summary.csv")
+all_summary$import_constant <- IMPORT_CONSTANT   # patch 0113
 write.csv(all_summary, summary_csv, row.names = FALSE)
 cat("\nSummary written:", summary_csv, "\n")
 
 per_param <- do.call(rbind, lapply(results, function(r) r$per_param))
 per_param_csv <- file.path(out_dir,
                             paste0("se_calibration_mc_per_param_", today, ".csv"))
+per_param$import_constant <- IMPORT_CONSTANT     # patch 0113
 write.csv(per_param, per_param_csv, row.names = FALSE)
 cat("Per-parameter detail:", per_param_csv, "\n")
 
