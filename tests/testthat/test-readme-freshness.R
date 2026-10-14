@@ -91,3 +91,12 @@ test_that("Pillar 3's import-constant clause follows the capture (patch 0113)", 
   expect_match(e$pillar3_constant_clause(list(import_constant = FALSE)), "does not include")
   expect_match(e$pillar3_constant_clause(list(import_constant = TRUE)), "concentrated out as the shipped estimator does")
 })
+
+test_that("00_setup.R records Pillar 3's import constant before it removes se_summary (patch 0115)", {
+  root <- dirname(locate_source_dir())
+  src <- readLines(file.path(root, "analysis", "00_setup.R"), warn = FALSE)
+  i_use <- grep('names(se_summary)) pillar3_summary$import_constant', src, fixed = TRUE)
+  i_rm <- grep("^rm\\(se_summary", src)
+  expect_length(i_use, 1L); expect_length(i_rm, 1L)
+  expect_lt(i_use, i_rm)
+})

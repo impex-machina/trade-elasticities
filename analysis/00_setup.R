@@ -563,6 +563,11 @@ pillar3_summary <- list(
     grid_shrink_wt_median = median(pen_sw[grepl("lambda=0.1", regime) & !grepl("prod-shrink", regime), shrink_wt_median])
   )
 )
+# (patch 0113; moved above the clean-up by patch 0115) whether the capture
+# concentrated the import-side constant out as the shipped estimator does;
+# captures through v0.10.2 carry no such column. Through patch 0114 this line
+# sat after the rm() below and stopped master.R on the first capture to have it.
+if ("import_constant" %in% names(se_summary)) pillar3_summary$import_constant <- isTRUE(unique(se_summary$import_constant)[1])
 rm(se_summary, pen_gn, pen_sw, prod_sw)
 
 # --- Exporter-cluster bootstrap benchmark (patch 0064) ----------------------
@@ -617,9 +622,6 @@ if (file.exists(BOOT_CELLS_CSV)) {
 emit_json(stage1_summary,  "stage1_summary")
 emit_json(stage2b_summary, "stage2b_summary")
 emit_json(pillar2_summary, "pillar2_summary")
-# (patch 0113) whether the capture concentrated the import-side constant out as
-# the shipped estimator does; captures through v0.10.2 carry no such column.
-if ("import_constant" %in% names(se_summary)) pillar3_summary$import_constant <- isTRUE(unique(se_summary$import_constant)[1])
 emit_json(pillar3_summary, "pillar3_summary")
 
 message("00_setup.R: emitted results/stage1_summary.json (",
