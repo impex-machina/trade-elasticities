@@ -204,6 +204,11 @@ pillar2_cap_note <- function(p2, s1) {
   sprintf(" (captured at a \u03c3 cap of %s, the estimator's library default, while the shipped Stage 1 uses %s)",
           format(cap), format(shipped))
 }
+# (patch 0112) The shipped Stage-2 SEs are the sandwich form (v0.7.4+), whose
+# shrink weight is the half-curvature share: data share = 1 - gamma_shrink_wt.
+# A census run with --shrink-wt-def legacy reports 2(1-s)/(2-s) instead -- the
+# first v0.10.2 README quoted one (corrected in b98134f) -- so the build refuses it.
+shrink_census_ok <- function(p) identical(p$data$meta$shrink_wt_def, "half")
 # --- end freshness helpers (patch 0109) --------------------------------------
 
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
@@ -229,7 +234,7 @@ dgp_harness_line <- function(dgp) {
     fg <- dgp$test_F$grid
     sh <- max(vapply(fg, function(x) if (!isTRUE(all.equal(x$gam_I, x$gam_V))) x$resid_ratio_share else 0, 0))
     va <- max(vapply(fg, function(x) x$resid_ratio_value, 0))
-    coverage <- sprintf("%s; Test F, the export side against the primitives: exact on export values (residual at the truth at most %.1f%% of the outcome), the shipped share form misses by up to %.1f%% when gamma_I != gamma_V", coverage, 100 * va, 100 * sh)
+    coverage <- sprintf("%s; Test F, the export side against the primitives: exact on export values (residual at the truth at most %.1f%% of the outcome), the shipped share form misses by up to %.1f%% when \u03b3_I \u2260 \u03b3_V", coverage, 100 * va, 100 * sh)
   }
   sprintf("%s at rev `%s`, %s (%s%s; seed %s). Regenerate with `Rscript validation/stage2_structural_dgp.R`.",
           verdict, req(meta, "git_rev"),
@@ -395,6 +400,9 @@ render_env$manifest_n_files <- manifest_n_files
 # (patch 0109) census picks for the template: the shipped table's census if
 # one exists, else the newest with its vintage stated (stale_note()).
 render_env$SHRINK   <- pick_census("stage2_shrinkage_census")
+if (!shrink_census_ok(render_env$SHRINK))
+  stop(sprintf("README: %s was computed with --shrink-wt-def %s; the shipped table's sandwich SEs need 'half' (data share = 1 - gamma_shrink_wt). Re-run analysis/stage2_shrinkage_census.R with --shrink-wt-def half.",
+               render_env$SHRINK$key, .nz(render_env$SHRINK$data$meta$shrink_wt_def, "<unrecorded>")), call. = FALSE)
 render_env$FALLBACK <- pick_census("stage2_fallback_census", legacy = c(stage2_fallback_census = "v0.9.0"))
 render_env$stale_note <- stale_note
 render_env$spearman_brown <- spearman_brown

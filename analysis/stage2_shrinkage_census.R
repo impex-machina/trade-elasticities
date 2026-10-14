@@ -65,11 +65,13 @@ suppressPackageStartupMessages({ library(data.table); library(jsonlite) })
   setNames(as.list(unname(quantile(x, p))), paste0("p", p * 100))
 }
 
-shrinkage_census <- function(s2b, s2a, shrink_wt_def = c("legacy", "half")) {
+shrinkage_census <- function(s2b, s2a, shrink_wt_def = c("half", "legacy")) {
   # (patch 0069) gamma_shrink_wt is P/(J'WJ + P) with P = 2 lambda/gamma^2 under
   # --stage2-se legacy (data share 2(1-s)/(2-s)) and P = lambda/gamma^2 under
-  # posterior/sandwich (data share 1 - s). Pass --shrink-wt-def half for tables
-  # produced under the latter.
+  # posterior/sandwich (data share 1 - s). (patch 0112) half is the default: every
+  # table shipped since v0.7.4 carries the sandwich SEs; pass legacy only for
+  # v0.7.3 and earlier. The legacy default put 2(1-s)/(2-s) data shares into the
+  # first v0.10.2 README (corrected in b98134f).
   shrink_wt_def <- match.arg(shrink_wt_def)
   s2b <- as.data.table(s2b); s2a <- as.data.table(s2a)
   for (nm in c("importer", "exporter", "good", "gamma", "tier", "convergence"))
@@ -206,7 +208,7 @@ if (sys.nframe() == 0L && !exists("SHRINKAGE_CENSUS_NO_MAIN")) {
   s2a_path <- get_arg("--stage2a", "data/derived/stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds")
   out_json <- get_arg("--out", "results/stage2_shrinkage_census.json")
   out_md   <- get_arg("--md",  "docs/results/stage2_shrinkage_census.md")
-  swd      <- get_arg("--shrink-wt-def", "legacy")
+  swd      <- get_arg("--shrink-wt-def", "half")      # patch 0112: the shipped (sandwich-SE) form
   for (p in c(s2b_path, s2a_path)) if (!file.exists(p)) stop("input not found: ", p)
   cat("reading", s2b_path, "\n"); s2b <- readRDS(s2b_path); if ("trim_reason" %in% names(s2b)) { s2b <- data.table::as.data.table(s2b); s2b <- s2b[is.na(trim_reason)] }   # patch 0102
   cat("reading", s2a_path, "\n"); s2a <- readRDS(s2a_path); if ("trim_reason" %in% names(s2a)) { s2a <- data.table::as.data.table(s2a); s2a <- s2a[is.na(trim_reason)] }   # patch 0102

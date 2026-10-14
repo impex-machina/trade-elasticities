@@ -48,7 +48,7 @@
 
 test_that("a prior-only table reads as 100% prior", {
   env <- .load_census(); tb <- .mk_tables(prior_only = TRUE, shrink = 0.98)
-  res <- env$shrinkage_census(tb$s2b, tb$s2a)
+  res <- env$shrinkage_census(tb$s2b, tb$s2a, shrink_wt_def = "legacy")
   expect_equal(res$meta$n_estimated, 4 * 5 * 4)                      # tier 0/1/1/2 per cell; imputed cell excluded
   expect_equal(res$q3$share_within_1pct, 1)
   expect_equal(res$q3$abs_dev$p90, 0)
@@ -62,7 +62,7 @@ test_that("a prior-only table reads as 100% prior", {
 
 test_that("a random table gives a valid decomposition and excludes imputed rows", {
   env <- .load_census(); tb <- .mk_tables(prior_only = FALSE, shrink = 0.5)
-  res <- env$shrinkage_census(tb$s2b, tb$s2a)
+  res <- env$shrinkage_census(tb$s2b, tb$s2a, shrink_wt_def = "legacy")
   v <- res$q2$unweighted
   expect_equal(v$share_good + v$share_cell_within_good + v$share_exporter_within_cell, 1, tolerance = 1e-10)
   v <- res$q2$trade_weighted

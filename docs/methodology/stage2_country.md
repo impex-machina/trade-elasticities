@@ -1401,3 +1401,66 @@ table (`results/stage2a_handoff_census.json`).
 **Decision.** A correctness fix, not a methodology choice: `published` becomes
 the default at the next Stage-2 session whatever the census shows; the census
 is recorded with it.
+
+
+### The export moment on values, measured (patch 0112)
+
+Run 2026-10-13 on the local machine with patch 0107's design as fixed in patch
+0110: two `--stage all` half-runs on the 2% product subsample (seed 20260926;
+the v0.10.x Stage 1 loaded, Stage 2a re-estimated under the option; single γ_V
+pass; trim action `drop`) under `--stage2-export-moment value`, scored together
+with the existing `m_ref_base` halves in one call of
+`analysis/stage2_reliability.R` (priors from the base run's Stage-2a table;
+`docs/results/stage2_reliability_m_expval.md`):
+
+| config | keys | cells | r_within | rank ρ | r_raw | sd_within (odd / even) |
+|---|---|---|---|---|---|---|
+| `m_ref_base` (export shares, shipped) | 8.51e4 | 4.02e3 | 0.368 | 0.368 | 0.542 | 0.638 / 0.644 |
+| `m_expval` (export values) | 8.51e4 | 4.02e3 | 0.360 | 0.362 | 0.537 | 0.633 / 0.637 |
+
+Step census, odd halves, shares → values (`gamma_v_step()` over 83,687
+published keys): |Δ ln γ| p50 0.0056, p90 0.071, p99 0.64, max 5.68; 61.2% of
+keys move by less than 0.01.
+
+**Decision.** $\Delta r_{\text{within}} = -0.008$ -- between −0.009 and −0.007
+whatever the rounding -- inside $-0.01 < \Delta < +0.03$: the value form, the
+moment the model implies, becomes the default at the next Stage-2 session held
+for another reason and replaces the queued `--stage2-export-total all` (the
+exporter total enters nothing under `value`). It costs a hair of split-half
+reproducibility, as the cell simulation from the primitives suggested at
+fifteen periods per half, and it moves γ twenty times more than the
+denominator did (step p50 0.0056 against 2.6e-4): the misspecification is real
+in the data, small at the median, and up to a factor of $e^{0.64} \approx 1.9$
+at the 99th percentile. Both half-runs wrote their records under `--out-dir`
+(patch 0111) and none into the working directory.
+
+
+### The Stage-2a handoff and the v0.10.2 censuses, measured (patch 0112)
+
+**Handoff census** (`analysis/handoff_rows_census.R` on the shipped Stage-2a
+table; `results/stage2a_handoff_census.json`): 5,798 flagged rows (γ high
+1,834, γ low 1,873, σ low 2,091); 399,154 rows behind the priors under `all`
+against 393,486 published. Leaving the flagged rows out moves the good-level
+prior of 757 of 1,240 goods (|Δ ln| p50 1.2e-4, p90 0.0093, p99 0.112, max
+0.447) and the regional γ_V of 2,499 of 25,064 region × good cells (p99 0.398,
+max 5.41); 135 cells have a regional γ_V only because of flagged rows. The
+decision stands: `published` at the next Stage-2 session. The README states it
+under Known limitations.
+
+**Optimizer fallbacks of the v0.10.0 run** (`out_H`, pass 3;
+`docs/results/stage2_fallback_census_v0101.md`): 2,730 cells reached the
+L-BFGS-B cap (7,710 at v0.9.0); the Nelder-Mead restart was worse than the
+discarded point on 79.4% of them (86% at v0.9.0) and reported convergence on
+1,794. The drop is the pole rule's: the σ-near-1 cells, whose objective is
+badly scaled, now take the fallback σ.
+
+**Shrinkage of the v0.10.1 table** (`docs/results/stage2_shrinkage_census_v0101.md`):
+median data share 0.083 (0.105 at v0.9.0), trade-weighted 0.227 (0.274), a
+cell's largest exporter 0.378 against 0.033 below tenth (0.420 / 0.043).
+Shrinkage strengthened because the pole rule moved σ away from 1, where the
+$1/(\sigma - 1)$ coefficients had inflated the data curvature. The first v0.10.2
+README quoted this census under `--shrink-wt-def legacy` -- the script's default
+until now, the data share $2(1-s)/(2-s)$ of the pre-v0.7.4 SE form --
+(0.153 / 0.304 / 0.548 / 0.064), corrected in `b98134f`. From patch 0112 `half`
+is the default and `scripts/build_readme.R` refuses a shrinkage census computed
+under any other definition.

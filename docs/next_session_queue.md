@@ -9,10 +9,10 @@ lesson), and remove the entry here.
 
 | change | flag and new default | measured | evidence | prerequisite |
 |---|---|---|---|---|
-| Export-share denominator over all value, including flows without a quantity (Eq. (11)'s $V_j$ as the model defines it) | `--stage2-export-total all` (default `quantity`) | 2026-10-13 | $\Delta r_{\text{within}}$ −0.001, step p50 2.6e-4 / p99 0.06 (`docs/methodology/stage2_country.md`, "The export-share denominator, measured") | the totals table on S3 `cache/baci_hs92_v202601_elast_country_hs4_export_totals.rds` (placed by `scripts/box/setup.sh`) |
+| Eq. (11)'s export moment on log export values (Eq. (8) holds exactly on values; on shares it omits $(\rho_I - \rho_V)\,\Delta\ln V_j$); replaces the export-share denominator change, which is moot under `value` | `--stage2-export-moment value` (default `share`) | 2026-10-13 | $\Delta r_{\text{within}}$ −0.008 (0.368 → 0.360), rank ρ −0.006, step p50 0.0056 / p99 0.64 (`docs/methodology/stage2_country.md`, "The export moment on values, measured"; `docs/results/stage2_reliability_m_expval.md`) | none |
 | Stage-2a rows handed to Stage 2b: the published rows only (bug: since v0.10.0 the rows the Stage-2a tail trim flagged entered Stage 2b's priors, regional γ_V and starting values) | `--stage2a-handoff-rows published` (default `all`) | correctness fix, no rule | `docs/methodology/stage2_country.md`, "Stage-2a rows handed to Stage 2b"; sizing `results/stage2a_handoff_census.json` | none |
 
-**Pending measurement:** `--stage2-export-moment value` (patch 0110; Eq. (8) on export values). The 2% subsample A/B and its rule are in `docs/methodology/stage2_country.md`, "The export moment on values"; in the adopt band it joins this table and replaces the export-denominator row above, which is moot under `value`.
+**Superseded:** `--stage2-export-total all` (the export-share denominator over all value; measured 2026-10-13, $\Delta r_{\text{within}}$ −0.001). Under `--stage2-export-moment value` the exporter total enters nothing; flip it only if the export moment stays `share`.
 
 Measured and **closed** (no change queued): the fn-14 weighting flags
 (`--bw-lag raw`, `--exporter-weight bw_sum`), the reference-exporter rule,

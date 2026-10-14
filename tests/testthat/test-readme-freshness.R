@@ -71,3 +71,16 @@ test_that("Pillar 2's cap note and Spearman-Brown", {
   expect_identical(e$pillar2_cap_note(list(sigma_cap = 50), list()), "")      # shipped cap defaults to 50
   expect_equal(e$spearman_brown(0.369), 2 * 0.369 / 1.369)
 })
+
+test_that("the README build refuses a shrinkage census on the legacy definition (patch 0112)", {
+  e <- .fr_env("cc")
+  expect_true(e$shrink_census_ok(list(data = list(meta = list(shrink_wt_def = "half")))))
+  expect_false(e$shrink_census_ok(list(data = list(meta = list(shrink_wt_def = "legacy")))))
+  expect_false(e$shrink_census_ok(list(data = list(meta = list()))))
+  root <- dirname(locate_source_dir())
+  sc <- readLines(file.path(root, "analysis", "stage2_shrinkage_census.R"), warn = FALSE)
+  expect_true(any(grepl('get_arg("--shrink-wt-def", "half")', sc, fixed = TRUE)))
+  expect_true(any(grepl('shrink_wt_def = c("half", "legacy")', sc, fixed = TRUE)))
+  br <- readLines(file.path(root, "scripts", "build_readme.R"), warn = FALSE)
+  expect_true(any(grepl("if (!shrink_census_ok(render_env$SHRINK))", br, fixed = TRUE)))
+})
