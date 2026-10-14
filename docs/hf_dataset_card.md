@@ -45,7 +45,7 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
-> **v0.10.2 (<fill: release date>).** Validation-only, no re-estimation (patch 0109): the
+> **v0.10.2 (2026-10-13).** Validation-only, no re-estimation (patch 0109): the
 > Pillar-2 synthetic-recovery battery re-captured at the sigma cap the shipped
 > Stage 1 has used since v0.9.0 (50). Through v0.10.1 every validation fit took
 > `estimate_cell_liml()`'s library default (10), so `liml_validation_tier1a.csv`
@@ -61,7 +61,7 @@ under another cleaning rule must say which rule.
 > 93% at n = 150 to 100% at n = 3,000, as at 10. Both CSVs gain a `sigma_cap` column,
 > and `docs/methodology/liml_validation.md` is now written by the capture itself.
 > Estimates, the bootstrap pair and the Pillar-3 files are unchanged; 23 columns.
-> Data revision: <fill>. **v0.10.1 remains available pinned at revision
+> Data revision: `f02707f9e421f6e6c70609d675650da90555ab2b`. **v0.10.1 remains available pinned at revision
 > `6882f00d1a2b9924838d6bb6846076c5e5d54fa0`.**
 >
 > **v0.10.1 (2026-10-12).** One schema addition, no re-estimation (patch 0103):
