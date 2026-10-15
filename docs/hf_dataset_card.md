@@ -54,8 +54,10 @@ optimizer's own figure on the v0.11.0 table is 0.72% of directly estimated rows
 `docs/results/stage2b_convergence_census_v0110.md`). (2) Entries since v0.8.3 say
 the Nelder–Mead restart runs for cells that reached the iteration cap. It runs for
 every cell whose L-BFGS-B fit did not converge, and on the v0.11.0 table 93% of the
-non-converged rows were a failed line search (L-BFGS-B code 52), 7% the cap
-(code 1). (3) Every release with a full data revision is now tagged on this
+non-converged rows were a failed line search (L-BFGS-B code 52), 7% an iteration
+cap (code 1): L-BFGS-B's on at most the 7 cells where it reached its cap (at most
+~1,270 of the 2,397 such rows), the Nelder–Mead restart's on the rest, where its
+point was kept because its objective was lower (patch 0121). (3) Every release with a full data revision is now tagged on this
 repository under its version, v0.3.0 to v0.11.0, so `revision="v0.10.2"` (or
 `resolve/v0.10.2/` in a URL) reaches that release; the repository's
 `scripts/download_outputs.R --manifest <that release's manifest> --revision <tag>`

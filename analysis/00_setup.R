@@ -374,13 +374,21 @@ sigma_cap_value <- if ("sigma_capped" %in% names(stage1) && any(stage1$sigma_cap
 .sig_spikes <- stage2b_dt[sigma < sigma_cap_value - 1e-3, .N, by = sigma][order(-N)]
 sigma_fallback_value <- .sig_spikes$sigma[1]
 stopifnot(sigma_fallback_value > 1, sigma_fallback_value < sigma_cap_value)
+# (patch 0121) n_fallback from the sigma_source column where the table has it
+# (v0.10.1+): the value spike also counts the rows of an ESTIMATED cell whose
+# sigma equals the fallback, which happens whenever the clean set has an odd
+# number of cells (the fallback is their median, i.e. one cell's own sigma) --
+# on the synthetic end-to-end run 134 rows against 121 true fallback rows. On
+# the shipped v0.11.0 table the two counts agree (2,785,416; even clean set).
+.n_fb <- if ("sigma_source" %in% names(stage2b_dt) && !anyNA(stage2b_dt$sigma_source))
+  sum(stage2b_dt$sigma_source != "estimated") else sum(stage2b_dt$sigma == sigma_fallback_value)
 stage2b_summary$sigma_provenance <- list(
   fallback_value = sigma_fallback_value,
-  n_fallback     = sum(stage2b_dt$sigma == sigma_fallback_value),
+  n_fallback     = .n_fb,
   n_cap          = sum(stage2b_dt$sigma >= sigma_cap_value - 1e-3),   # patch 0090
   denominator    = nrow(stage2b_dt)
 )
-rm(.sig_spikes, sigma_cap_value, sigma_fallback_value)
+rm(.sig_spikes, sigma_cap_value, sigma_fallback_value, .n_fb)
 
 # (b) published-gamma floor. Stage 2b floors gamma at 0 for both the J
 # exporters and the reference exporter (estimate_cell_fixed_sigma.R:

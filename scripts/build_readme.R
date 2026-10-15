@@ -253,7 +253,11 @@ headline_sigma_note <- function(s2b) {
 # for EVERY cell whose L-BFGS-B fit did not converge, not only at the iteration
 # cap: on the v0.11.0 table 93% of the non-converged rows carry code 52 (a failed
 # line search) and 7% code 1 (the cap). The 0116 wording said "at the iteration
-# cap"; the split is now read from the census.
+# cap"; the split is now read from the census. (patch 0121) A published code 1
+# is the cap of whichever optimizer's point was published: L-BFGS-B reached its
+# cap on 7 cells of the v0.11.0 run (the fallback census), which hold at most
+# ~1,270 of the 2,397 code-1 rows -- the rest are Nelder-Mead restarts
+# published at their own cap.
 convergence_clause <- function(p) {
   if (is.null(p)) return("")
   cc <- req(p$data, "census")
@@ -261,7 +265,7 @@ convergence_clause <- function(p) {
   cnt <- function(k) if (is.null(codes[[k]])) 0 else as.numeric(codes[[k]])
   nn <- as.numeric(req(cc, "n_nonconverged"))
   split <- if (nn > 0 && cnt("52") + cnt("1") > 0)
-    sprintf("; a failed L-BFGS-B line search on %s of those rows, the iteration cap on %s", format_pct(cnt("52"), nn), format_pct(cnt("1"), nn)) else ""
+    sprintf("; a failed L-BFGS-B line search on %s of those rows and an iteration cap on %s \u2014 L-BFGS-B's, or the Nelder\u2013Mead restart's where its point was published", format_pct(cnt("52"), nn), format_pct(cnt("1"), nn)) else ""
   sprintf(" The cell optimizer did not converge on %s of directly estimated rows (%s of %s fitted cells%s%s): those cells publish the better of the L-BFGS-B point and the Nelder\u2013Mead restart, with `gamma_se_status` `non_converged` and no SE (`docs/results/%s.md`).",
           format_pct(nn, req(cc, "n_estimated")), format_int(req(cc, "n_cells_nonconverged")),
           format_int(req(cc, "n_cells_estimated")), split, stale_note(p, "; ", ""), p$key)

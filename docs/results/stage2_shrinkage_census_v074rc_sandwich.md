@@ -4,7 +4,7 @@ Inputs: `out_se_sand.rds` (6,811,822 rows), `baci_hs92_v202601_elast_regional_hs
 
 Directly estimated rows (tier 0/1/2, fitted): 4,990,259; goods with a Stage-2b prior: 1240.
 
-## Q1 gamma_shrink_wt and the implied data share d = 2(1-s)/(2-s)
+## Q1 gamma_shrink_wt and the implied data share d = 1 - s
 
 | quantity | p10 | p25 | p50 | p75 | p90 |
 |---|---|---|---|---|---|

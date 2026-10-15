@@ -114,6 +114,12 @@ Supporting scripts in `validation/`:
 
 - `validate_liml.R` — main validation harness (Tiers 1a/1b/1c/2/3),
   including the 2026-05-20 verdict-logic and BACI column-detection patches.
+- `synthetic_baci.R` (patch 0121) — a BACI-format directory (one CSV per
+  year, HS6 lines) generated from Soderbery's model with known σ and γ, with
+  `truth.rds` beside it. `tests/testthat/test-runner-e2e-smoke.R` runs
+  `scripts/run_estimation.R`, `analysis/master.R` and `scripts/build_readme.R`
+  on a small one; on a larger one the published estimates can be compared
+  with the parameters that generated the data.
 
 The historical patch script `patch_tier1_tier2_verdicts.R` (applied the
 2026-05-20 verdict edits to `validate_liml.R`) is retained locally for

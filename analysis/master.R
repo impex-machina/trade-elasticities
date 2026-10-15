@@ -121,6 +121,12 @@ if (RERUN_PILLARS) {
   if (length(pp) > 0) {
     file.copy(pp[1], file.path(derived_val, "se_calibration_mc_per_param.csv"),
               overwrite = TRUE)
+    # (patch 0121) and refresh the undated twin in docs/methodology, which the
+    # methodology README lists as the Pillar-3 artifact: it was refreshed by hand
+    # (patch 0041) and had stayed at the August generation (6 columns, before
+    # the sandwich SE and the import constant) while the hub carried 20261014's.
+    file.copy(pp[1], file.path("docs/methodology", "se_calibration_mc_per_param.csv"),
+              overwrite = TRUE)
   }
   write_log("Pillar CSVs refreshed and synced to data/derived/validation/")
   RERUN_PILLARS <- FALSE   # 05_/06_ now read the refreshed published copies

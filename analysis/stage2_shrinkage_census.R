@@ -175,7 +175,11 @@ shrinkage_census <- function(s2b, s2a, shrink_wt_def = c("half", "legacy")) {
   c(sprintf("# Stage-2b shrinkage census (patch 0067 input, F1 of fresh_eyes_review_20260924.md)"), "",
     sprintf("Inputs: `%s` (%s rows), `%s`. Generated %s.", basename(s2b_path), format(res$meta$n_rows_2b, big.mark = ","), basename(s2a_path), res$meta$timestamp), "",
     sprintf("Directly estimated rows (tier 0/1/2, fitted): %s; goods with a Stage-2b prior: %s.", format(res$meta$n_estimated, big.mark = ","), res$meta$n_goods_with_prior), "",
-    "## Q1 gamma_shrink_wt and the implied data share d = 2(1-s)/(2-s)", "",
+    # (patch 0121) the header names the definition the numbers use: through patch
+    # 0120 it printed the legacy formula whatever --shrink-wt-def said, so every
+    # census since 0112's `half` default showed 2(1-s)/(2-s) above 1 - s numbers.
+    sprintf("## Q1 gamma_shrink_wt and the implied data share d = %s",
+            if (identical(res$meta$shrink_wt_def, "legacy")) "2(1-s)/(2-s)" else "1 - s"), "",
     "| quantity | p10 | p25 | p50 | p75 | p90 |", "|---|---|---|---|---|---|",
     qrow("gamma_shrink_wt", res$q1$shrink_wt), qrow("implied data share", res$q1$implied_data_share), "",
     sprintf("Mean shrink_wt %s; share > 0.9: %s, > 0.95: %s, > 0.99: %s. Implied data share: mean %s, trade-weighted %s (trade-weighted 1 - s: %s).",

@@ -34,7 +34,8 @@ test_that("README phrases (0118): convergence split, fallback wording, M1 and M2
                                          n_cells_estimated = 210098L, codes_estimated = list(`0` = 4946434L, `1` = 2397L, `52` = 33428L))),
                key = "stage2b_convergence_census_v0110", fresh = TRUE)
   cl <- env$convergence_clause(conv)
-  expect_match(cl, "0.7% of directly estimated rows (1,775 of 210,098 fitted cells; a failed L-BFGS-B line search on 93.3% of those rows, the iteration cap on 6.7%)", fixed = TRUE)
+  # (patch 0121) a published code 1 is the cap of whichever optimizer's point was published
+  expect_match(cl, "0.7% of directly estimated rows (1,775 of 210,098 fitted cells; a failed L-BFGS-B line search on 93.3% of those rows and an iteration cap on 6.7% \u2014 L-BFGS-B's, or the Nelder\u2013Mead restart's where its point was published)", fixed = TRUE)
   expect_false(grepl("at the iteration cap and", cl, fixed = TRUE))
   fb <- list(data = list(n_cells = 2370L, n_nm_worse = 1868L, share_nm_worse = 0.788, n_nm_converged = 1561L),
              key = "stage2_fallback_census_v0110", fresh = TRUE, vintage = "v0.11.0")
