@@ -1754,3 +1754,54 @@ both read under rules fixed here:
 drifting → a full window re-estimation (Stage 1 + 2a + 2b, about 2¼ h, ~$10) whose
 fallback share step 2 sizes; step 1 "full panel as good" → no session, whatever σ
 does.
+
+### M3 sized: the full panel stays; cell-level σ is weakly reproducible across periods (patch 0120)
+
+Run by patch 0119's runbook on 2026-10-14, locally (the two Stage-1 window runs of the
+2% subsample took 6 min each at `--ncores 1`); readings under the rules fixed in
+patch 0119.
+
+**Step 1 — does γ drift by more than half-panel noise?**
+(`docs/results/window_drift_census_v0110.md`; the v0.11.0 pre-session half-runs, with
+full-panel σ and Stage-2a priors.) Robust SD of the between-half difference, parity /
+period: cell log `opt_tariff` 0.416 / 0.496 (variance ratio 1.42), cell mean log γ
+0.188 / 0.214 (1.29), row log γ 0.303 / 0.322 (1.13). **Reading: below 1.5 on every
+quantity — the full-panel average is as good for current use.** On cell log
+`opt_tariff` the drift variance is 0.073 against a half-panel noise variance of 0.087,
+so the full-panel average's error variance for 2010–2024 conditions (about D²/4 + s²/2 =
+0.062) is about 29% below a 2010–2024 estimate's (s² = 0.087). The recent half has more
+directly estimated rows (97,430 against 73,148) and less Tier 3 (25.8% against 29.3%).
+Among the ten exporters with the most directly estimated rows in both periods
+(Germany, China, the United States, France, Italy, the UK, the Netherlands, Belgium,
+Spain, India) the median change in log γ lies within ±0.02, except China (+0.06, with
+the widest upper quartile, +0.73): no systematic shift in supply elasticities.
+
+**Step 2 — is σ stable across periods?** (`docs/results/sigma_window_census_v0110.md`.)
+Clean-set yields 40.3% (1995–2009), 43.2% (2010–2024), 44.8% (full panel); 866 of the
+2,562 full-panel clean cells lack a clean 2010–2024 σ. On the 1,282 cells clean in both
+windows (independent data) |z| > 1.96 on 29.9% at the published SEs and 16.7% at 1.5×
+— **reading: between** (≤ 10% stable, > 25% drifting). The rank correlation of ln(σ − 1)
+between the windows is 0.05; the median change is 0.97 in ln(σ − 1) (σ − 1 differs by a
+factor of 2.6 at the median), more than a factor of 2 in 63% of cells, with no shift in
+level (median signed change 0.001). Full panel against 2010–2024 (dependent data): ρ
+0.55, 8.1%.
+
+**Decision.** Under patch 0119's rule step 1 alone decides: **no recent-window estimate;
+M3 is closed**, the full-panel release remaining the description of current conditions.
+The two censuses stay for a BACI vintage with more recent years.
+
+**What step 2 adds beyond M3.** Read with M2 (the good explains 5.7% of the cross-cell
+variance of ln(σ − 1), and a good-level fallback predicts held-out estimates no better
+than the global median), the window comparison says that how σ varies across importers
+within a product is barely pinned down: two 15-year panels rank the same cells almost
+independently, and their standard errors are as wide as their disagreement. If σ does
+not move between the periods, the half-panel reliability of cell-level σ is about 0.05,
+and about 0.10 on the full panel by Spearman–Brown; if it moves, the reliability is
+higher but the full-panel σ averages over a moving target. Either way the cross-cell
+variation of the shipped σ is mostly noise around a level the data do identify (the
+clean-set median is 2.48 on the full panel and 2.54 on 2010–2024). The README's σ
+bullet now says so. The natural response — shrinking each cell's ln(σ − 1) toward the
+global level by its standard error (empirical Bayes), of which the pole rule is a hard
+cutoff — would change every row's σ, so it needs its own measurement (the two window
+tables allow an out-of-sample check: predict 2010–2024 σ from 1995–2009 σ raw, shrunk
+and at the global median) and a session; not queued.

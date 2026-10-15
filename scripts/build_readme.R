@@ -312,6 +312,36 @@ pillar2_coverage_clause <- function(p2) {
           format_prop_pct(stats::median(cov)), where, format(min(st)))
 }
 
+# (patch 0120) M3 recorded: the window censuses of patch 0119, run on the 2%
+# product subsample (no table hash: the newest release-tagged file is used).
+pick_latest <- function(prefix, res = r) {
+  keys <- grep(sprintf("^%s_v[0-9]{3,4}$", prefix), names(res), value = TRUE)
+  if (!length(keys)) return(NULL)
+  ver <- function(k) { v <- release_of_suffix(sub(paste0("^", prefix, "_"), "", k)); sum(as.numeric(strsplit(sub("^v", "", v), ".", fixed = TRUE)[[1]]) * c(1e6, 1e3, 1)) }
+  k <- keys[which.max(vapply(keys, ver, 0))]
+  list(data = res[[k]], key = k)
+}
+window_drift_clause <- function(p) {
+  if (is.null(p)) return("")
+  z <- req(req(p$data, "quantities"), "cell_tariff")
+  ratio <- as.numeric(req(z, "ratio_robust"))
+  reading <- if (ratio > 2) "above the factor of 2 at which a 2010\u20132024 estimate describes current conditions better than the full-panel average"
+             else if (ratio < 1.5) "below 1.5, so the full-panel average describes current conditions as well as a 2010\u20132024 estimate would, and none is published"
+             else "between 1.5 and 2, short of the factor of 2 at which a 2010\u20132024 estimate would describe current conditions better than the full-panel average"
+  sprintf(" Whether that drift calls for a recent-window estimate was measured as well (patch 0119): on the same subsample the cell's log `opt_tariff` differs between 1995\u20132009 and 2010\u20132024 by %s times the variance of its odd/even-year difference, %s (`docs/results/%s.md`).",
+          format_num(ratio, 2L), reading, p$key)
+}
+sigma_window_clause <- function(p) {
+  if (is.null(p)) return("")
+  el <- req(p$data, "early_vs_late")
+  rho <- as.numeric(req(el, "rho"))
+  if (rho >= 0.3)
+    return(sprintf(" On the 2%% subsample, \u03c3 estimated on 1995\u20132009 and on 2010\u20132024 ranks the cells clean in both alike (rank \u03c1 %s on ln(\u03c3 \u2212 1); `docs/results/%s.md`).", format_num(rho, 2L), p$key))
+  sprintf(" Cell-level \u03c3 is weakly reproducible across periods: on the 2%% subsample, \u03c3 estimated on 1995\u20132009 and on 2010\u20132024 ranks the %s cells clean in both almost independently (rank \u03c1 %s on ln(\u03c3 \u2212 1)); \u03c3 \u2212 1 differs by more than a factor of 2 in %s of them, with no shift in level, while only %s of the changes exceed 1.96 combined standard errors inflated 1.5\u00d7 \u2014 the standard errors are as wide as the disagreement. A 15-year panel does not pin down how \u03c3 varies across importers within a product, and the full panel only doubles it: read cell-level \u03c3, and the \u03b3 and `opt_tariff` built on it, as weakly identified in that dimension (`docs/results/%s.md`).",
+          format_int(req(el, "cells")), format_num(rho, 2L), format_prop_pct(req(el, "share_change_gt_x2")),
+          format_prop_pct(req(req(el, "share_z"), "se_x1.5")), p$key)
+}
+
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
 # One rendered sentence for the validation section, built from
 # results/stage2_dgp_summary.json. NULL-tolerant on the fields added in
@@ -523,6 +553,10 @@ render_env$CONV <- pick_census_opt("stage2b_convergence_census")   # patch 0116:
 render_env$pole_accuracy_clause <- pole_accuracy_clause           # patch 0118
 render_env$fallback_hierarchy_clause <- fallback_hierarchy_clause # patch 0118
 render_env$HIER <- pick_census_opt("sigma_fallback_hierarchy_census")   # patch 0118: NULL until committed
+render_env$window_drift_clause <- window_drift_clause   # patch 0120
+render_env$sigma_window_clause <- sigma_window_clause   # patch 0120
+render_env$WDRIFT <- pick_latest("window_drift_census")  # patch 0120: the 2% subsample census of patch 0119
+render_env$SWIN <- pick_latest("sigma_window_census")    # patch 0120
 
 rendered <- tryCatch(
   glue::glue(template_text,
