@@ -1,0 +1,56 @@
+{
+  "A_stage_references": {
+    "cells": 181779,
+    "differ": 32258,
+    "share_differ": 0.177457242035659
+  },
+  "stage2_rule_replication": {
+    "cells": 231136,
+    "agree": 231136,
+    "share_agree": 1
+  },
+  "B_observations": {
+    "cells": 182912,
+    "alt_differs": 6874,
+    "share_alt_differs": 0.0375809132260322,
+    "best_differs": 13483,
+    "share_best_differs": 0.0737130423372988,
+    "obs_current": 72087352,
+    "obs_alt": 72122810,
+    "obs_best": 72182375,
+    "obs_potential": 72642607,
+    "excess_loss": {
+      "p50": 0,
+      "p90": 0,
+      "p99": 0.230769230769231
+    },
+    "excess_loss_alt": {
+      "p50": 0,
+      "p90": 0,
+      "p99": 0.117262462884823
+    },
+    "share_cells_loss_ge_threshold": 0.0431026941917425,
+    "share_cells_loss_alt_ge_threshold": 0.0168113628411477,
+    "loss_threshold": 0.05,
+    "cell_share_threshold": 0.1
+  },
+  "C_reference_jumps": {
+    "cells": 182912,
+    "share_ref_with_jump": 0.366170617564731,
+    "jump_share_of_obs_given_jump": {
+      "p50": 0.0851063829787234,
+      "p90": 0.285714285714286,
+      "p99": 0.565217391304348
+    },
+    "jump_threshold": 2
+  },
+  "reading": "closed",
+  "meta": {
+    "raw_cache": "C:\\Users\\maxxj\\te_m3\\w1_2010_2024\\baci_hs92_v202601_elast_country_hs4_raw_cache.rds",
+    "stage1": "data\\derived\\stage1\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "stage2b": "data\\derived\\stage2b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "git_rev": "4d65ef2",
+    "timestamp": "2026-10-15 19:46:31 EDT",
+    "minutes": 14.2
+  }
+}

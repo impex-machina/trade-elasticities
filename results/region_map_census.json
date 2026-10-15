@@ -1,0 +1,71 @@
+{
+  "codes_in_data": 234,
+  "codes_mapped_in_data": 230,
+  "unmapped": [
+    {
+      "code": 316,
+      "imp_value": 22405026.0860002,
+      "imp_rows": 73999,
+      "imp_first": 2000,
+      "imp_last": 2024,
+      "exp_value": 1369117.83499999,
+      "exp_rows": 22773,
+      "exp_first": 2000,
+      "exp_last": 2024,
+      "imp_share": 5.51128223639569e-05,
+      "exp_share": 3.36781344266448e-06
+    },
+    {
+      "code": 86,
+      "imp_value": 934988.939000001,
+      "imp_rows": 7520,
+      "imp_first": 1995,
+      "imp_last": 2024,
+      "exp_value": 585905.181,
+      "exp_rows": 6436,
+      "exp_first": 1995,
+      "exp_last": 2024,
+      "imp_share": 2.29992498600883e-06,
+      "exp_share": 1.44123412481773e-06
+    },
+    {
+      "code": 260,
+      "imp_value": 682973.357999998,
+      "imp_rows": 15639,
+      "imp_first": 1995,
+      "imp_last": 2024,
+      "exp_value": 258647.971000001,
+      "exp_rows": 3375,
+      "exp_first": 1995,
+      "exp_last": 2024,
+      "imp_share": 1.68000649560898e-06,
+      "exp_share": 6.36233121345395e-07
+    },
+    {
+      "code": 612,
+      "imp_value": 210878.383,
+      "imp_rows": 4474,
+      "imp_first": 1995,
+      "imp_last": 2024,
+      "exp_value": 151496.668999999,
+      "exp_rows": 4788,
+      "exp_first": 1995,
+      "exp_last": 2024,
+      "imp_share": 5.18727486326809e-07,
+      "exp_share": 3.72657857004025e-07
+    }
+  ],
+  "unmapped_importer_value_share": 5.96114813319015e-05,
+  "unmapped_exporter_value_share": 5.81793854583163e-06,
+  "unmapped_importer_rows": 101632,
+  "unmapped_exporter_rows": 37372,
+  "reading": "negligible",
+  "meta": {
+    "raw_cache": "C:\\Users\\maxxj\\te_m3\\w1_2010_2024\\baci_hs92_v202601_elast_country_hs4_raw_cache.rds",
+    "rows": 113781209,
+    "years": [1995, 2024],
+    "region_map_codes": 233,
+    "git_rev": "4d65ef2",
+    "timestamp": "2026-10-15 19:32:04 EDT"
+  }
+}
