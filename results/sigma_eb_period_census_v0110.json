@@ -1,0 +1,69 @@
+{
+  "early_to_late": {
+    "targets": 3476,
+    "goods": 25,
+    "fit": {
+      "fallback": 2.52775250569441,
+      "eb_mu": 0.427449748075179,
+      "eb_tau2": 0.618446231927145,
+      "eb_n": 3192,
+      "eb_good_own_priors": 25
+    },
+    "published": {
+      "median_abs_err": 0.998226149813848,
+      "wmse": 2.71503201494802
+    },
+    "eb": {
+      "median_abs_err": 0.951018445869547,
+      "wmse": 2.29320498741543
+    },
+    "eb_good": {
+      "median_abs_err": 0.95661489470762,
+      "wmse": 2.07257700976147
+    },
+    "constant": {
+      "median_abs_err": 0.87452929509345,
+      "wmse": 1.50187299164962
+    }
+  },
+  "late_to_early": {
+    "targets": 3192,
+    "goods": 25,
+    "fit": {
+      "fallback": 2.54031334852137,
+      "eb_mu": 0.452683201360733,
+      "eb_tau2": 0.660168587153615,
+      "eb_n": 3476,
+      "eb_good_own_priors": 25
+    },
+    "published": {
+      "median_abs_err": 0.982637590815451,
+      "wmse": 0.113547739846054
+    },
+    "eb": {
+      "median_abs_err": 0.935427690053175,
+      "wmse": 0.0707843042061054
+    },
+    "eb_good": {
+      "median_abs_err": 0.944018362128255,
+      "wmse": 0.0862085791136359
+    },
+    "constant": {
+      "median_abs_err": 0.832683044507341,
+      "wmse": 0.0474063330016604
+    }
+  },
+  "reading": {
+    "rule": "EB weighted MSE >= 5% below the published rule's and median |error| not higher, in both directions",
+    "early_to_late": true,
+    "late_to_early": true,
+    "verdict": "passes"
+  },
+  "meta": {
+    "early": "C:\\Users\\maxxj\\te_m3\\w0_1995_2009\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "late": "C:\\Users\\maxxj\\te_m3\\w1_2010_2024\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "label": "v0110",
+    "git_rev": "8fb8838",
+    "timestamp": "2026-10-15 07:09:30 EDT"
+  }
+}
