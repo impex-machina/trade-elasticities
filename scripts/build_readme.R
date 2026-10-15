@@ -397,6 +397,41 @@ sigma_eb_period_clause <- function(p, kt) {
   out
 }
 
+# (patch 0124) Reading R4: the structured known-truth grid of patch 0123
+# (results/known_truth_structured.json). NULL-tolerant.
+kts_row <- function(kts, structure, scale) {
+  rows <- Filter(function(x) identical(x$structure, structure) && identical(x$arm_name, "shipped") &&
+                   isTRUE(all.equal(as.numeric(x$scale), scale)), req(kts, "summary"))
+  if (!length(rows)) stop(sprintf("README needs the structured known-truth row (%s, shock scale %s) in results/known_truth_structured.json", structure, format(scale)), call. = FALSE)
+  rows[[1]]
+}
+.kt_pair <- function(x1, x3, f) { a <- f(as.numeric(x1)); b <- f(as.numeric(x3)); if (identical(a, b)) a else sprintf("%s and %s", a, b) }
+.kt_by_scale <- function(lst, f = function(v) format_num(v, 2L)) .kt_pair(req(lst, "x1"), req(lst, "x3"), f)
+.kt_pct <- function(v) sprintf("%.0f%%", 100 * v)
+known_truth_overview <- function(kt, kts) {
+  if (is.null(kt) || is.null(kts)) return("")
+  a <- req(req(kts, "readings"), "R4a_between_goods"); b <- req(req(kts, "readings"), "R4b_within_goods")
+  verb_a <- switch(a$verdict, recovered = "track true differences between products", partial = "track true differences between products only in part",
+                   "do not track true differences between products")
+  verb_b <- switch(b$verdict, recovered = "track differences between importers within a product", partial = "track differences between importers within a product only weakly",
+                   "do not track differences between importers within a product")
+  verb_c <- if (kt_not_recovered(kt)) "do not recover differences between exporters within a cell" else "recover differences between exporters within a cell only in part"
+  sprintf("\n\nChecked against known truth (`validation/known_truth_stage2.R`): on synthetic panels built to the estimator's own assumptions, the published \u03b3 and `opt_tariff` %s (correlation %s for the products' median \u03b3 and %s for their `opt_tariff`, at baseline and triple shock volatility), %s (%s, keeping %s of the true spread), and %s (%s). See Known limitations.",
+          verb_a, .kt_by_scale(req(a, "gamma_r_by_scale")), .kt_by_scale(req(a, "tariff_r_by_scale")), verb_b,
+          .kt_by_scale(req(b, "gamma_r_by_scale")), .kt_by_scale(req(b, "gamma_sd_ratio_by_scale"), .kt_pct), verb_c,
+          .kt_pair(req(kt_row(kt, "shipped", 1), "within_r"), req(kt_row(kt, "shipped", 3), "within_r"), function(v) format_num(v, 2L)))
+}
+known_truth_structured_bullet <- function(kts) {
+  if (is.null(kts)) return("")
+  meta <- req(kts, "meta"); a <- req(req(kts, "readings"), "R4a_between_goods"); b <- req(req(kts, "readings"), "R4b_within_goods")
+  gi1 <- kts_row(kts, "good_importer", 1); gi3 <- kts_row(kts, "good_importer", 3)
+  two <- function(k, rows = list(gi1, gi3)) .kt_pair(req(rows[[1]], k), req(rows[[2]], k), function(v) format_num(v, 2L))
+  sprintf("\n- **What the published \u03b3 and `opt_tariff` track at known truth.** On synthetic panels whose ln \u03b3 differs by product (s.d. 0.7 between %s products, 0.35 within; `validation/known_truth_stage2.R --structures good,good_importer`, %d seeds), the products' median published \u03b3 correlates with the true one at %s and their mean ln `opt_tariff` at %s (baseline and triple shock volatility): product differences pass from the Stage-1 \u03c9 through the Stage-2a priors into Stage 2b. With an importer effect added (s.d. 0.5), the cell mean ln \u03b3 tracks the importer differences within a product at r = %s, keeping %s of their true spread, and the cell's `opt_tariff` at r = %s: the Stage-2b prior is one value per product, so with shrink weights near 1 importer differences survive only where the data outweigh it. Across all cells the `opt_tariff` correlates with the truth at %s and the composite \u03b3/((1+\u03b3)(\u03c3\u22121)) at %s. By reading R4 (fixed in patch 0123) that is \"%s\" between products and \"%s\" within them (`docs/results/known_truth_structured.md`).",
+          format(req(meta, "goods")), length(req(meta, "seeds")), .kt_by_scale(req(a, "gamma_r_by_scale")), .kt_by_scale(req(a, "tariff_r_by_scale")),
+          .kt_by_scale(req(b, "gamma_r_by_scale")), .kt_by_scale(req(b, "gamma_sd_ratio_by_scale"), .kt_pct), .kt_by_scale(req(b, "tariff_r_by_scale")),
+          two("opt_tariff_r"), two("composite_r"), req(a, "verdict"), req(b, "verdict"))
+}
+
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
 # One rendered sentence for the validation section, built from
 # results/stage2_dgp_summary.json. NULL-tolerant on the fields added in
@@ -619,6 +654,9 @@ render_env$known_truth_within_clause <- known_truth_within_clause     # patch 01
 render_env$sigma_eb_period_clause <- sigma_eb_period_clause           # patch 0123
 render_env$KT <- r[["known_truth_stage2"]]                             # patch 0123: NULL until committed
 render_env$SEB <- pick_latest("sigma_eb_period_census")                # patch 0123
+render_env$known_truth_overview <- known_truth_overview                 # patch 0124
+render_env$known_truth_structured_bullet <- known_truth_structured_bullet   # patch 0124
+render_env$KTS <- r[["known_truth_structured"]]                         # patch 0124: NULL until committed
 
 rendered <- tryCatch(
   glue::glue(template_text,

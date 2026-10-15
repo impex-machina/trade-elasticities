@@ -1,4 +1,4 @@
-# Known-truth recovery of the shipped pipeline (patch 0122)
+# Known-truth recovery of the shipped pipeline (patch 0123)
 
 Synthetic BACI worlds from `validation/synthetic_baci.R` (Soderbery's model, known sigma and gamma; 12 goods, 15 countries, years 1995:2024); seeds 20261015, 20261016, 20261017; shock scales 1, 3; rev 4ab7935, 2026-10-15 10:08:45 EDT.
 

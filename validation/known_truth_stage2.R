@@ -361,7 +361,9 @@ kt_grid <- function(root, out, seeds, scales, arms, goods = 5L, countries = NULL
 kt_md <- function(res, meta) {
   f <- function(x, d = 3) ifelse(is.na(x), "NA", formatC(x, digits = d, format = "f"))
   s_all <- res$summary
-  out <- c("# Known-truth recovery of the shipped pipeline (patch 0122)", "",
+  # (patch 0124) the title names the patch whose readings the file reports (0122 for
+  # the unstructured grid, 0123 for the structured one); it read "0122" for both
+  out <- c(sprintf("# Known-truth recovery of the shipped pipeline (patch %s)", if (is.null(meta$patch)) "0122" else meta$patch), "",
            sprintf("Synthetic BACI worlds from `validation/synthetic_baci.R` (Soderbery's model, known sigma and gamma; %d goods, %d countries, years %s); seeds %s; shock scales %s; rev %s, %s.",
                    meta$goods, meta$countries, meta$years, paste(meta$seeds, collapse = ", "), paste(meta$scales, collapse = ", "), meta$git_rev, meta$timestamp), "")
   rd <- res$readings

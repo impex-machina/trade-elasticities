@@ -64,7 +64,7 @@ repository under its version, v0.3.0 to v0.11.0, so `revision="v0.10.2"` (or
 fetches and verifies one.
 
 
-**Measured since v0.11.0 (2026-10-15, patches 0122–0123; no estimate changes).**
+**Measured since v0.11.0 (2026-10-15, patches 0122–0124; no estimate changes).**
 (1) Known truth (`validation/known_truth_stage2.R`; `docs/results/known_truth_stage2.md`):
 on synthetic panels built to the estimator's own assumptions — Soderbery's model with
 known σ and γ, 30 years, no unit-value measurement error, 3 seeds — the shipped
@@ -78,9 +78,16 @@ on the 1995–2009 / 2010–2024 split of a 2% product subsample, one global σ 
 cell's estimate in the other period better (median absolute error in ln(σ − 1) 0.87
 and 0.83) than the cell's own published σ (1.00 and 0.98) or its empirical-Bayes
 posterior (0.95 and 0.94): cell-level differences in σ do not carry across periods,
-and empirical-Bayes shrinkage of σ is not adopted. (3) Whether γ and `opt_tariff`
-track true differences between products, and between importers within a product, is
-being measured on structured synthetic panels (patch 0123).
+and empirical-Bayes shrinkage of σ is not adopted. (3) What γ and `opt_tariff` do
+track (`docs/results/known_truth_structured.md`): on synthetic panels whose ln γ differs
+by product (s.d. 0.7 between 12 products), the products' median published γ correlates
+with the true one at 0.88 and 0.91 (baseline and triple shock volatility) and their
+mean ln `opt_tariff` at 0.89 — product differences pass from the Stage-1 ω through the
+Stage-2a priors. With an importer effect added (s.d. 0.5), the cell mean ln γ tracks
+the importer differences within a product at only r = 0.16 and 0.23, keeping 2% and
+21% of their true spread. Differences between products are recovered; differences
+between importers within a product weakly; differences between exporters within a
+cell not at all.
 
 > **v0.11.0 (2026-10-14).** One Stage-2 re-estimation on the v0.9.x
 > Stage-1 table (patches 0110–0114). Eq. (11)'s export side is built on log
