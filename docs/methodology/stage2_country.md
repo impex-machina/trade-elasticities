@@ -1693,3 +1693,64 @@ on that alone).
 resolves to its card revision (checked with `dataset_info(revision=tag).sha`). The
 refs listing reports an annotated tag's own object (v0.11.0: `2dc57000…`), not the
 commit, so verify tags by resolution (box template updated).
+
+### Intervals for the subsample decisions, measured; a recent-window estimate (M3), designed (patch 0119)
+
+**The goods bootstrap** (`analysis/stage2_reliability.R --boot-goods 2000`, run by patch
+0118's runbook on the existing half-run tables; 2,000 draws over the 25 goods,
+differences from each grid's base on the same draws; 95% percentile intervals;
+`docs/results/stage2_reliability_goodsboot_*.md`):
+
+| decision | Δ r_within | interval | reading (patch 0117's rule) |
+|---|---|---|---|
+| σ-pole rule c = 0.5 / 1 / 2 / 2.5 vs v0.9.1 | +0.022 / +0.032 / +0.035 / +0.040 | lower ends +0.003 / +0.009 / +0.011 / +0.015 | the gain is not noise; it rises with c, as the shared-σ smoothing predicts; the +0.03 bar lies inside c = 1's interval (+0.009 to +0.057), so "cleared the bar" was a point-estimate statement |
+| v0.10.0 as shipped vs v0.9.1 | +0.036 | +0.014 to +0.062 | real |
+| fn-14 `--bw-lag raw` / `--exporter-weight bw_sum` / both | −0.030 / −0.019 / −0.026 | all below 0 | the shipped weighting is well supported |
+| λ = 0.03 / 0.3 vs 0.1 | −0.007 / −0.002 | 0.03 below 0; 0.3 covers 0 | λ = 0.1 supported; 0.3 indistinguishable |
+| reference rules `periods_stable` / `value` | −0.001 / −0.000 | cover 0 | within noise, as decided |
+| export-share denominator `all` | −0.000 | covers 0 | within noise (superseded) |
+| export moment on values (v0.11.0) | −0.008 | −0.014 to −0.001 | a small real cost in reproducibility, accepted on correctness (harness Test F); v0.11.0 as shipped vs v0.10.x shows the same −0.008 |
+| calendar split 1995–2009 / 2010–2024 | r = 0.099 | 0.081 to 0.115 | the cross-period reproducibility is low and precisely measured |
+
+No default changes. For rules acting through σ the intervals measure goods-sampling
+variation only: a real gain in reproducibility is still not evidence of accuracy
+(the σ-pole rule's accuracy reading is patch 0118's record).
+
+**A year-window gap (A14).** Patch 0072 made `--minyear` / `--maxyear` apply to the
+cached panel inside `prepare_data()`, i.e. for Stage 2; Stage 1 receives the raw
+cache directly and honoured `--minyear` (through `run_stage1_liml()`'s `min_year`)
+but never `--maxyear`, so a 1995–2009 run estimated σ on data through the cache's
+last year. From this patch `year_window()` (`R/utils_general.R`) applies the window
+to Stage 1's input too; a no-op for the production window.
+
+**M3, a recent-window estimate: two measurements before any session**, both local,
+both read under rules fixed here:
+
+1. **Does γ drift by more than half-panel noise?** (`analysis/window_drift_census.R`,
+   seconds.) The v0.11.0 pre-session artifacts hold four 2% subsample Stage-2b runs
+   under the shipped configuration with full-panel σ and Stage-2a priors — the hybrid
+   design: parity halves (odd / even years, noise only) and period halves (1995–2009
+   / 2010–2024, noise plus the true change). With V the robust variance of the
+   between-half difference of a quantity, V_parity = 2s² and V_period = D² + 2s²; for
+   current use the recent half (error s²) beats the full-panel average (error about
+   D²/4 + s²/2) iff D² > 2s², i.e. V_period > 2·V_parity. **Rule**, on the cell's log
+   `opt_tariff`: ratio > 2 → a recent-window estimate is better for current use;
+   < 1.5 → the full-panel average is as good and M3 stays parked; between → decided
+   with step 2. Cell mean log γ and row log γ are reported beside it, with coverage
+   and the exporters whose γ moved most.
+2. **Is σ stable across periods?** (`analysis/sigma_window_census.R` on two local
+   Stage-1 runs of the 2% subsample, 1995–2009 and 2010–2024, `--stage 1
+   --product-sample 0.02` with the year window.) On cells clean in both windows
+   (independent data), z = (σ_late − σ_early)/√(se_early² + se_late²). **Rule**: the
+   share with |z| > 1.96 at standard errors inflated 1.5× (the bootstrap's same-branch
+   dispersion ran 0.9–1.7× the analytic SE) ≤ 10% → σ is stable and the hybrid (σ
+   from the full panel, γ from the window) is the M3 design; > 25% → σ drifts and a
+   full window re-estimation is the coherent design, at the clean-set yield the
+   census reports; between → decided with step 1.
+
+**What follows:** step 1 "recent window better" with σ stable → a hybrid session
+(Stage 1 loaded; Stage 2a + three 2b passes on 2010–2024; about 2 h on the box,
+~$9–10), published as a separate artifact beside the full-panel release; with σ
+drifting → a full window re-estimation (Stage 1 + 2a + 2b, about 2¼ h, ~$10) whose
+fallback share step 2 sizes; step 1 "full panel as good" → no session, whatever σ
+does.

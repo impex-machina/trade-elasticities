@@ -289,6 +289,16 @@ if (should_run("1", opts, paths)) {
     setnames(baci_for_liml,
              old = c("year", "cusval"),
              new = c("t",    "value"))
+    # (patch 0119) the year window reaches Stage 1 as it reaches Stage 2: through
+    # patch 0118 --maxyear was applied to the cached panel only inside
+    # prepare_data(), so a 1995-2009 run estimated sigma through the cache's last
+    # year. A no-op for the production window (the cache's own).
+    .n_s1 <- nrow(baci_for_liml)
+    baci_for_liml <- year_window(baci_for_liml, config_country$minyear, config_country$maxyear, col = "t")
+    if (nrow(baci_for_liml) != .n_s1)
+      cat(sprintf("  Year window applied to Stage 1: %d-%s (%s obs dropped)\n", config_country$minyear,
+                  if (is.null(config_country$maxyear) || is.na(config_country$maxyear)) "max" else as.character(config_country$maxyear),
+                  format(.n_s1 - nrow(baci_for_liml), big.mark = ",")))
     
     # Stage 1 output file from run_stage1_liml is the "rich" 30-column LIML output.
     # We write it to a sibling path so the legacy filename is preserved for traceability.

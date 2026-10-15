@@ -17,6 +17,7 @@
 #'   cell_failure(reason)                          — lightweight cell-level failure indicator
 #'   optimal_tariff(gamma, sigma, trade_values)    — trade-weighted optimal tariff
 #'   stage2_convergence_census(dt)                 — optimizer vs imputed convergence codes (patch 0116)
+#'   year_window(dt, minyear, maxyear, col)        — rows inside a year window (patch 0119)
 #'
 #' Depends on: none (base R + data.table semantics at call sites)
 
@@ -159,6 +160,23 @@ sample_products <- function(goods, frac, seed) {
 #' convergence -1 too, so the rule is simply: tier < 3 and not imputed.
 is_estimated_row <- function(tier, convergence) {
   !is.na(tier) & tier < 3L & !(convergence %in% -1L)
+}
+
+
+#' Keep the rows of a panel inside a year window (patch 0119).
+#'
+#' `maxyear` NULL or NA keeps every year from `minyear` on. Used by
+#' scripts/run_estimation.R on the table Stage 1 receives: the raw cache is
+#' built over the full window, and through patch 0118 only prepare_data()
+#' re-applied --minyear / --maxyear to it (patch 0072), so Stage 1 honoured
+#' --minyear (through run_stage1_liml()'s min_year) but never --maxyear -- a
+#' 1995-2009 run estimated sigma on data through the cache's last year.
+#' Bit-preserving for the production window (the cache's own).
+year_window <- function(dt, minyear, maxyear = NULL, col = "year") {
+  if (!col %in% names(dt)) stop("year_window(): no column ", col)
+  keep <- dt[[col]] >= minyear
+  if (!is.null(maxyear) && length(maxyear) == 1L && !is.na(maxyear)) keep <- keep & dt[[col]] <= maxyear
+  if (inherits(dt, "data.table")) dt[keep] else dt[keep, , drop = FALSE]
 }
 
 
