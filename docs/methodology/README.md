@@ -120,6 +120,14 @@ Supporting scripts in `validation/`:
   `scripts/run_estimation.R`, `analysis/master.R` and `scripts/build_readme.R`
   on a small one; on a larger one the published estimates can be compared
   with the parameters that generated the data.
+- `known_truth_stage2.R` (patch 0122) — runs the pipeline on synthetic worlds
+  (seeds × shock scales) under five arms — shipped, λ = 0, the true σ at λ
+  0.1 and 0, and empirical-Bayes σ (`R/sigma_eb.R`) — and compares the output
+  with the truth: within-cell γ, cell-level γ, the import-side composite,
+  `opt_tariff` and σ. Its readings R1–R3 are fixed in the script header.
+  `analysis/sigma_eb_period_census.R` is the real-data counterpart for the
+  EB σ: which σ built from 1995–2009 best predicts the 2010–2024 estimate,
+  and the reverse.
 
 The historical patch script `patch_tier1_tier2_verdicts.R` (applied the
 2026-05-20 verdict edits to `validate_liml.R`) is retained locally for
