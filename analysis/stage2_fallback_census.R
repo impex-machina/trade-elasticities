@@ -56,6 +56,9 @@ out <- list(
               timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"),
               stage2b = if (nzchar(s2b_path)) s2b_path else NULL, stage2b_sha256 = .sha256_file(s2b_path)),   # patch 0109
   n_cells          = nrow(fb),
+  # (patch 0118) the L-BFGS-B codes behind the restarts: 1 iteration cap, 51 warning,
+  # 52 error (typically a failed line search). The restart runs on any of them.
+  lbfgsb_codes     = { t <- table(fb$lbfgsb_convergence, useNA = "ifany"); as.list(setNames(as.integer(t), ifelse(is.na(names(t)), "NA", names(t)))) },
   n_comparable     = nrow(cmp),
   n_lbfgsb_error   = sum(!is.finite(fb$lbfgsb_value)),
   n_nm_error       = sum(!is.finite(fb$nm_value)),
@@ -84,8 +87,10 @@ eq <- out$excess_quantiles
 md <- c(
   sprintf("# Stage-2 optimizer fallback census (%s)", label), "",
   sprintf("Table: `%s` (rule%s: %s; rev %s, %s).", csv_path, if (length(out$meta$rules) > 1L) "s" else "", paste(out$meta$rules, collapse = ", "), out$meta$git_rev, out$meta$timestamp), "",
-  sprintf("- %s cells reached the L-BFGS-B cap and ran the Nelder-Mead restart (J median %s, p90 %s, max %s).",
+  sprintf("- %s cells' L-BFGS-B fits did not converge and ran the Nelder-Mead restart (J median %s, p90 %s, max %s).",
           format(out$n_cells, big.mark = ","), out$J_quantiles$p50, out$J_quantiles$p90, out$J_quantiles$p100),
+  sprintf("- L-BFGS-B codes on those cells: %s (1 the iteration cap, 51 a warning, 52 an error -- typically a failed line search; patch 0118).",
+          paste(sprintf("%s = %s", names(out$lbfgsb_codes), format(unlist(out$lbfgsb_codes), big.mark = ",")), collapse = ", ")),
   sprintf("- On the %s cells with both objectives finite, the restart's objective was higher than the discarded L-BFGS-B point on %s (%s), lower on %s, tied on %s; L-BFGS-B errored on %s, Nelder-Mead on %s.",
           format(out$n_comparable, big.mark = ","), format(out$n_nm_worse, big.mark = ","), pc(out$share_nm_worse),
           format(out$n_nm_better, big.mark = ","), format(out$n_tie, big.mark = ","), out$n_lbfgsb_error, out$n_nm_error),

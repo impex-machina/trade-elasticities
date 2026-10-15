@@ -45,6 +45,22 @@ none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
 under another cleaning rule must say which rule.
 
+**Corrections (2026-10-15, patches 0116–0118; no estimate changes).** (1) The
+v0.10.0 and v0.11.0 entries give optimizer non-convergence as 0.42%: that was the
+share of imputed reference rows (the reference exporter of a cell whose other
+exporters are all Tier 3), which the release gates counted by mistake. The
+optimizer's own figure on the v0.11.0 table is 0.72% of directly estimated rows
+(35,825 rows in 1,775 of 210,098 fitted cells;
+`docs/results/stage2b_convergence_census_v0110.md`). (2) Entries since v0.8.3 say
+the Nelder–Mead restart runs for cells that reached the iteration cap. It runs for
+every cell whose L-BFGS-B fit did not converge, and on the v0.11.0 table 93% of the
+non-converged rows were a failed line search (L-BFGS-B code 52), 7% the cap
+(code 1). (3) Every release with a full data revision is now tagged on this
+repository under its version, v0.3.0 to v0.11.0, so `revision="v0.10.2"` (or
+`resolve/v0.10.2/` in a URL) reaches that release; the repository's
+`scripts/download_outputs.R --manifest <that release's manifest> --revision <tag>`
+fetches and verifies one.
+
 > **v0.11.0 (2026-10-14).** One Stage-2 re-estimation on the v0.9.x
 > Stage-1 table (patches 0110–0114). Eq. (11)'s export side is built on log
 > export values (`--stage2-export-moment value`), the form of Soderbery's
@@ -56,7 +72,9 @@ under another cleaning rule must say which rule.
 > percentile, 56% at most). Median gamma 0.806 -> 0.804, `opt_tariff` 0.869 ->
 > 0.852; on directly estimated rows gamma moved by a median 0.007-0.010 in log
 > points (p99 0.84-1.06); published rows 6,801,807 -> 6,801,742. The fallback
-> sigma and its share (41.0%), Tier 3 (26.4%), non-convergence (0.42%) and
+> sigma and its share (41.0%), Tier 3 (26.4%), non-convergence (0.42% as
+> reported: the imputed-reference share, see Corrections; 0.72% is the
+> optimizer's) and
 > `sigma_robust` (24.2% TRUE) are unchanged. Pillar 3 is re-captured with the
 > import-side constant concentrated out, as the estimator does. `sigma_source`
 > was added after the run with `scripts/add_sigma_source.R` (the in-run labelling
@@ -126,7 +144,8 @@ under another cleaning rule must say which rule.
 > level shift is the sigma-gamma trade-off of a less pole-biased sigma, not new
 > information about gamma. Reproducibility of the shipped configuration on the
 > subsample grid: within-cell r 0.333 -> 0.369, rank 0.343 -> 0.368. Optimizer
-> non-convergence among directly estimated rows 0.42% in both releases. Gate
+> non-convergence among directly estimated rows 0.42% in both releases (the
+> imputed-reference share, not the optimizer's: see Corrections). Gate
 > (`analysis/gate_v0100.R`): PASS.
 > Data revision: `31bc1fcfc64aa4475f70ce135262b9cacdd9c257`. **v0.9.1 remains available
 > pinned at revision `134c1cbc80b5e657e45dd92e9c96c4d71155877c`.**
@@ -665,6 +684,17 @@ download.file(url, tmp, mode = "wb")
 x <- readRDS(tmp)
 head(x)
 ```
+
+`main` is the latest release. Each release is tagged here under its version
+(v0.3.0 to v0.11.0, from patch 0116's runbook; every release creates its own):
+put the tag in place of `main` (`resolve/v0.10.2/`) or pass `revision = "v0.10.2"`
+to `huggingface_hub`'s `hf_hub_download()` or `datasets.load_dataset()` to pin
+one.
+
+The validation CSVs' `good` column is an HS4 code with leading zeros (`0102`). The
+dataset viewer and `datasets` infer it as an integer (`102`), so read it as a
+string: `data.table::fread(path, colClasses = list(character = "good"))` in R,
+`pandas.read_csv(path, dtype={"good": str})` in Python.
 
 ## Citation
 

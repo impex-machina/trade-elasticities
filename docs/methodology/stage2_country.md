@@ -1619,3 +1619,77 @@ subsample is 25 goods, with no interval on the differences (c = 1 cleared its
    25% of fallback rows would move their (σ − 1) by more than 25%, the ladder goes
    to a 2% subsample Stage-2 pass (local) before any session; otherwise the global
    fallback stays and the census is recorded.
+
+### Audit #7 measurements, recorded (patch 0118)
+
+Run on the shipped v0.11.0 tables (Stage 2b sha256 `88bc67f5…`) by patch 0116/0117's
+runbook, 2026-10-14/15; readings under the rules fixed in patch 0117.
+
+**Optimizer convergence** (`docs/results/stage2b_convergence_census_v0110.md`). Of
+4,982,259 directly estimated rows, 35,825 (0.72%) carry a non-zero optimizer code, in
+1,775 of 210,098 fitted cells; `gamma_se_status == "non_converged"` equals the code
+count. The codes are 52 on 33,428 rows (93%) and 1 on 2,397 (7%): the restart runs
+for every L-BFGS-B fit that did not converge (`result_lb$convergence != 0`), and on
+this table the binding cause is a failed L-BFGS-B line search, not the 5,000-iteration
+cap. The README since v0.8.3, the fallback census's wording and the card said "reached
+the cap"; patch 0118 corrects all three, and `analysis/stage2_fallback_census.R` now
+tabulates the codes. The v0.11.0 fallback census implied 1,928 non-converged cells
+(1,868 L-BFGS-B points + 60 restarts that did not converge); the census finds 1,775
+among published rows, and the 0118 version also counts cells whose non-converged rows
+the tail trim flagged. Imputed reference rows: 20,895, 0.42% of tier < 3 rows — the
+gates' former figure; Tier 3 26.44%. The 1/γ² stiffness of the log ridge (curvature
+spanning orders of magnitude within a cell) is the likely source of the line-search
+failures; a log-space parameterisation (θ = ln γ, constant ridge curvature 2λ) is the
+structural fix if 0.72% ever matters.
+
+**Clean-set cells the pole rule cannot assess** (A3;
+`docs/results/pole_na_se_census_v0110.md`). 413 cells, all constrained boundary optima
+(ω cap 270, ω floor 143) whose projected edge SE failed (negative variance 374,
+singular curvature 39; 22 `boundary_corner`). Their σ: median 2.36, p10 1.01; 70
+below 1.2, 125 below 1.5. With their route's median relative SE the rule would drop
+72. They carry 2,855 published rows (0.04%), `sigma_robust` FALSE on all. Recorded;
+no rule change on its own.
+
+**The σ-pole rule at known truth** (M1; `docs/results/pole_rule_accuracy.md`;
+reproduced on MC's machine to the printed digit). Median tariff error, no rule /
+shipped rule / good-level fallback: σ 1.2 0.034 / 0.059 / 0.035; 1.5 0.034 / 0.041 /
+0.018; 2 0.038 / 0.030 / 0.009; 3 0.070 / 0.054 / 0.048; 5 0.343 / 0.402 / 0.184;
+8 1.916 / 2.284 / 1.067. Rule drops among usable fits: 59.9 / 41.3 / 31.9 / 24.0 /
+21.7 / 27.5%. Readings: **R1 triggered** (σ 1.2: +0.025 > 0.02 — the global fallback
+makes genuinely low-σ cells worse than their estimate); **R2 triggered** (21.7–27.5%
+of usable fits dropped at σ ≥ 3, 53–64% where ω = 3 — the rule acts on large standard
+errors, not proximity to 1); **R3: no accuracy case** (mean of the per-σ medians 0.478
+with the rule, 0.406 without; also without σ = 8, 0.117 vs 0.104, and without σ ≥ 5,
+0.046 vs 0.044); **R4: a good-level fallback dominates in the model** (≥ 0.01 better
+at 1.5, 2, 5, 8; never ≥ 0.01 worse). The magnitudes at σ ≥ 5 partly reflect how
+weakly ω is identified there (at σ = 8, ω = 0.3, understating σ by 9% moves ω* from
+0.30 to 0.05; the floor 1e-4 scales the worst errors). Decision: the rule stays — its
+measured benefit is stability, which R3 records as its only benefit — because neither
+alternative dominates (no rule is better at σ = 1.2, 5, 8 and worse at 2, 3) and the
+good-level fallback fails in the data (below).
+
+**A product-level σ fallback, sized** (M2;
+`docs/results/sigma_fallback_hierarchy_census_v0110.md`). Over 113,706 clean cells
+the good explains 5.7% of the variance of ln(σ − 1) and region × good 23.3% in
+sample; good-level medians run p10 2.01 to p90 3.12 around the global 2.47. Leave one
+out, the median error predicting an estimated cell's σ is 0.693 from the global
+median, 0.674 from its good's median and 0.699 from the ladder region × good → good →
+global: the in-sample region × good share is mostly the fit of small groups (a handful
+of cells each) to noise. The ladder would move (σ − 1) by more than 25% on 56% of the
+fallback rows (1,551,063 of 2,785,416). **Reading rule: not met** (the ladder's error
+is not 20% below the global median's) — **the global fallback stays.** The M1 model's
+good-level advantage rests on every cell of a good sharing one σ, which the data do
+not show. Consequence, for the README and the paper: on the 41% of rows that take the
+fallback, σ carries no cell or product information, so their γ and `opt_tariff` are
+conditional on an assumed σ (v0.10.0 showed how far `opt_tariff` moves with it).
+
+**Intervals for the subsample decisions** (`analysis/stage2_reliability.R
+--boot-goods`): the half-run manifests are re-scored by patch 0118's runbook into
+`docs/results/stage2_reliability_goodsboot_*.md`; read under 0117's rule (an interval
+covering 0 records the decision as within the subsample's noise; no default changes
+on that alone).
+
+**Hub tags.** 19 releases (v0.3.0–v0.11.0) are tagged on the dataset repository; each
+resolves to its card revision (checked with `dataset_info(revision=tag).sha`). The
+refs listing reports an annotated tag's own object (v0.11.0: `2dc57000…`), not the
+commit, so verify tags by resolution (box template updated).

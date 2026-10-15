@@ -122,3 +122,6 @@ __pycache__/
 # (records and checkpoints of the synthetic fixture; patch 0101)
 # ============================================================================
 tests/testthat/baci_elast_*
+
+# testthat writes this when a test fails (patch 0118: one slipped into a commit)
+tests/testthat/testthat-problems.rds

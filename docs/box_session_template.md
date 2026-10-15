@@ -58,6 +58,9 @@ the release tag (`Rscript scripts/pin_manifest_revision.R --revision vX.Y.Z`; pa
 `hf_upload_release.py` (Gate 0 refuses a second upload for a released card entry),
 then create the hub tag on the uploaded commit before pushing
 (`HfApi().create_tag("impex-machina/trade-elasticities", tag="vX.Y.Z", revision="<oid>", repo_type="dataset")`
-— the pinned manifest's URLs resolve only once it exists), then the card's revision
-and hub sync.
+— the pinned manifest's URLs resolve only once it exists) and verify it by
+resolution, `HfApi().dataset_info("impex-machina/trade-elasticities", revision="vX.Y.Z").sha`
+equal to the uploaded commit: the refs listing of an annotated tag (one created
+with a message) reports the tag object, not the commit (patch 0118), then the
+card's revision and hub sync.
 Every PowerShell block wrapped in `& { … }` so a `throw` ends it.

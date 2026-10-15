@@ -5,7 +5,7 @@
 # The optimizer's own convergence record of a Stage-2 table, kept apart from
 # the imputed rows. The cell estimator writes optim()'s code on every row of a
 # fitted cell (0 converged; 1 iteration cap; 10 Nelder-Mead degeneracy; 51 / 52
-# L-BFGS-B warning / error) and -1 only on imputed rows -- Tier 3, and the
+# L-BFGS-B warning / error -- 52 is typically a failed line search) and -1 only on imputed rows -- Tier 3, and the
 # reference row of a cell whose non-reference exporters are all Tier 3.
 # Through patch 0115 the release gates read convergence -1 among tier < 3 rows
 # as "optimizer non-convergence"; that is the share of the imputed reference
@@ -49,6 +49,9 @@ pub[, nc := est & !(convergence %in% 0L)]
 by_tier <- pub[!is.na(tier) & tier < 3L, .(rows = .N, estimated = sum(est), non_converged = sum(nc),
                                            imputed = sum(convergence %in% -1L)), by = tier][order(tier)]
 st_check <- if (is.na(cc$n_status_non_converged)) NA else identical(as.integer(cc$n_status_non_converged), as.integer(cc$n_nonconverged))
+# (patch 0118) cells whose non-converged directly estimated rows were all flagged by the tail trim
+allr <- copy(s2b); allr[, est := is_estimated_row(tier, convergence)]
+nc_cells_all <- uniqueN(allr[est & !(convergence %in% 0L), paste(importer, good, sep = "\r")])
 
 out <- list(
   meta = list(stage2b = s2b_path, stage2b_sha256 = .sha256_file(s2b_path), label = label,
@@ -57,7 +60,8 @@ out <- list(
               timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z")),
   census = cc,
   by_tier = by_tier,
-  status_matches_codes = st_check
+  status_matches_codes = st_check,
+  n_cells_nonconverged_incl_flagged = nc_cells_all
 )
 dir.create(dirname(out_json), showWarnings = FALSE, recursive = TRUE)
 dir.create(dirname(out_md), showWarnings = FALSE, recursive = TRUE)
@@ -70,9 +74,10 @@ md <- c(sprintf("# Stage-2b optimizer convergence census (%s)", label), "",
         sprintf("Table `%s` (sha256 %s...; rev %s, %s). Published rows only.", s2b_path, substr(out$meta$stage2b_sha256, 1, 16),
                 out$meta$git_rev, out$meta$timestamp), "",
         sprintf("- Directly estimated rows (tier 0-2, fitted): %s of %s published rows.", fi(cc$n_estimated), fi(cc$n_rows)),
-        sprintf("- **Optimizer non-convergence**: %s rows (%s of directly estimated rows) in %s of %s fitted cells -- the cells whose published point is not a converged optimum (iteration cap, or a Nelder-Mead restart that did not converge).",
+        sprintf("- **Optimizer non-convergence**: %s rows (%s of directly estimated rows) in %s of %s fitted cells -- the cells whose published point is not a converged optimum: L-BFGS-B stopped without converging (code 52, typically a failed line search, or 1, the iteration cap) and the Nelder-Mead restart did no better or was published without converging.",
                 fi(cc$n_nonconverged), pc(cc$n_nonconverged, cc$n_estimated), fi(cc$n_cells_nonconverged), fi(cc$n_cells_estimated)),
-        sprintf("- Codes among directly estimated rows: %s.", paste(sprintf("%s = %s", names(codes), fi(unlist(codes))), collapse = ", ")),
+        sprintf("- Codes among directly estimated rows: %s (0 converged; 1 iteration cap; 10 Nelder-Mead degeneracy; 51 L-BFGS-B warning; 52 L-BFGS-B error, typically a failed line search).", paste(sprintf("%s = %s", names(codes), fi(unlist(codes))), collapse = ", ")),
+        sprintf("- Counting the rows the tail trim flagged too: %s cells with a non-converged directly estimated row (%s whose non-converged rows were all flagged).", fi(nc_cells_all), fi(nc_cells_all - cc$n_cells_nonconverged)),
         sprintf("- `gamma_se_status == \"non_converged\"` on directly estimated rows: %s (%s the code count).",
                 if (is.na(cc$n_status_non_converged)) "column absent" else fi(cc$n_status_non_converged),
                 if (isTRUE(st_check)) "equal to" else if (is.na(st_check)) "not compared with" else "DIFFERENT from"),

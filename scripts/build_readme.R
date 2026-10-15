@@ -249,13 +249,45 @@ headline_sigma_note <- function(s2b) {
           format_pct(req(sp, "n_fallback"), req(sp, "denominator")))
 }
 # A7: the optimizer's own non-convergence, from analysis/stage2b_convergence_census.R
-# (empty until a census is committed).
+# (empty until a census is committed). (patch 0118) The Nelder-Mead restart runs
+# for EVERY cell whose L-BFGS-B fit did not converge, not only at the iteration
+# cap: on the v0.11.0 table 93% of the non-converged rows carry code 52 (a failed
+# line search) and 7% code 1 (the cap). The 0116 wording said "at the iteration
+# cap"; the split is now read from the census.
 convergence_clause <- function(p) {
   if (is.null(p)) return("")
   cc <- req(p$data, "census")
-  sprintf(" The cell optimizer did not converge on %s of directly estimated rows (%s of %s fitted cells%s): those cells publish the better of the L-BFGS-B point at the iteration cap and the Nelder\u2013Mead restart, with `gamma_se_status` `non_converged` and no SE (`docs/results/%s.md`).",
-          format_pct(req(cc, "n_nonconverged"), req(cc, "n_estimated")), format_int(req(cc, "n_cells_nonconverged")),
-          format_int(req(cc, "n_cells_estimated")), stale_note(p, "; ", ""), p$key)
+  codes <- cc[["codes_estimated"]]
+  cnt <- function(k) if (is.null(codes[[k]])) 0 else as.numeric(codes[[k]])
+  nn <- as.numeric(req(cc, "n_nonconverged"))
+  split <- if (nn > 0 && cnt("52") + cnt("1") > 0)
+    sprintf("; a failed L-BFGS-B line search on %s of those rows, the iteration cap on %s", format_pct(cnt("52"), nn), format_pct(cnt("1"), nn)) else ""
+  sprintf(" The cell optimizer did not converge on %s of directly estimated rows (%s of %s fitted cells%s%s): those cells publish the better of the L-BFGS-B point and the Nelder\u2013Mead restart, with `gamma_se_status` `non_converged` and no SE (`docs/results/%s.md`).",
+          format_pct(nn, req(cc, "n_estimated")), format_int(req(cc, "n_cells_nonconverged")),
+          format_int(req(cc, "n_cells_estimated")), split, stale_note(p, "; ", ""), p$key)
+}
+# (patch 0118) M1 recorded: the sigma-pole rule at known truth
+# (validation/pole_rule_accuracy.R -> results/pole_rule_accuracy.json; synthetic,
+# so no table hash). Empty until the JSON is committed.
+pole_accuracy_clause <- function(pa) {
+  if (is.null(pa) || is.null(pa[["by_sigma"]])) return("")
+  bs <- pa[["by_sigma"]]
+  g <- function(k) vapply(bs, function(x) as.numeric(x[[k]]), 0)
+  s <- g("sigma_true"); e1 <- g("tariff_err_P1"); e2 <- g("tariff_err_P2"); dr <- g("pole_drop_share_of_usable")
+  fmt <- function(v) if (length(v)) paste(as.character(v), collapse = ", ") else "none"   # per value: format() pads 8 to 8.0 beside 1.2
+  hi <- s >= 3
+  sprintf(" At known truth the rule does not make the tariff its \u03c3 implies more accurate (patch 0117: Pillar 2's simulator at \u03c3 = %s): the median tariff error is higher with the rule at \u03c3 = %s and lower at \u03c3 = %s, and at \u03c3 \u2265 3 the rule drops %s\u2013%s of usable fits \u2014 cells far from the pole whose standard errors are large. Its measured benefit is the stability above (`docs/results/pole_rule_accuracy.md`).",
+          fmt(s), fmt(s[e2 > e1]), fmt(s[e2 < e1]),
+          if (any(hi)) format_prop_pct(min(dr[hi])) else "NA", if (any(hi)) format_prop_pct(max(dr[hi])) else "NA")
+}
+# (patch 0118) M2 recorded: a product-level sigma fallback, sized
+# (analysis/sigma_fallback_hierarchy_census.R). Empty until the census is committed.
+fallback_hierarchy_clause <- function(p) {
+  if (is.null(p)) return("")
+  cc <- req(p$data, "census"); lo <- req(cc, "loo")
+  sprintf(" One global value is kept because the product does not predict \u03c3: across the cells with an estimate the good explains %s of the variance of ln(\u03c3 \u2212 1), and a fallback built from good and region \u00d7 good medians predicts held-out estimates no better than the global median (median error %s against %s%s; `docs/results/%s.md`).",
+          format_prop_pct(req(cc, "r2_good")), format_num(req(lo, "err_ladder")), format_num(req(lo, "err_global")),
+          stale_note(p, "; ", ""), p$key)
 }
 # M4: Pillar 2's sigma coverage, the grid points below 80% and the grid's floor.
 pillar2_coverage_clause <- function(p2) {
@@ -397,8 +429,13 @@ fallback_clause <- function(p) {
   pc <- function(x) sprintf("%.0f%%", 100 * x)
   where <- if (isTRUE(p$fresh)) "On the shipped table" else
     sprintf("On the %s table (the census has not been re-run on the shipped table)", p$vintage)
-  sprintf(" %s %s cells reached that cap; the restart's objective was higher than the discarded point on %s of them (%s), and it had reported convergence on %s, rows that v0.8.2 labelled `ok` at a stalled point (`docs/results/%s.md`).",
-          where, format_int(fc[["n_cells"]] + 0L), format_int(fc[["n_nm_worse"]] + 0L), pc(fc[["share_nm_worse"]]),
+  # (patch 0118) "reached that cap" -> "did not converge": the restart runs for every
+  # cell whose L-BFGS-B fit did not converge, mostly a failed line search (code 52).
+  codes <- fc[["lbfgsb_codes"]]
+  cs <- if (is.null(codes)) "" else sprintf(" (code 52, a failed line search, on %s; code 1, the iteration cap, on %s)",
+                                            format_int(.nz(codes[["52"]], 0) + 0L), format_int(.nz(codes[["1"]], 0) + 0L))
+  sprintf(" %s the L-BFGS-B fit did not converge on %s cells%s and the restart ran; its objective was higher than the discarded point on %s of them (%s), and it had reported convergence on %s, rows that v0.8.2 labelled `ok` at a stalled point (`docs/results/%s.md`).",
+          where, format_int(fc[["n_cells"]] + 0L), cs, format_int(fc[["n_nm_worse"]] + 0L), pc(fc[["share_nm_worse"]]),
           format_int(fc[["n_nm_converged"]] + 0L), p$key)
 }
 
@@ -483,6 +520,9 @@ render_env$headline_sigma_note <- headline_sigma_note           # patch 0116
 render_env$convergence_clause <- convergence_clause             # patch 0116
 render_env$pillar2_coverage_clause <- pillar2_coverage_clause   # patch 0116
 render_env$CONV <- pick_census_opt("stage2b_convergence_census")   # patch 0116: NULL until committed
+render_env$pole_accuracy_clause <- pole_accuracy_clause           # patch 0118
+render_env$fallback_hierarchy_clause <- fallback_hierarchy_clause # patch 0118
+render_env$HIER <- pick_census_opt("sigma_fallback_hierarchy_census")   # patch 0118: NULL until committed
 
 rendered <- tryCatch(
   glue::glue(template_text,
