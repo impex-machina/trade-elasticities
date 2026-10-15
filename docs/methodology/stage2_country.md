@@ -1547,3 +1547,75 @@ supply shocks for the same exporter" -- a pure supply-shock error, which is what
 the value form delivers and the share form does not. His footnote 11 notes that
 both sets of shares can be built from one reported flow "using the totality of
 world trade", which is BACI's case.
+
+### Audit #7: what the release gates called non-convergence, and three measurements fixed before their numbers (patches 0116, 0117)
+
+**The gates' non-convergence (patch 0116).** The cell estimator writes optim()'s
+own code on every row of a fit that did not converge (1 at the 5,000-iteration
+cap; 10, 51, 52) and -1 only on imputed rows: Tier-3 rows, and the reference row
+of a cell whose other exporters are all Tier 3. `analysis/gate_v0100.R` (patch
+0102) and `analysis/gate_release.R` (patch 0104) counted -1 among tier < 3 rows as
+optimizer non-convergence, which is the share of those imputed reference rows:
+the "0.42% in both releases" of the v0.10.0 record above and of the v0.11.0 run is
+that share (with the shipped 1,819,483 `tier3_prior` rows it implies Tier 3 at
+26.44%, the card's 26.4%), and the gates' H3 could not fail on a real rise in
+non-convergence. `stage2_convergence_census()` (`R/utils_general.R`) is now the
+one definition; the gates report the two shares apart, and
+`analysis/stage2b_convergence_census.R` records the optimizer's figure for the
+shipped table. The v0.11.0 fallback census implies 1,928 cells published a point
+that is not a converged optimum (1,868 L-BFGS-B points at the cap, 60 Nelder–Mead
+restarts without convergence); the census gives their row share.
+
+**Why the next three measurements are not split-half reliability.** Every
+decision since v0.8.0 was taken on the split-half reproducibility of the
+within-cell γ on the 2% subsample. The halves share the full-panel σ (Stage 1),
+the Stage-2a priors and the γ_V lookups. A rule that replaces a noisy shared σ by
+one constant raises the agreement of the halves whether or not it brings σ closer
+to the truth: on the σ-pole grid above, r_within rose monotonically with the share
+of rows at the fallback (0.333 → 0.355 → 0.365 → 0.368 → 0.372 as that share went
+11.8% → 64.7%) while the within-cell sd fell (0.826 → 0.532). The metric measures
+stability; questions about σ need truth or out-of-sample prediction. And the
+subsample is 25 goods, with no interval on the differences (c = 1 cleared its
++0.03 bar by 0.002). Patch 0117 adds:
+
+1. **The σ-pole rule at known truth** (`validation/pole_rule_accuracy.R`). Pillar
+   2's simulator (J = 25, T = 30) at σ ∈ {1.2, 1.5, 2, 3, 5, 8} × ω ∈ {0.3, 1, 3},
+   200 cells per point, the shipped Stage-1 estimator at cap 50. The cells of a
+   grid point share one σ — they are one good's cells. Policies for the σ Stage 2
+   uses: P0 the truth; P1 no pole rule (the estimate if usable, else the global
+   fallback 2.4728); P2 the shipped rule; P3 the rule with a good-level fallback
+   (the median kept estimate of the point). Consequence: in this homogeneous model
+   the optimal tariff is ω; ω*(σ) fits the cell's population moments at the σ used
+   (exactly the true ω at the true σ), so a policy's tariff error is the
+   compensating ω a wrong σ forces. No Stage-2 shrinkage: in the pipeline the
+   prior absorbs part of a cell's response and moves through Stage 2a instead.
+   **Reading rules** (fixed in this patch; a 40-replicate debugging trial of the
+   harness was seen before they were written):
+   - R1, low σ: at σ ∈ {1.2, 1.5}, if P2's median tariff error exceeds P1's by more
+     than 0.02 log points at either, the global fallback makes genuinely low-σ
+     cells worse than their noisy estimate.
+   - R2, collateral drops: if the rule drops more than 10% of usable fits at any
+     σ ≥ 3, it acts on large standard errors rather than proximity to the pole,
+     and replaces σ's above the fallback by a value below them.
+   - R3, net: if the mean over σ values of P2's per-σ median tariff error is not
+     at least 0.01 below P1's, the rule has no accuracy case in this model and its
+     measured benefit is stability alone.
+   - R4, M2 preview: if P3 is at least 0.01 below min(P1, P2) at four or more of
+     the six σ values and never more than 0.01 above, a good-level fallback
+     dominates in this model; the census below decides whether the data's
+     within-good dispersion leaves room for it.
+2. **Intervals for the subsample decisions** (`analysis/stage2_reliability.R
+   --boot-goods B --base CONFIG`): a bootstrap over the 25 goods, from the
+   existing half-run tables, no re-estimation. Reading: a past decision whose
+   difference interval covers 0 is recorded as within the subsample's noise; no
+   default changes on that alone.
+3. **A hierarchical σ fallback, sized** (`analysis/sigma_fallback_hierarchy_census.R`,
+   the shipped tables, seconds): the share of the variance of ln(σ − 1) across
+   clean cells the good and region × good explain; a leave-one-out prediction of
+   each estimated cell's σ from the global median against the ladder region ×
+   good → good → global (a level used with ≥ 3 other clean cells); and how far
+   the ladder would move the fallback cells. **Reading rule:** if the ladder's
+   leave-one-out error is at least 20% below the global median's **and** at least
+   25% of fallback rows would move their (σ − 1) by more than 25%, the ladder goes
+   to a 2% subsample Stage-2 pass (local) before any session; otherwise the global
+   fallback stays and the census is recorded.
