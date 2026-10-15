@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "early": "C:\\Users\\maxxj\\te_m3\\w0_1995_2009\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "late": "C:\\Users\\maxxj\\te_m3\\w1_2010_2024\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "full": "data/derived/stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "label": "v0110",
+    "git_rev": "312a437",
+    "timestamp": "2026-10-14 23:18:12 EDT"
+  },
+  "goods": 25,
+  "yield": {
+    "early": {
+      "cells": 5481,
+      "converged": 3453,
+      "clean": 2207,
+      "clean_share": 0.40266375
+    },
+    "late": {
+      "cells": 5564,
+      "converged": 3755,
+      "clean": 2401,
+      "clean_share": 0.43152408
+    },
+    "full": {
+      "cells": 5721,
+      "converged": 4029,
+      "clean": 2562,
+      "clean_share": 0.44782381
+    }
+  },
+  "early_vs_late": {
+    "cells": 1282,
+    "cells_with_se": 1273,
+    "share_z": {
+      "se_x1": 0.29929301,
+      "se_x1.5": 0.16653574
+    },
+    "rho": 0.05018909,
+    "median_abs_change": 0.96895909,
+    "median_signed_change": 0.00127784,
+    "share_change_gt_x2": 0.62558502
+  },
+  "full_vs_late": {
+    "cells": 1696,
+    "cells_with_se": 1673,
+    "share_z": {
+      "se_x1": 0.16198446,
+      "se_x1.5": 0.08069337
+    },
+    "rho": 0.54593733,
+    "median_abs_change": 0.41856362,
+    "median_signed_change": 0,
+    "share_change_gt_x2": 0.34316038
+  },
+  "full_clean_lost_late": 866,
+  "global_fallback_full": 2.4781335,
+  "global_fallback_late": 2.54031335
+}
