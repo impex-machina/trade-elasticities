@@ -1,0 +1,103 @@
+{
+  "full": [],
+  "split": [
+    {
+      "config": "base",
+      "n_keys": 85274,
+      "n_cells": 4033,
+      "r_within": 0.33295488,
+      "rho_rank": 0.34256213,
+      "r_raw": 0.47330427,
+      "sd_within_a": 0.82607607,
+      "sd_within_b": 0.83790362
+    },
+    {
+      "config": "raw",
+      "n_keys": 85323,
+      "n_cells": 4029,
+      "r_within": 0.30258415,
+      "rho_rank": 0.31975368,
+      "r_raw": 0.44968888,
+      "sd_within_a": 0.7208622,
+      "sd_within_b": 0.72621664
+    },
+    {
+      "config": "bwsum",
+      "n_keys": 85382,
+      "n_cells": 4037,
+      "r_within": 0.3143834,
+      "rho_rank": 0.33794169,
+      "r_raw": 0.41575047,
+      "sd_within_a": 1.14636617,
+      "sd_within_b": 1.15555704
+    },
+    {
+      "config": "both",
+      "n_keys": 85338,
+      "n_cells": 4032,
+      "r_within": 0.30707127,
+      "rho_rank": 0.31942461,
+      "r_raw": 0.43929051,
+      "sd_within_a": 0.83567485,
+      "sd_within_b": 0.84783617
+    }
+  ],
+  "boot": {
+    "B": 2000,
+    "seed": 20261015,
+    "base": "base",
+    "n_goods": 25,
+    "table": [
+      {
+        "config": "base",
+        "n_goods": 25,
+        "r_within": 0.33295488,
+        "r_lo": 0.31193558,
+        "r_hi": 0.35280704,
+        "base": null,
+        "delta": null,
+        "delta_lo": null,
+        "delta_hi": null,
+        "share_delta_le_0": null
+      },
+      {
+        "config": "raw",
+        "n_goods": 25,
+        "r_within": 0.30258415,
+        "r_lo": 0.27126824,
+        "r_hi": 0.33259492,
+        "base": "base",
+        "delta": -0.03037073,
+        "delta_lo": -0.04947898,
+        "delta_hi": -0.00985956,
+        "share_delta_le_0": 0.998
+      },
+      {
+        "config": "bwsum",
+        "n_goods": 25,
+        "r_within": 0.3143834,
+        "r_lo": 0.28982659,
+        "r_hi": 0.33517811,
+        "base": "base",
+        "delta": -0.01857148,
+        "delta_lo": -0.02985379,
+        "delta_hi": -0.00757748,
+        "share_delta_le_0": 0.9995
+      },
+      {
+        "config": "both",
+        "n_goods": 25,
+        "r_within": 0.30707127,
+        "r_lo": 0.27599375,
+        "r_hi": 0.33644143,
+        "base": "base",
+        "delta": -0.02588361,
+        "delta_lo": -0.04432971,
+        "delta_hi": -0.00736263,
+        "share_delta_le_0": 0.997
+      }
+    ]
+  },
+  "generated": "2026-10-14 21:57:26 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\RtmpeMB3eU\\file8aac6e3936ab.csv"
+}

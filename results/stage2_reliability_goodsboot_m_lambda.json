@@ -1,0 +1,81 @@
+{
+  "full": [],
+  "split": [
+    {
+      "config": "lam010_base",
+      "n_keys": 85113,
+      "n_cells": 4021,
+      "r_within": 0.36910823,
+      "rho_rank": 0.36830092,
+      "r_raw": 0.54296398,
+      "sd_within_a": 0.63852659,
+      "sd_within_b": 0.64444287
+    },
+    {
+      "config": "lam003",
+      "n_keys": 85093,
+      "n_cells": 4014,
+      "r_within": 0.36207022,
+      "rho_rank": 0.35951682,
+      "r_raw": 0.48370635,
+      "sd_within_a": 0.88241734,
+      "sd_within_b": 0.89165344
+    },
+    {
+      "config": "lam030",
+      "n_keys": 85135,
+      "n_cells": 4027,
+      "r_within": 0.36758671,
+      "rho_rank": 0.37504565,
+      "r_raw": 0.6205131,
+      "sd_within_a": 0.45629997,
+      "sd_within_b": 0.45724601
+    }
+  ],
+  "boot": {
+    "B": 2000,
+    "seed": 20261015,
+    "base": "lam010_base",
+    "n_goods": 25,
+    "table": [
+      {
+        "config": "lam010_base",
+        "n_goods": 25,
+        "r_within": 0.36910823,
+        "r_lo": 0.34255689,
+        "r_hi": 0.39056097,
+        "base": null,
+        "delta": null,
+        "delta_lo": null,
+        "delta_hi": null,
+        "share_delta_le_0": null
+      },
+      {
+        "config": "lam003",
+        "n_goods": 25,
+        "r_within": 0.36207022,
+        "r_lo": 0.33761214,
+        "r_hi": 0.38189093,
+        "base": "lam010_base",
+        "delta": -0.00703801,
+        "delta_lo": -0.01347063,
+        "delta_hi": -0.00176282,
+        "share_delta_le_0": 0.9945
+      },
+      {
+        "config": "lam030",
+        "n_goods": 25,
+        "r_within": 0.36758671,
+        "r_lo": 0.34075139,
+        "r_hi": 0.38886435,
+        "base": "lam010_base",
+        "delta": -0.00152152,
+        "delta_lo": -0.00478002,
+        "delta_hi": 0.00210816,
+        "share_delta_le_0": 0.81
+      }
+    ]
+  },
+  "generated": "2026-10-14 21:57:50 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\RtmpeMB3eU\\file8aac32946aca.csv"
+}

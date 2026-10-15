@@ -3,12 +3,16 @@
     "csv": "C:\\Users\\maxxj\\te_runs\\v0110rel_run_20261014\\out_I\\baci_hs92_v202601_elast_country_hs4_stage2_fallbacks_pass3.csv",
     "label": "universe",
     "rules": "best",
-    "git_rev": "28ce6cf",
-    "timestamp": "2026-10-14 16:49:47 EDT",
-    "stage2b": "data\\derived\\stage2b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "git_rev": "ed066cb",
+    "timestamp": "2026-10-14 21:56:59 EDT",
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
     "stage2b_sha256": "88bc67f5be0dcc3504a1365bf85a48b4195c02ef362200c3162fd5c02681e72b"
   },
   "n_cells": 2370,
+  "lbfgsb_codes": {
+    "1": 7,
+    "52": 2363
+  },
   "n_comparable": 2370,
   "n_lbfgsb_error": 0,
   "n_nm_error": 0,

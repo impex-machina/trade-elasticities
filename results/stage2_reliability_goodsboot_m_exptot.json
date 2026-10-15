@@ -1,0 +1,59 @@
+{
+  "full": [],
+  "split": [
+    {
+      "config": "base",
+      "n_keys": 85111,
+      "n_cells": 4021,
+      "r_within": 0.36781071,
+      "rho_rank": 0.36774939,
+      "r_raw": 0.54162971,
+      "sd_within_a": 0.63803591,
+      "sd_within_b": 0.64358001
+    },
+    {
+      "config": "exptot_all",
+      "n_keys": 85114,
+      "n_cells": 4022,
+      "r_within": 0.36739523,
+      "rho_rank": 0.3681307,
+      "r_raw": 0.54166899,
+      "sd_within_a": 0.63823913,
+      "sd_within_b": 0.64331419
+    }
+  ],
+  "boot": {
+    "B": 2000,
+    "seed": 20261015,
+    "base": "base",
+    "n_goods": 25,
+    "table": [
+      {
+        "config": "base",
+        "n_goods": 25,
+        "r_within": 0.36781071,
+        "r_lo": 0.34038172,
+        "r_hi": 0.38974128,
+        "base": null,
+        "delta": null,
+        "delta_lo": null,
+        "delta_hi": null,
+        "share_delta_le_0": null
+      },
+      {
+        "config": "exptot_all",
+        "n_goods": 25,
+        "r_within": 0.36739523,
+        "r_lo": 0.34144441,
+        "r_hi": 0.38870654,
+        "base": "base",
+        "delta": -0.00041549,
+        "delta_lo": -0.00344633,
+        "delta_hi": 0.00266982,
+        "share_delta_le_0": 0.599
+      }
+    ]
+  },
+  "generated": "2026-10-14 21:57:36 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\RtmpeMB3eU\\file8aac757925e6.csv"
+}

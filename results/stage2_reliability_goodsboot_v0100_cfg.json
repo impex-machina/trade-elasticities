@@ -1,0 +1,81 @@
+{
+  "full": [],
+  "split": [
+    {
+      "config": "base",
+      "n_keys": 85274,
+      "n_cells": 4033,
+      "r_within": 0.33295488,
+      "rho_rank": 0.34256213,
+      "r_raw": 0.47330427,
+      "sd_within_a": 0.82607607,
+      "sd_within_b": 0.83790362
+    },
+    {
+      "config": "pole1_old2a",
+      "n_keys": 85124,
+      "n_cells": 4020,
+      "r_within": 0.36490096,
+      "rho_rank": 0.36361266,
+      "r_raw": 0.50656821,
+      "sd_within_a": 0.62121218,
+      "sd_within_b": 0.62574116
+    },
+    {
+      "config": "v0100_cfg",
+      "n_keys": 85113,
+      "n_cells": 4021,
+      "r_within": 0.36910823,
+      "rho_rank": 0.36830092,
+      "r_raw": 0.54296398,
+      "sd_within_a": 0.63852659,
+      "sd_within_b": 0.64444287
+    }
+  ],
+  "boot": {
+    "B": 2000,
+    "seed": 20261015,
+    "base": "base",
+    "n_goods": 25,
+    "table": [
+      {
+        "config": "base",
+        "n_goods": 25,
+        "r_within": 0.33295488,
+        "r_lo": 0.31193558,
+        "r_hi": 0.35280704,
+        "base": null,
+        "delta": null,
+        "delta_lo": null,
+        "delta_hi": null,
+        "share_delta_le_0": null
+      },
+      {
+        "config": "pole1_old2a",
+        "n_goods": 25,
+        "r_within": 0.36490096,
+        "r_lo": 0.33751441,
+        "r_hi": 0.3871515,
+        "base": "base",
+        "delta": 0.03194607,
+        "delta_lo": 0.00903542,
+        "delta_hi": 0.05696515,
+        "share_delta_le_0": 0.0005
+      },
+      {
+        "config": "v0100_cfg",
+        "n_goods": 25,
+        "r_within": 0.36910823,
+        "r_lo": 0.34255689,
+        "r_hi": 0.39056097,
+        "base": "base",
+        "delta": 0.03615334,
+        "delta_lo": 0.01371757,
+        "delta_hi": 0.06163408,
+        "share_delta_le_0": 0.0005
+      }
+    ]
+  },
+  "generated": "2026-10-14 21:57:56 EDT",
+  "runs": "C:\\Users\\maxxj\\AppData\\Local\\Temp\\RtmpeMB3eU\\file8aac2fec5e27.csv"
+}
