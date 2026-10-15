@@ -16,8 +16,12 @@ The combined contents are the paper's evidence base. Three pillars:
    each layer's pins is `docs/hf_dataset_card.md`.
 2. **Synthetic recovery** — Tier 1+2 of `validate_liml.R` confirming
    HLIML's behavior on known data-generating processes
-3. **SE calibration** — Monte Carlo validation of penalized Gauss-Newton
-   standard errors across the four (homoskedasticity × shrinkage) regimes
+3. **SE calibration** — Monte Carlo validation of the Stage-2 `gamma_se`
+   formula: since v0.7.4 the sandwich with the ridge in λ/γ² units
+   (`pen_sandwich`), against three comparison forms, across five regimes
+   (homoskedastic / heteroskedastic × λ, plus a production-shrinkage regime);
+   the Stage-1 σ SEs are benchmarked separately by the exporter-cluster
+   bootstrap (`bootstrap_se_summary.csv`, dated `bootstrap_se_cells_*.csv`)
 
 ## Methodology layer
 
@@ -27,6 +31,17 @@ The combined contents are the paper's evidence base. Three pillars:
   universe), the constrained-optimum replacement, and its consequences for
   σ, ω, γ and inference (v0.7.1 edge SEs). Written as a paper section; the
   ledger entry is A8 in `stata_port_deviations.md`.
+- `eq11_sign_correction.md` — why the x5/x6 coefficients of Soderbery's
+  Eq. (11) as printed are sign-flipped against his own Eqs. (8)–(9), and the
+  harness test that guards the corrected form.
+- `sample_rule_decision.md` — the Stage-1 sample rule (the |Δ ln p| trim
+  tested inside the Feenstra stage and not shipped): the A/B, the threshold
+  curve and the decision.
+- `v071_edge_se.md` — standard errors for constrained boundary optima (the
+  HNCS sandwich projected onto the edge) and their calibration.
+- `stata_port_deviations.md` — the ledger of every deliberate departure from
+  the Grant & Soderbery Stata code.
+- `validation_section_draft.md` — the draft validation section of the paper.
 
 These documents describe the pipeline's structure and the choices in it.
 They were re-homed from the pre-refactor working directory during the
@@ -76,10 +91,12 @@ The non-PDF artifacts mirror to S3 at
 6. "Validation harness inventory" (below) for the scripts that produce
    the evidence docs and the S3 mirror spec
 
-The penalized GN SE calibration (pillar 3) is summarized in the
+The SE calibration (pillar 3) is summarized in the
 `se_calibration_mc_summary.csv` companion file and in the "Validation
 harness inventory" section below; the underlying script is
-`validation/monte_carlo_se.R`.
+`validation/monte_carlo_se.R`. The run-to-run record of the pipeline's
+releases is the `vXXX_vYYY_compare_runs.md` series in this directory; the
+dataset card (`docs/hf_dataset_card.md`) is the release history.
 
 ## Validation harness inventory
 
@@ -140,7 +157,10 @@ Post-submission updates (e.g., responses to reviewer comments, additional
 robustness checks) are added under `docs/methodology/supplementary/`
 rather than by editing the frozen documents.
 
-*Last updated: 2026-09-21 (patch 0053): headline numbers removed from this
+*Last updated: 2026-10-15 (patch 0116): Pillar 3 described as the shipped
+sandwich form across five regimes (it still read "penalized Gauss-Newton …
+four regimes"), the Stage-1 bootstrap benchmark and five methodology
+documents added to the index. Earlier — 2026-09-21 (patch 0053): headline numbers removed from this
 file in favour of the data-driven README; the v0.6.x–v0.7.x estimator
 changes (closed-form HLIML, boundary routing, negative-ω rejection, edge
 SEs) are documented in `stage1_liml.md`, `stata_port_deviations.md`

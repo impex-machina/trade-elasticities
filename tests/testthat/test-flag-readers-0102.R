@@ -8,7 +8,9 @@
 #   2. analysis/gate_v0100.R judges optimizer non-convergence on directly
 #      estimated rows: a table whose Tier-3 share (convergence -1 by
 #      construction) moves while the optimizer share does not PASSES; one
-#      whose optimizer share rises by more than 0.1 point FAILS.
+#      whose optimizer share rises by more than 0.1 point FAILS. (patch 0116)
+#      A fit that did not converge carries optim()'s code (1 at the cap);
+#      the fixture used -1 through patch 0115, the code of an imputed row.
 # ============================================================================
 
 .fr_setup <- function() {
@@ -54,7 +56,7 @@ test_that("gate_v0100.R: Tier-3 share movement passes, an optimizer non-converge
                     gamma = exp(rnorm(n, -0.3, 0.5)), sigma = rep(c(rep(fallback, 16), runif(24, 1.5, 6)), each = 10),
                     tier = 1L, convergence = 0L, opt_tariff = 0.7, sigma_robust = FALSE, gamma_v_resid = abs(rnorm(n, 0, 0.01)))
     x[seq_len(n_t3), `:=`(tier = 3L, convergence = -1L)]
-    if (n_nc > 0L) x[(n_t3 + 1L):(n_t3 + n_nc), convergence := -1L]
+    if (n_nc > 0L) x[(n_t3 + 1L):(n_t3 + n_nc), convergence := 1L]   # (patch 0116) optim()'s code; -1 marks imputed rows
     x[, trim_reason := NA_character_]
     rbind(x, data.table(importer = "41", exporter = "1", good = "0101", gamma = 50, sigma = 3, tier = 1L, convergence = 0L,
                         opt_tariff = 0.7, sigma_robust = FALSE, gamma_v_resid = NA_real_, trim_reason = "gamma_hi"))

@@ -399,7 +399,7 @@ stage2b_summary$gamma_floor <- list(
 # Status default is "ok" (a clean, usable SE); it is overridden to
 # "boundary"/"plateau" for extreme estimates, set to "non_converged" when the
 # fit did not converge, and "tier3_prior" for Tier 3 cells assigned the
-# regional prior outright (no cell-specific SE). "other" groups every
+# good-level prior outright (no cell-specific SE). "other" groups every
 # non-ok, non-tier3 state (boundary/plateau/non_converged, plus any rows whose
 # gamma_se_status was left NA). Backs the "large share of rows carry no
 # usable cell-specific SE" claim.
@@ -510,9 +510,10 @@ pillar2_summary <- list(
 rm(tier1a, tier1b)
 
 # --- Pillar 3: SE calibration (monte_carlo_se.R) --------------------------
-# Reads the 4-regime x 3-formula summary CSV. The production formula is
-# pen_gn (penalized Gauss-Newton); the methodology claim is that its
-# med_ratio sits in [0.93, 1.07] across all 4 regimes (within +/-7%).
+# Reads the summary CSV (5 regimes x 4 formulas since patch 0076). The
+# production formula is pen_sandwich since v0.7.4 (pen_gn, penalized
+# Gauss-Newton, through v0.7.3; see the pen_sandwich block below); the
+# calibration claim is its med_ratio band across regimes.
 # We emit pen_gn's per-regime ratios + min/max across regimes + worst
 # pct_err so templates can express the calibration band claim with a
 # concrete number rather than a hardcoded "+/-7%".

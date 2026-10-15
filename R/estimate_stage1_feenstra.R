@@ -276,7 +276,7 @@ estimate_all_feenstra_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) 
 #
 #  Tier 1: Dense — full import + export side estimation.
 #  Tier 2: Moderate — import-side only, with shrinkage.
-#  Tier 3: Sparse — gamma assigned from regional prior.
+#  Tier 3: Sparse — gamma assigned the good-level prior.
 # ===========================================================================
 
 #' Compute destination counts per exporter for an entire product.

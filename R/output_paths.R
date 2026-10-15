@@ -66,3 +66,31 @@ run_record_base <- function(cfg) {
   p <- build_output_prefix(cfg)
   if (is.null(d) || !nzchar(d)) p else file.path(d, p)
 }
+
+
+#' Rotate one gamma_V pass's run records to pass-suffixed names (patch 0116).
+#'
+#' run_estimation.R's native gamma_V iteration re-runs estimate_all_fixed_sigma()
+#' once per pass, and every pass writes its records under the same base:
+#' <prefix>_stage2_fallbacks.csv, <prefix>_stage2_trimmed.csv and, since patch
+#' 0093, the bit-exact twin <prefix>_stage2_trimmed.rds. Through patch 0115 the
+#' runner renamed the two CSVs to _pass<k>.csv after each pass but not the .rds,
+#' so each pass overwrote the previous pass's twin and the one left behind
+#' belonged to the final pass while its CSV had been renamed _pass<k>.csv. All
+#' three now rotate together; a missing record is skipped.
+#'
+#' @param base run_record_base() of the pass's config.
+#' @param k the pass number.
+#' @return invisibly, the paths written (named by the original path).
+rotate_pass_records <- function(base, k) {
+  srcs <- paste0(base, c("_stage2_fallbacks.csv", "_stage2_trimmed.csv", "_stage2_trimmed.rds"))
+  out <- character(0)
+  for (f in srcs) {
+    if (!file.exists(f)) next
+    to <- sub("(\\.(csv|rds))$", sprintf("_pass%d\\1", as.integer(k)), f)
+    if (file.exists(to)) file.remove(to)
+    if (!file.rename(f, to)) stop("rotate_pass_records(): could not rename ", f, " to ", to)
+    out[f] <- to
+  }
+  invisible(out)
+}

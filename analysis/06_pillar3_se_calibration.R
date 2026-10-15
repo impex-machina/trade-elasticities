@@ -1,9 +1,8 @@
 #' analysis/06_pillar3_se_calibration.R
-#' Pillar 3: standard-error calibration Monte Carlo (4 regimes x 3 formulas).
+#' Pillar 3: standard-error calibration Monte Carlo (5 regimes x 4 formulas
+#' since patch 0076; pen_sandwich is the shipped gamma_se form since v0.7.4).
 #'
 #' RERUN_PILLARS branch as in 05_*.R. Reads RERUN_PILLARS, DERIVED_VAL.
-#'
-#' SCAFFOLD (N+10): branch final; figure code pending Section 10.
 
 if (isTRUE(RERUN_PILLARS)) {
   message("06_pillar3: RERUN_PILLARS -> sourcing validation/monte_carlo_se.R")
@@ -37,6 +36,8 @@ fig <- ggplot(se_summary, aes(x = regime, y = med_ratio,
 save_figure(fig, "06_pillar3_se_calibration")
 save_table(se_summary, "06_pillar3_se_calibration")
 
-pen <- se_summary[formula == "pen_gn"]
-message("06_pillar3_se_calibration.R: pen_gn med_ratio range [",
-        round(min(pen$med_ratio), 3), ", ", round(max(pen$med_ratio), 3), "]")
+# (patch 0116) the shipped gamma_se is pen_sandwich (v0.7.4+); pen_gn is the
+# legacy formula through v0.7.3 -- report the shipped one first.
+.rng <- function(f) { x <- se_summary[formula == f, med_ratio]; if (!length(x)) "absent" else sprintf("[%.3f, %.3f]", min(x), max(x)) }
+message("06_pillar3_se_calibration.R: med_ratio range -- pen_sandwich (the shipped gamma_se) ", .rng("pen_sandwich"),
+        "; pen_gn (legacy, through v0.7.3) ", .rng("pen_gn"))

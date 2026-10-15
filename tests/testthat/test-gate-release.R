@@ -6,6 +6,11 @@
 # one estimated cell carries a wrong sigma (H4), when a fallback row
 # publishes sigma_robust TRUE (H5), or when optimizer non-convergence among
 # directly estimated rows rises (H3); a Tier-3 share change alone passes.
+# (patch 0116) A fit that did not converge carries optim()'s code (1 at the
+# iteration cap), not -1: -1 marks imputed rows. Through patch 0115 this test
+# built its non-converged rows with -1 and the gate counted -1 among tier < 3
+# rows, so a real rise in non-convergence passed the gate. Now the fixture uses
+# the optimizer's code, and a rise in imputed reference rows alone must PASS.
 # ============================================================================
 
 test_that("gate_release.R: PASS on a table built to the rules; FAIL on H3 / H4 / H5", {
@@ -18,14 +23,15 @@ test_that("gate_release.R: PASS on a table built to the rules; FAIL on H3 / H4 /
                    sigma_se = c(rep(0.2, 30), rep(0.2, 6), NA, NA, 0.1, 0.1), sigma_capped = c(rep(FALSE, 36), TRUE, TRUE, FALSE, FALSE),
                    convergence = c(rep(0L, 39), 1L), status = "ok")
   sc <- stage2_sigma_clean(s1, "fallback", "fallback", 1); fb <- median(sc$clean$sigma)
-  mk <- function(n_t3 = 40L, n_nc = 2L) {
+  mk <- function(n_t3 = 40L, n_nc = 2L, n_ref = 0L) {
     x <- data.table(importer = as.character(rep(1:40, each = 10)), exporter = as.character(rep(1:10, 40)), good = "0101",
                     gamma = exp(rnorm(400, -0.3, 0.5)), gamma_se = 0.1, tier = 1L, convergence = 0L, opt_tariff = 0.7, sigma_robust = FALSE)
     est_cells <- sc$source[sigma_source == "estimated"]$importer
     x[, sigma := ifelse(importer %in% est_cells, s1$sigma[match(importer, s1$importer)], fb)]
     x[importer %in% est_cells[1:5], sigma_robust := TRUE]
     x[seq_len(n_t3), `:=`(tier = 3L, convergence = -1L)]
-    if (n_nc > 0L) x[(n_t3 + 1L):(n_t3 + n_nc), convergence := -1L]
+    if (n_nc > 0L) x[(n_t3 + 1L):(n_t3 + n_nc), convergence := 1L]                         # the L-BFGS-B iteration cap
+    if (n_ref > 0L) x[(n_t3 + n_nc + 1L):(n_t3 + n_nc + n_ref), `:=`(tier = 0L, convergence = -1L)]   # imputed reference rows
     x
   }
   old <- mk(); old[importer %in% c("31", "32"), sigma := s1$sigma[match(importer, s1$importer)]]   # the old table had no pole rule
@@ -41,5 +47,8 @@ test_that("gate_release.R: PASS on a table built to the rules; FAIL on H3 / H4 /
   r4 <- run(n4); expect_true(any(grepl("^- H4", r4$md)), info = paste(r4$md, collapse = "\n")); expect_identical(r4$status, 1L)
   n5 <- mk(); n5[importer == "31", sigma_robust := TRUE]
   r5 <- run(n5); expect_true(any(grepl("^- H5", r5$md)))
-  r3 <- run(mk(n_nc = 30L)); expect_true(any(grepl("^- H3", r3$md)))
+  r3 <- run(mk(n_nc = 30L)); expect_true(any(grepl("^- H3", r3$md)), info = paste(r3$md, collapse = "\n")); expect_identical(r3$status, 1L)
+  rr <- run(mk(n_ref = 30L))                                                    # imputed reference rows up, optimizer flat
+  expect_true(any(grepl("\\*\\*PASS\\*\\*", rr$md)), info = paste(rr$md, collapse = "\n"))
+  expect_true(any(grepl("imputed reference rows", rr$md)))
 })

@@ -19,7 +19,7 @@
 #
 #  Tier 1: Dense — full import + export side estimation.
 #  Tier 2: Moderate — import-side only, with shrinkage.
-#  Tier 3: Sparse — gamma assigned from regional prior.
+#  Tier 3: Sparse — gamma assigned the good-level prior (built from Stage 2a's estimates).
 # ===========================================================================
 
 #' Compute destination counts per exporter for an entire product.
@@ -900,7 +900,7 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
       #  OPTIMAL TARIFF COMPUTATION
       #
       #  Tier 3 exporters all share the same assigned gamma (the
-      #  product-level regional prior). Including them in opt_tariff
+      #  good-level prior). Including them in opt_tariff
       #  biases it toward the prior and masks the heterogeneous
       #  tariff that the identifying data supports.
       #

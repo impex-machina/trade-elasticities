@@ -117,7 +117,7 @@ cat(sprintf("  Stage-2 ridge domain: %s\n", if (is.null(opts$stage2_ridge_domain
 cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" else opts$stage2_se))
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "best" else opts$stage2_fallback))   # patch 0077/0080
 cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source))   # patch 0079/0080
-cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts[["stage2_trim"]])) "legacy" else opts[["stage2_trim"]]))   # patch 0083
+cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts[["stage2_trim"]])) "v2" else opts[["stage2_trim"]]))   # patch 0083; absent == v2 since v0.9.0 (patch 0116: the header said legacy)
 cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s | sigma pole: %s\n",   # patch 0085/0086/0099
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
             if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
@@ -687,10 +687,9 @@ if (should_run("2b", opts, paths)) {
     gv_passes <- if (is.null(opts$stage2_gamma_v_passes)) 1L else as.integer(opts$stage2_gamma_v_passes)
     if (gv_passes > 1L) {
       prefix_country <- run_record_base(config_2b)   # patch 0111: the records live under --out-dir
-      rotate_csvs <- function(k) {
-        for (f in paste0(prefix_country, c("_stage2_fallbacks.csv", "_stage2_trimmed.csv")))
-          if (file.exists(f)) file.rename(f, sub("\\.csv$", sprintf("_pass%d.csv", k), f))
-      }
+      # (patch 0116) the fallback CSV, the trim CSV and the trim .rds twin rotate
+      # together (through 0115 the .rds was not renamed and each pass overwrote it)
+      rotate_csvs <- function(k) rotate_pass_records(prefix_country, k)
       rotate_csvs(1L)
       saveRDS(finalize_saved_output(country_results), paste0(out_base_country, "_fixed_sigma_pass1.rds"))
       pass_log <- list()
@@ -807,7 +806,7 @@ if ("tier" %in% names(cr)) {
                   "0" = "Reference exporter",
                   "1" = "Full (import+export)",
                   "2" = "Import-side only",
-                  "3" = "Assigned from regional",
+                  "3" = "Good-level prior, not estimated",
                   paste("Tier", tier_tab$tier[i]))
     cat(sprintf("    Tier %s (%s): %s (%.1f%%)\n",
                 tier_tab$tier[i], lbl,
@@ -836,7 +835,7 @@ local({
   manifest <- data.table::fread(manifest_path)
   for (i in seq_len(nrow(manifest))) {
     expected <- manifest$sha256[i]
-    local_p  <- manifest$local_path[i]
+    local_p  <- file.path(repo_dir, manifest$local_path[i])   # patch 0116: was working-directory-relative (skipped every file outside the repo root)
     if (!file.exists(local_p)) next
     if (is.na(expected) || !nzchar(expected) || expected == "PLACEHOLDER") {
       message(sprintf("[checksum] %s: manifest has no real checksum yet (skip)",

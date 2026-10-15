@@ -4,7 +4,9 @@
 #' verifies SHA-256 checksums, downloads missing files.
 #'
 #' Exported functions:
-#'   load_outputs(force, verify)        -- download/verify all manifested files
+#'   load_outputs(force, verify, revision, manifest_path)
+#'                                       -- download/verify all manifested files
+#'   hf_url_at_revision(url, revision)   -- point a hub resolve URL at a revision (patch 0116)
 #'   verify_checksum(path, expected_sha) -- single-file checksum verify
 #'   verify_manifest_complete()          -- fail-fast check used by analysis/master.R
 #'
@@ -16,8 +18,28 @@
 #'     therefore fail until the manifest carries real SHA-256 values. Call
 #'     with verify = FALSE before the manifest is finalized.
 
-load_outputs <- function(force = FALSE, verify = TRUE) {
-  manifest <- data.table::fread("data/manifest.csv")
+#' Point a hub `.../resolve/<revision>/<path>` URL at another revision
+#' (patch 0116): a release tag (`v0.11.0`), a 40-hex data revision or a
+#' branch. NULL or "" returns the URL unchanged. Hub revisions name no paths,
+#' so a revision with a slash, a space or a quote is refused.
+hf_url_at_revision <- function(url, revision = NULL) {
+  if (is.null(revision) || !nzchar(revision)) return(url)
+  if (!grepl("^[A-Za-z0-9._-]+$", revision)) stop("hf_url_at_revision(): not a revision name: ", revision)
+  if (!all(grepl("/resolve/[^/]+/", url))) stop("hf_url_at_revision(): not a hub resolve URL: ",
+                                                 paste(url[!grepl("/resolve/[^/]+/", url)], collapse = ", "))
+  sub("/resolve/[^/]+/", paste0("/resolve/", revision, "/"), url)
+}
+
+#' (patch 0116) `revision` fetches every file at that hub revision instead of
+#' the one each manifest URL names (through v0.11.0 the URLs named `main`, so
+#' an older tag's manifest checked main's files against its own hashes and
+#' failed on every file changed since). `manifest_path` reads another
+#' manifest -- e.g. an earlier release's, `git show v0.10.2:data/manifest.csv`
+#' -- whose hashes then verify the download.
+load_outputs <- function(force = FALSE, verify = TRUE, revision = NULL,
+                         manifest_path = "data/manifest.csv") {
+  manifest <- data.table::fread(manifest_path)
+  manifest$hf_url <- hf_url_at_revision(manifest$hf_url, revision)
   for (i in seq_len(nrow(manifest))) {
     local <- manifest$local_path[i]
     dir.create(dirname(local), showWarnings = FALSE, recursive = TRUE)

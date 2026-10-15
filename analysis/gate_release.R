@@ -7,9 +7,12 @@
 # the v0.10.0 record). Hard checks (any failure -> exit status 1):
 #   H1 core schema present;
 #   H2 published row count within --max-row-change of the old table's;
-#   H3 optimizer non-convergence among directly estimated rows (tier < 3) not
-#      up by more than 0.1 point (Tier-3 rows carry convergence -1 by
-#      construction and are excluded);
+#   H3 optimizer non-convergence among directly estimated rows not up by more
+#      than 0.1 point -- the optimizer's codes (1 / 10 / 51 / 52) among
+#      is_estimated_row() rows, stage2_convergence_census() in
+#      R/utils_general.R (patch 0116; through 0115 this counted convergence -1
+#      among tier < 3 rows, i.e. the imputed reference rows of all-Tier-3
+#      cells, which the report now shows on its own line);
 #   H4 the sigma column is the one the rules imply: every cell in the clean
 #      set (stage2_sigma_clean() with --edge-rule / --pole-rule / --pole-se)
 #      carries its Stage-1 sigma, every other row the fallback (clean-set
@@ -58,14 +61,15 @@ rc <- nrow(newp) / nrow(oldp) - 1
 L <- c(L, "## Rows and schema", "", sprintf("- old: %s rows (%s published), %d columns; new: %s rows (%s published), %d columns; published change %+.2f%%.",
        format(nrow(old), big.mark = ","), format(nrow(oldp), big.mark = ","), ncol(old), format(nrow(new), big.mark = ","), format(nrow(newp), big.mark = ","), ncol(new), 100 * rc))
 if (abs(rc) > max_rc) fail("H2", sprintf("published rows changed by %+.2f%% (limit %.1f%%)", 100 * rc, 100 * max_rc))
-# H3 optimizer non-convergence on directly estimated rows
-nc <- function(x) { d <- x[!is.na(tier) & tier < 3L]; mean(d$convergence %in% -1L) }
-nco <- nc(oldp); ncn <- nc(newp)
-if (ncn > nco + 0.001) fail("H3", sprintf("optimizer non-convergence among directly estimated rows rose %.2f%% -> %.2f%%", 100 * nco, 100 * ncn))
+# H3 optimizer non-convergence on directly estimated rows (patch 0116: the
+# optimizer's codes; convergence -1 marks imputed rows, never a failed fit)
+cco <- stage2_convergence_census(old); ccn <- stage2_convergence_census(new)
+nco <- cco$share_nonconverged; ncn <- ccn$share_nonconverged
+if (isTRUE(ncn > nco + 0.001)) fail("H3", sprintf("optimizer non-convergence among directly estimated rows rose %.2f%% -> %.2f%%", 100 * nco, 100 * ncn))
 # H4 / H5 / H6 sigma reconstruction
 sc <- stage2_sigma_clean(s1, edge_rule, pole_rule, pole_c)
 fb <- if (!is.na(pin)) pin else median(sc$clean$sigma, na.rm = TRUE)
-rec <- copy(new); attach_sigma_source(rec, sc$source)
+rec <- attach_sigma_source(copy(new), sc$source)$table   # patch 0116: the returned table (0114's contract), not the side effect
 s1k <- s1[, .(k = paste(importer, good, sep = "\r"), s1_sigma = sigma)]
 s1_sig <- s1k$s1_sigma[match(paste(rec$importer, rec$good, sep = "\r"), s1k$k)]
 close <- function(a, b) is.finite(a) & is.finite(b) & abs(a - b) <= 1e-9 * pmax(abs(b), 1)
@@ -94,7 +98,9 @@ L <- c(L, "", "## Headline (published rows)", "", "| | old | new |", "|---|---|-
        sprintf("| gamma median | %.4f | %.4f |", median(oldp$gamma, na.rm = TRUE), median(newp$gamma, na.rm = TRUE)),
        sprintf("| opt_tariff median | %.4f | %.4f |", median(oldp$opt_tariff, na.rm = TRUE), median(newp$opt_tariff, na.rm = TRUE)),
        sprintf("| sigma median | %.4f | %.4f |", median(oldp$sigma, na.rm = TRUE), median(newp$sigma, na.rm = TRUE)),
-       sprintf("| optimizer non-converged (tier < 3) | %.2f%% | %.2f%% |", 100 * nco, 100 * ncn),
+       sprintf("| optimizer non-converged (directly estimated rows) | %.2f%% | %.2f%% |", 100 * nco, 100 * ncn),
+       sprintf("| optimizer non-converged cells | %s | %s |", format(cco$n_cells_nonconverged, big.mark = ","), format(ccn$n_cells_nonconverged, big.mark = ",")),
+       sprintf("| imputed reference rows (all-Tier-3 cells; share of tier < 3 rows) | %.2f%% | %.2f%% |", 100 * cco$share_imputed_reference, 100 * ccn$share_imputed_reference),
        sprintf("| Tier 3 | %.1f%% | %.1f%% |", 100 * mean(oldp$tier %in% 3L), 100 * mean(newp$tier %in% 3L)),
        sprintf("| sigma_robust TRUE | %.1f%% | %.1f%% |", 100 * mean(oldp$sigma_robust %in% TRUE), 100 * mean(newp$sigma_robust %in% TRUE)))
 j <- merge(est(oldp)[, .(importer, exporter, good, g_old = gamma)], est(srcp)[, .(importer, exporter, good, g_new = gamma, sigma_source)], by = c("importer", "exporter", "good"))

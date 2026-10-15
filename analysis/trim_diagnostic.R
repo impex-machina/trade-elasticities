@@ -55,7 +55,10 @@ trim_diagnostic <- function(trimmed, table, stage1, label = "run", trim_pct = 0.
   # ---- 1. composition
   by_reason <- tr[, .N, by = reason][order(-N)]
   by_reason_tier <- tr[, .N, by = .(reason, tier)][order(reason, tier)]
-  by_reason_conv <- tr[, .(N = .N, non_converged = sum(convergence %in% -1L)), by = reason][order(reason)]
+  # (patch 0116) convergence -1 marks imputed rows (Tier 3, all-Tier-3 references); the optimizer's
+  # own non-convergence is a code other than 0 and -1 (stage2_convergence_census()).
+  by_reason_conv <- tr[, .(N = .N, imputed = sum(convergence %in% -1L),
+                          non_converged = sum(!is.na(convergence) & !(convergence %in% c(0L, -1L)))), by = reason][order(reason)]
   cells_tr <- uniqueN(paste(tr$importer, tr$good)); goods_tr <- uniqueN(tr$good)
   top_goods <- tr[, .N, by = good][order(-N)][seq_len(min(10L, .N))]
 
@@ -147,8 +150,8 @@ write_trim_diagnostic <- function(d, out = NULL) {
          "## 1. Composition", "", "| reason | rows |", "|---|---|")
   L <- c(L, sprintf("| %s | %s |", d$by_reason$reason, .int(d$by_reason$N)), "", "| reason | tier | rows |", "|---|---|---|",
          sprintf("| %s | %s | %s |", d$by_reason_tier$reason, d$by_reason_tier$tier, .int(d$by_reason_tier$N)), "",
-         "| reason | rows | non-converged |", "|---|---|---|",
-         sprintf("| %s | %s | %s |", d$by_reason_conv$reason, .int(d$by_reason_conv$N), .int(d$by_reason_conv$non_converged)), "",
+         "| reason | rows | imputed (convergence -1) | optimizer non-converged |", "|---|---|---|---|",
+         sprintf("| %s | %s | %s | %s |", d$by_reason_conv$reason, .int(d$by_reason_conv$N), .int(d$by_reason_conv$imputed), .int(d$by_reason_conv$non_converged)), "",
          "Top goods by trimmed rows:", "", "| good | rows |", "|---|---|", sprintf("| %s | %s |", d$top_goods$good, .int(d$top_goods$N)), "")
   sb <- function(name, b) c(sprintf("| %s | %s | %s | %s | %s | %s | %s | %s | %s |", name, .int(b$n), .fmt(b$sigma_median), .fmt(b$sigma_p10),
                                     .pct(b$share_sigma_lt_1_5), .pct(b$share_sigma_lt_2), .pct(b$share_sigma_ge_10), .fmt(b$sigma_se_median), .pct(b$share_sigma_se_gt_sigma_minus_1)))

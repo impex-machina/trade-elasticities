@@ -23,7 +23,7 @@ lines. **Costs and durations are stated before every step that uses the box.**
 | Stage 2a | ~3 min |
 | one Stage-2b pass | ~37–42 min |
 | `--stage all`, Stage 1 loaded, three γ_V passes | ~2 h |
-| Stage 1 re-estimated | several hours — only when Stage 1 changes |
+| Stage 1 re-estimated | ~6–10 min (the 2026-09 sessions; run only when Stage 1 changes) |
 | upload of an output folder (no cache) | 1–2 min |
 
 The instance bills from launch to termination, idle or not. One run that answers
@@ -52,7 +52,12 @@ the question beats two that cross-check it; say which before launching.
 ## After (local, $0)
 
 The release train: place the tables, re-run the gate locally, `compare_runs.R`,
-`analysis/master.R`, README build and CR-normalized lock check, `rehash_manifest.R`,
-suite, commit, tag **before** the upload, `hf_upload_release.py` (Gate 0 refuses a
-second upload for a released card entry), then the card's revision and hub sync.
+`analysis/master.R`, README build and CR-normalized lock check, pin the manifest to
+the release tag (`Rscript scripts/pin_manifest_revision.R --revision vX.Y.Z`; patch
+0116), `rehash_manifest.R`, suite, commit, tag **before** the upload,
+`hf_upload_release.py` (Gate 0 refuses a second upload for a released card entry),
+then create the hub tag on the uploaded commit before pushing
+(`HfApi().create_tag("impex-machina/trade-elasticities", tag="vX.Y.Z", revision="<oid>", repo_type="dataset")`
+— the pinned manifest's URLs resolve only once it exists), then the card's revision
+and hub sync.
 Every PowerShell block wrapped in `& { … }` so a `throw` ends it.

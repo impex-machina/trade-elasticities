@@ -26,7 +26,7 @@ if [ -f "$S1" ]; then
   [ "$(sha256sum "$S1" | cut -d' ' -f1)" = "$WANT" ] || fail "Stage-1 table in $OUT does not match the manifest (the run would use a different Stage 1)"
   S1NOTE="Stage 1 will be LOADED (manifest hash verified)"
 else
-  S1NOTE="no Stage-1 table in $OUT: a --stage all run will RE-ESTIMATE Stage 1 (hours)"
+  S1NOTE="no Stage-1 table in $OUT: a --stage all run will RE-ESTIMATE Stage 1 (~6-10 min at 62 cores; patch 0116 -- this said hours)"
 fi
 echo "preflight: OK -- inside tmux ($TMUX), role active, packages load, cache OK; $S1NOTE"
 echo "preflight: repo HEAD $(git rev-parse --short HEAD) | cores $(nproc) | free disk on /tmp $(df -h /tmp | awk 'NR==2{print $4}')"

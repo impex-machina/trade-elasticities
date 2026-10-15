@@ -16,6 +16,7 @@
 #'   finalize_saved_output(x, sort_cols)           — strip volatile attrs + canonical sort for saveRDS
 #'   cell_failure(reason)                          — lightweight cell-level failure indicator
 #'   optimal_tariff(gamma, sigma, trade_values)    — trade-weighted optimal tariff
+#'   stage2_convergence_census(dt)                 — optimizer vs imputed convergence codes (patch 0116)
 #'
 #' Depends on: none (base R + data.table semantics at call sites)
 
@@ -158,6 +159,61 @@ sample_products <- function(goods, frac, seed) {
 #' convergence -1 too, so the rule is simply: tier < 3 and not imputed.
 is_estimated_row <- function(tier, convergence) {
   !is.na(tier) & tier < 3L & !(convergence %in% -1L)
+}
+
+
+#' Optimizer convergence census of a Stage-2 table (patch 0116).
+#'
+#' estimate_importer_product_fixed_sigma() writes optim()'s own code on every
+#' row of a fitted cell -- 0 converged; 1 iteration cap; 10 Nelder-Mead
+#' degeneracy; 51 / 52 L-BFGS-B warning / error -- and -1 only on IMPUTED
+#' rows: Tier-3 rows, and the reference row (tier 0) of a cell whose
+#' non-reference exporters are all Tier 3 (is_estimated_row()). Through patch
+#' 0115 the release gates (analysis/gate_v0100.R, analysis/gate_release.R)
+#' counted convergence -1 among tier < 3 rows as "optimizer non-convergence":
+#' that is the share of those imputed reference rows -- the 0.42% quoted for
+#' v0.10.0 and v0.11.0 -- not the optimizer's. This census keeps the two
+#' apart. Published rows only (trim_reason NA, or every row without the
+#' column). Within a fitted cell every directly estimated row carries the
+#' cell's code, so the cell count is the number of fits that did not converge.
+#'
+#' @param dt a Stage-2 table with importer, good, tier, convergence (and,
+#'   optionally, trim_reason and gamma_se_status).
+#' @return list: n_rows, n_tier_lt3, n_estimated, n_nonconverged,
+#'   share_nonconverged (of directly estimated rows), n_cells_estimated,
+#'   n_cells_nonconverged, n_imputed_reference, share_imputed_reference
+#'   (of tier < 3 rows: the metric the gates used through patch 0115), n_tier3,
+#'   codes_estimated (row counts by code among directly estimated rows),
+#'   n_status_non_converged (gamma_se_status "non_converged" among directly
+#'   estimated rows; equals n_nonconverged by construction, NA without the
+#'   column).
+stage2_convergence_census <- function(dt) {
+  need <- c("importer", "good", "tier", "convergence")
+  miss <- setdiff(need, names(dt))
+  if (length(miss)) stop("stage2_convergence_census(): missing columns: ", paste(miss, collapse = ", "))
+  pub  <- if ("trim_reason" %in% names(dt)) is.na(dt[["trim_reason"]]) else rep(TRUE, nrow(dt))
+  tier <- dt[["tier"]][pub]; conv <- dt[["convergence"]][pub]
+  cell <- paste(as.character(dt[["importer"]][pub]), as.character(dt[["good"]][pub]), sep = "\r")
+  est  <- is_estimated_row(tier, conv)
+  nc   <- est & !(conv %in% 0L)
+  lt3  <- !is.na(tier) & tier < 3L
+  imp  <- lt3 & conv %in% -1L
+  codes <- table(conv[est], useNA = "ifany")
+  list(
+    n_rows               = sum(pub),
+    n_tier_lt3           = sum(lt3),
+    n_estimated          = sum(est),
+    n_nonconverged       = sum(nc),
+    share_nonconverged   = if (any(est)) sum(nc) / sum(est) else NA_real_,
+    n_cells_estimated    = length(unique(cell[est])),
+    n_cells_nonconverged = length(unique(cell[nc])),
+    n_imputed_reference  = sum(imp),
+    share_imputed_reference = if (any(lt3)) sum(imp) / sum(lt3) else NA_real_,
+    n_tier3              = sum(tier %in% 3L),
+    codes_estimated      = as.list(stats::setNames(as.integer(codes), names(codes))),
+    n_status_non_converged = if ("gamma_se_status" %in% names(dt))
+      sum(dt[["gamma_se_status"]][pub][est] %in% "non_converged") else NA_integer_
+  )
 }
 
 

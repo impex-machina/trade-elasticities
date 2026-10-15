@@ -67,13 +67,19 @@ if (nrow(pole_rows)) {
 }
 
 # --- headline and status
-# (patch 0102) non_converged is the optimizer's: convergence -1 among the
-# directly estimated rows (tier < 3). Tier-3 rows carry convergence -1 by
-# construction, so over all rows the share is ~Tier 3 and moves with the
-# published row count -- the v0.10.0 box gate FAILed on exactly that
-# (26.73% -> 26.75%) while the optimizer share was 0.42% in both tables.
-st <- function(x) { d <- x[!is.na(x$tier) & x$tier < 3L]
-  c(ok = mean(x$convergence %in% 0L & !is.na(x$tier) & x$tier < 3L), non_converged = mean(d$convergence %in% -1L),
+# (patch 0102) non_converged was meant to be the optimizer's, not the Tier-3
+# share the v0.10.0 box gate first counted (26.73% -> 26.75%). (patch 0116)
+# The 0102 version read convergence -1 among tier < 3 rows, but the cell
+# estimator writes optim()'s own code (1 / 10 / 51 / 52) on a fit that did not
+# converge and -1 only on imputed rows: the "0.42% in both tables" was the
+# share of the imputed reference rows of all-Tier-3 cells. Now: the
+# optimizer's codes among directly estimated rows (tier < 3, not imputed),
+# the same definition as stage2_convergence_census() in R/utils_general.R;
+# the imputed-reference share is reported beside it. This script is kept for
+# the v0.10.0 record; analysis/gate_release.R is the gate.
+st <- function(x) { d <- x[!is.na(x$tier) & x$tier < 3L & !(x$convergence %in% -1L)]
+  c(ok = mean(x$convergence %in% 0L & !is.na(x$tier) & x$tier < 3L), non_converged = mean(!(d$convergence %in% 0L)),
+    imputed_ref = mean(x[!is.na(x$tier) & x$tier < 3L]$convergence %in% -1L),
     tier3 = mean(x$tier %in% 3L), robust = mean(x$sigma_robust %in% TRUE)) }
 so <- st(oldp); sn <- st(newp)
 L <- c(L, "", "## Headline (published rows)", "", "| | old | new |", "|---|---|---|",
@@ -81,6 +87,7 @@ L <- c(L, "", "## Headline (published rows)", "", "| | old | new |", "|---|---|-
        sprintf("| opt_tariff median | %.4f | %.4f |", median(oldp$opt_tariff, na.rm = TRUE), median(newp$opt_tariff, na.rm = TRUE)),
        sprintf("| sigma median | %.4f | %.4f |", median(oldp$sigma, na.rm = TRUE), median(newp$sigma, na.rm = TRUE)),
        sprintf("| ok share | %.1f%% | %.1f%% |", 100 * so["ok"], 100 * sn["ok"]), sprintf("| optimizer non-converged (directly estimated rows) | %.2f%% | %.2f%% |", 100 * so["non_converged"], 100 * sn["non_converged"]),
+       sprintf("| imputed reference rows (share of tier < 3 rows) | %.2f%% | %.2f%% |", 100 * so["imputed_ref"], 100 * sn["imputed_ref"]),
        sprintf("| Tier 3 | %.1f%% | %.1f%% |", 100 * so["tier3"], 100 * sn["tier3"]), sprintf("| sigma_robust TRUE | %.1f%% | %.1f%% |", 100 * so["robust"], 100 * sn["robust"]),
        sprintf("| gamma <= 0.01 (estimated) | %.3f%% | %.3f%% |", 100 * mean(est(oldp)$gamma <= 0.01), 100 * mean(est(newp)$gamma <= 0.01)),
        sprintf("| gamma >= 10 (estimated) | %.3f%% | %.3f%% |", 100 * mean(est(oldp)$gamma >= 10), 100 * mean(est(newp)$gamma >= 10)))

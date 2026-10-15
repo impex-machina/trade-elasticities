@@ -215,7 +215,70 @@ pillar3_constant_clause <- function(p3) {
   if (isTRUE(p3[["import_constant"]])) return("with the import-side constant concentrated out as the shipped estimator does")
   "that does not include the import-side constant concentrated out since v0.8.0"
 }
+# (patch 0116) a census pick that may legitimately be absent: NULL when no
+# release-tagged file exists yet, so a template clause reading it renders
+# empty and the README lock holds until the census is committed.
+pick_census_opt <- function(prefix, table = "stage2b", res = r) {
+  if (!length(grep(sprintf("^%s_v[0-9]{3,4}$", prefix), names(res)))) return(NULL)
+  pick_census(prefix, table = table, res = res)
+}
 # --- end freshness helpers (patch 0109) --------------------------------------
+
+# --- patch 0116 phrases (fresh-eyes audit #7) ---------------------------------
+# A1: the provenance bullet. Through patch 0115 it read "the rest fall to the
+# Step 2 fallback", written before boundary routing (v0.6.0): 71% of the
+# universe outside the interior is Step 2 (16%), boundary optima (20%) and
+# cells with no estimate (35%).
+provenance_lead <- function(s1) {
+  rs <- req(s1, "routing_summary"); n <- req(s1, "n_cells")
+  sprintf("On the full universe, %s of\n  (importer, HS4) cells are identified at the HLIML interior and %s (%s cells) by the\n  Step 2 (Fuller LIML) fallback, of which %s of the full universe (%s cells)\n  are clamped at the \u03c3/\u03c9 caps and report the cap, not an estimate",
+          format_pct(req(rs, "hliml_interior"), n), format_pct(req(rs, "step2_total"), n), format_int(req(rs, "step2_total")),
+          format_pct(req(rs, "clamped_total"), n), format_int(req(rs, "clamped_total")))
+}
+provenance_tail <- function(s1) {
+  rs <- req(s1, "routing_summary"); n <- req(s1, "n_cells")
+  sprintf("; the remaining %s (%s cells) return no estimate (thin or short panels, too few exporters, a singular first step, or no admissible point on any route)",
+          format_pct(req(rs, "pre_discard"), n), format_int(req(rs, "pre_discard")))
+}
+# A8: the headline sigma. On a table where the fallback sigma covers the row
+# median, the "median" is the fallback itself; say so.
+headline_sigma_note <- function(s2b) {
+  sp <- s2b[["sigma_provenance"]]
+  if (is.null(sp) || is.null(sp[["fallback_value"]]) || !isTRUE(abs(req(s2b, "sigma_median") - sp[["fallback_value"]]) < 1e-9)) return("")
+  sprintf(" \u2014 the fallback \u03c3 itself: %s of rows carry it, so the row-level median falls on that mass. The fallback is the median of the cell-specific estimates (one per importer \u00d7 HS4 cell in the clean set); filter `sigma_source == \"estimated\"` for the estimates' own distribution",
+          format_pct(req(sp, "n_fallback"), req(sp, "denominator")))
+}
+# A7: the optimizer's own non-convergence, from analysis/stage2b_convergence_census.R
+# (empty until a census is committed).
+convergence_clause <- function(p) {
+  if (is.null(p)) return("")
+  cc <- req(p$data, "census")
+  sprintf(" The cell optimizer did not converge on %s of directly estimated rows (%s of %s fitted cells%s): those cells publish the better of the L-BFGS-B point at the iteration cap and the Nelder\u2013Mead restart, with `gamma_se_status` `non_converged` and no SE (`docs/results/%s.md`).",
+          format_pct(req(cc, "n_nonconverged"), req(cc, "n_estimated")), format_int(req(cc, "n_cells_nonconverged")),
+          format_int(req(cc, "n_cells_estimated")), stale_note(p, "; ", ""), p$key)
+}
+# M4: Pillar 2's sigma coverage, the grid points below 80% and the grid's floor.
+pillar2_coverage_clause <- function(p2) {
+  t1a <- req(p2, "tier1a")
+  cov <- vapply(t1a, function(x) as.numeric(x[["sigma_cov"]]), 0)
+  st  <- vapply(t1a, function(x) as.numeric(x[["sigma_true"]]), 0)
+  ot  <- vapply(t1a, function(x) as.numeric(x[["omega_true"]]), 0)
+  hl  <- vapply(t1a, function(x) if (is.null(x[["sigma_cov_hliml"]])) NA_real_ else as.numeric(x[["sigma_cov_hliml"]]), 0)
+  low <- order(cov); low <- low[cov[low] < 0.8]
+  one_omega <- length(low) > 0L && all(ot[low] == max(ot))
+  pts <- vapply(seq_along(low), function(i) {
+    k <- low[i]
+    sprintf("%s at \u03c3 = %s%s%s", format_prop_pct(cov[k]), format(st[k]),
+            if (one_omega) "" else sprintf(", \u03c9 = %s", format(ot[k])),
+            if (i == 1L && is.finite(hl[k]) && hl[k] < cov[k]) sprintf(" (%s on interior-HLIML fits)", format_prop_pct(hl[k])) else "")
+  }, "")
+  where <- if (!length(low)) "" else sprintf(", but below 80%% at %d of %d points%s: %s",
+                                             length(low), length(cov),
+                                             if (one_omega) sprintf(", %s at the grid's largest \u03c9 (%s)", if (length(low) == 2L) "both" else if (length(low) > 2L) "all" else "that one", format(max(ot))) else "",
+                                             paste(pts, collapse = " and "))
+  sprintf(" The nominal 95%% interval for \u03c3 covers the truth in a median %s of replications across the grid%s. The grid's smallest \u03c3 is %s, so these figures do not describe cells near the \u03c3 = 1 pole, where the \u03c3-pole rule acts.",
+          format_prop_pct(stats::median(cov)), where, format(min(st)))
+}
 
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
 # One rendered sentence for the validation section, built from
@@ -414,6 +477,12 @@ render_env$stale_note <- stale_note
 render_env$spearman_brown <- spearman_brown
 render_env$pillar2_cap_note <- pillar2_cap_note
 render_env$pillar3_constant_clause <- pillar3_constant_clause   # patch 0113
+render_env$provenance_lead <- provenance_lead                   # patch 0116
+render_env$provenance_tail <- provenance_tail                   # patch 0116
+render_env$headline_sigma_note <- headline_sigma_note           # patch 0116
+render_env$convergence_clause <- convergence_clause             # patch 0116
+render_env$pillar2_coverage_clause <- pillar2_coverage_clause   # patch 0116
+render_env$CONV <- pick_census_opt("stage2b_convergence_census")   # patch 0116: NULL until committed
 
 rendered <- tryCatch(
   glue::glue(template_text,
