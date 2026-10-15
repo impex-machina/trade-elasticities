@@ -42,9 +42,13 @@ compute_exporter_dest_counts <- function(dt_g) {
 #' @return data.table with (exporter, tier).
 classify_exporter_tiers <- function(dt_nonref, exporter_dests, cfg) {
 
-  tier1_min_periods <- if (!is.null(cfg$tier1_min_periods)) cfg$tier1_min_periods else 8L
-  tier1_min_dests   <- if (!is.null(cfg$tier1_min_dests))   cfg$tier1_min_dests   else 3L
-  tier2_min_periods <- if (!is.null(cfg$tier2_min_periods)) cfg$tier2_min_periods else 5L
+  # (patch 0125) an absent key takes the value build_config() ships (3 / 2 / 3).
+  # Through patch 0124 the fallbacks were 8 / 3 / 5, so a hand-built config that
+  # omitted the keys silently ran a stricter tier rule than production -- the
+  # absent-key trap of patches 0103 and 0104. `[[ ]]`, not `$`: no prefix match.
+  tier1_min_periods <- if (!is.null(cfg[["tier1_min_periods"]])) cfg[["tier1_min_periods"]] else 3L
+  tier1_min_dests   <- if (!is.null(cfg[["tier1_min_dests"]]))   cfg[["tier1_min_dests"]]   else 2L
+  tier2_min_periods <- if (!is.null(cfg[["tier2_min_periods"]])) cfg[["tier2_min_periods"]] else 3L
 
   # Periods in focal market per exporter (cheap — just this importer's data)
   imp_stats <- dt_nonref[, .(n_periods = uniqueN(t)),

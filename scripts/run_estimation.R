@@ -836,35 +836,11 @@ cat("\nDone.\n")
 
 
 
-local({
-  manifest_path <- file.path(repo_dir, "data", "manifest.csv")   # patch 0092: was CWD-relative
-  if (!file.exists(manifest_path)) {
-    message("[checksum] data/manifest.csv not found; skipping verification.")
-    return(invisible(NULL))
-  }
-  manifest <- data.table::fread(manifest_path)
-  for (i in seq_len(nrow(manifest))) {
-    expected <- manifest$sha256[i]
-    local_p  <- file.path(repo_dir, manifest$local_path[i])   # patch 0116: was working-directory-relative (skipped every file outside the repo root)
-    if (!file.exists(local_p)) next
-    if (is.na(expected) || !nzchar(expected) || expected == "PLACEHOLDER") {
-      message(sprintf("[checksum] %s: manifest has no real checksum yet (skip)",
-                      local_p))
-      next
-    }
-    # Binary-mode read (see R/load_outputs.R::verify_checksum and
-    # scripts/rehash_manifest.R): text-mode file() mangles .rds bytes on
-    # Windows and would report spurious "DIFFERS from manifest" warnings.
-    con <- file(local_p, "rb")
-    actual <- tolower(unclass(as.character(openssl::sha256(con))))  # unclass: see R/load_outputs.R
-    close(con)
-    if (identical(actual, expected)) {
-      message(sprintf("[checksum] %s matches manifest", local_p))
-    } else {
-      warning(sprintf(paste0("[checksum] %s DIFFERS from manifest\n",
-                             "  expected: %s\n  actual:   %s"),
-                      local_p, expected, actual))
-    }
-  }
-})
+# (patch 0125) The run no longer ends by hashing the files named in
+# data/manifest.csv. Those are the published release files in the repo's
+# data/derived, not the outputs this run just wrote to --out-dir: the check
+# said nothing about the run, printed "matches manifest" lines a reader could
+# take for a check of it, and re-hashed ~250 MB after every local run.
+# scripts/download_outputs.R verifies a release against its manifest, and
+# scripts/rehash_manifest.R records a new one.
 

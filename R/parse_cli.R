@@ -356,7 +356,10 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
 validate_cli_opts <- function(opts, parser = NULL) {
 
   fail <- function(msg) {
-    if (!is.null(parser)) optparse::print_help(parser)
+    # (patch 0125) the full option list helps a person at the command line; under
+    # testthat it only buried the suite's log (every validation test printed
+    # it), so it is left out when TESTTHAT is set.
+    if (!is.null(parser) && !identical(Sys.getenv("TESTTHAT"), "true")) optparse::print_help(parser)
     stop(msg, call. = FALSE)
   }
 

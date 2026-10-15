@@ -1227,6 +1227,42 @@ them. The export-share denominator remains the one unmeasured item (it needs
 a cache rebuild from the BACI CSVs).
 
 
+### Reference exporters in the two stages (patch 0125)
+
+Both stages difference every exporter against a reference exporter chosen by
+the same rule -- the most periods, ties by total value -- but each counts on
+its own sample. Stage 1 (`prepare_cell_moments()`) counts years in levels on
+the untrimmed panel; Stage 2 (`choose_reference()`, `--stage2-reference-rule
+periods_value`) counts the differenced years it keeps after the
+|Δ ln p| ≥ 2 trim. The two references coincide where an exporter trades every
+year without large unit-value jumps, and can differ where gaps or jumps change
+the count.
+
+Nothing requires them to coincide. In population each stage's estimates are
+the same for any reference (the reference-differenced moments hold for every
+choice of k), and Stage 2 takes Stage 1's σ as a number, not its reference.
+What the reference changes is finite-sample: an exporter's observation in year
+t needs the reference's difference in t, so each year the reference lacks one
+is lost for the whole cell, and the reference's own shocks enter every
+observation of the cell. Stage 2's sensitivity to its own rule was measured on
+the 2% subsample (patch 0106, above): r_within 0.368 / 0.367 / 0.367 under
+periods_value / periods_stable / value. Aligning Stage 2 to Stage 1's reference
+would cost a Stage-2 session for a change with no population consequence and no
+measured effect; aligning Stage 1 to Stage 2's would re-estimate every σ.
+Neither is planned.
+
+The open question is Stage 1's counting basis: years in levels, not the
+differenced years its moments use. `analysis/reference_exporter_census.R`
+measures on the raw cache and the shipped tables, without estimation: how often
+the two references differ; the Stage-1 observations the level count loses
+against the best of a cell's five longest differenced series (the one sharing
+the most years with the other exporters); and how often the Stage-1 reference's
+own series carries |Δ ln p| ≥ 2 years, which Stage 1 keeps by the 2026-09-22
+sample decision (`docs/methodology/sample_rule_decision.md`). Its reading is
+fixed before it is run: a local Stage-1 A/B of a rule that keeps more
+observations is worth running if the current rule loses at least 5% of a
+cell's usable observations in at least 10% of cells; otherwise the rule stays.
+
 ### The export-share denominator: `--stage2-export-total {quantity|all}` (patch 0107, design fixed before the numbers)
 
 **The issue.** BACI carries some flows with a value but no quantity. They

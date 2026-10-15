@@ -119,7 +119,9 @@ test_that("A4 / A5: pass records rotate together; the runner uses the helper and
   run <- readLines(file.path(.a7_root(), "scripts", "run_estimation.R"), warn = FALSE)
   expect_true(any(grepl("rotate_csvs <- function(k) rotate_pass_records(prefix_country, k)", run, fixed = TRUE)))
   expect_false(any(grepl("file.rename(f, sub(", run, fixed = TRUE)))
-  expect_true(any(grepl("local_p  <- file.path(repo_dir, manifest$local_path[i])", run, fixed = TRUE)))
+  # (patch 0125) the end-of-run manifest check was removed: it hashed the published
+  # files in data/derived, not the run's outputs
+  expect_false(any(grepl("DIFFERS from manifest", run, fixed = TRUE)))
 })
 
 test_that("A9: hub URLs point at a revision; load_outputs() verifies another manifest offline", {
