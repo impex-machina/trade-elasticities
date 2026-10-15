@@ -346,6 +346,57 @@ sigma_window_clause <- function(p) {
           format_prop_pct(req(req(el, "share_z"), "se_x1.5")), p$key)
 }
 
+# (patch 0123) Known truth (validation/known_truth_stage2.R, patch 0122's grid)
+# and the sigma EB period census. NULL-tolerant: without the JSONs the README
+# keeps the patch-0120 sentences.
+kt_row <- function(kt, arm, scale) {
+  rows <- Filter(function(x) identical(x$arm_name, arm) && isTRUE(all.equal(as.numeric(x$scale), scale)) &&
+                   (is.null(x$structure) || identical(x$structure, "none")), req(kt, "summary"))
+  if (!length(rows)) stop(sprintf("README needs the known-truth summary row (arm %s, shock scale %s) in results/known_truth_stage2.json", arm, format(scale)), call. = FALSE)
+  rows[[1]]
+}
+kt_not_recovered <- function(kt) !is.null(kt) && identical(kt$readings$R1_within_cell_gamma$verdict, "not recovered")
+known_truth_title_tail <- function(kt) if (kt_not_recovered(kt)) ", and it is not recovered at known truth" else ""
+within_signal_phrase <- function(kt) {
+  if (kt_not_recovered(kt)) "reproducible within a period and period-specific"
+  else "about half the within-cell heterogeneity is signal, and it is period-specific"
+}
+known_truth_order_sentence <- function(kt) {
+  if (!kt_not_recovered(kt))
+    return("Read the ordering of exporters within a cell as the data's; read the spread of their \u03b3's as conditional on the shipped \u03bb = 0.1, which sits in the middle of that plateau.")
+  sprintf("The ordering is stable across \u03bb, but at known truth it does not follow the true ordering (within-cell rank correlation %s at baseline shock volatility and %s at three times it, shipped configuration; next bullet): read neither the ordering nor the spread of exporters' \u03b3's within a cell as exporter-level information. The spread is in addition conditional on the shipped \u03bb = 0.1, which sits in the middle of that plateau.",
+          format_num(as.numeric(req(kt_row(kt, "shipped", 1), "within_rank_r")), 2L), format_num(as.numeric(req(kt_row(kt, "shipped", 3), "within_rank_r")), 2L))
+}
+known_truth_within_clause <- function(kt) {
+  if (is.null(kt)) return("")
+  meta <- req(kt, "meta"); yrs <- as.integer(strsplit(as.character(req(meta, "years")), ":", fixed = TRUE)[[1]])
+  n_years <- if (length(yrs) == 2L) yrs[2] - yrs[1] + 1L else NA_integer_
+  sh1 <- kt_row(kt, "shipped", 1); sh3 <- kt_row(kt, "shipped", 3); t1 <- kt_row(kt, "truesigma0", 1); t3 <- kt_row(kt, "truesigma0", 3)
+  verdict <- if (kt_not_recovered(kt)) " The within-cell spread of the published \u03b3 is not exporter-level supply information even when every assumption holds" else ""
+  sprintf(" Reproducible is not the same as recovered (patch 0122): on synthetic panels built to the estimator's own assumptions \u2014 Soderbery's model with known \u03c3 and \u03b3, %s years, no unit-value measurement error, %d seeds (`validation/known_truth_stage2.R`) \u2014 the shipped pipeline's within-cell deviations correlate with the true ones at r = %s at baseline shock volatility and %s at three times it, and only at %s and %s with the true \u03c3 and no shrinkage, while the ridge holds the published \u03b3 near the good-level prior (median shrink weight %s and %s).%s (`docs/results/known_truth_stage2.md`).",
+          if (is.na(n_years)) "multi-year" else as.character(n_years), length(req(meta, "seeds")),
+          format_num(as.numeric(req(sh1, "within_r")), 2L), format_num(as.numeric(req(sh3, "within_r")), 2L),
+          format_num(as.numeric(req(t1, "within_r")), 2L), format_num(as.numeric(req(t3, "within_r")), 2L),
+          format_num(as.numeric(req(sh1, "shrink_wt_median")), 3L), format_num(as.numeric(req(sh3, "shrink_wt_median")), 3L), verdict)
+}
+sigma_eb_period_clause <- function(p, kt) {
+  if (is.null(p)) return("")
+  el <- req(p$data, "early_to_late"); le <- req(p$data, "late_to_early")
+  mae <- function(x, k) as.numeric(req(req(x, k), "median_abs_err"))
+  const_best <- all(vapply(list(el, le), function(x) mae(x, "constant") < min(mae(x, "published"), mae(x, "eb")), TRUE))
+  core <- sprintf("one global \u03c3 (each period's fallback) predicts a cell's estimate in the other period with a median absolute error in ln(\u03c3 \u2212 1) of %s (1995\u20132009 \u2192 2010\u20132024) and %s (the reverse), against %s and %s for the cell's own published \u03c3 and %s and %s for its empirical-Bayes posterior",
+                  format_num(mae(el, "constant"), 2L), format_num(mae(le, "constant"), 2L), format_num(mae(el, "published"), 2L),
+                  format_num(mae(le, "published"), 2L), format_num(mae(el, "eb"), 2L), format_num(mae(le, "eb"), 2L))
+  out <- if (const_best) sprintf(" Out of sample the global value does better still (patch 0122): %s \u2014 cell-level differences in \u03c3 do not carry from one period to the other (`docs/results/%s.md`).", core, p$key)
+         else sprintf(" Out of sample (patch 0122): %s (`docs/results/%s.md`).", core, p$key)
+  r3 <- if (is.null(kt)) NULL else kt$readings$R3_sigma_eb
+  if (!is.null(r3) && identical(r3$verdict, "closed at known truth") && !is.null(r3$worlds))
+    out <- paste0(out, sprintf(" Empirical-Bayes shrinkage of \u03c3 is not adopted: at known truth it lowered the \u03c3 error by 10%% or more in %d of %d worlds (`docs/results/known_truth_stage2.md`)%s.",
+                               as.integer(r3$worlds_sigma_err_down_10pct), as.integer(r3$worlds),
+                               if (const_best) ", and on this split it is beaten by the constant it shrinks toward" else ""))
+  out
+}
+
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
 # One rendered sentence for the validation section, built from
 # results/stage2_dgp_summary.json. NULL-tolerant on the fields added in
@@ -561,6 +612,13 @@ render_env$window_drift_clause <- window_drift_clause   # patch 0120
 render_env$sigma_window_clause <- sigma_window_clause   # patch 0120
 render_env$WDRIFT <- pick_latest("window_drift_census")  # patch 0120: the 2% subsample census of patch 0119
 render_env$SWIN <- pick_latest("sigma_window_census")    # patch 0120
+render_env$known_truth_title_tail <- known_truth_title_tail           # patch 0123
+render_env$within_signal_phrase <- within_signal_phrase               # patch 0123
+render_env$known_truth_order_sentence <- known_truth_order_sentence   # patch 0123
+render_env$known_truth_within_clause <- known_truth_within_clause     # patch 0123
+render_env$sigma_eb_period_clause <- sigma_eb_period_clause           # patch 0123
+render_env$KT <- r[["known_truth_stage2"]]                             # patch 0123: NULL until committed
+render_env$SEB <- pick_latest("sigma_eb_period_census")                # patch 0123
 
 rendered <- tryCatch(
   glue::glue(template_text,

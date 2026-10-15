@@ -125,6 +125,10 @@ Supporting scripts in `validation/`:
   0.1 and 0, and empirical-Bayes σ (`R/sigma_eb.R`) — and compares the output
   with the truth: within-cell γ, cell-level γ, the import-side composite,
   `opt_tariff` and σ. Its readings R1–R3 are fixed in the script header.
+  `--structures good,good_importer` (patch 0123) adds panels whose γ carries
+  a good effect, or a good and an importer effect, and reading R4: whether
+  the published γ and `opt_tariff` track differences between products, and
+  between importers within a product.
   `analysis/sigma_eb_period_census.R` is the real-data counterpart for the
   EB σ: which σ built from 1995–2009 best predicts the 2010–2024 estimate,
   and the reverse.

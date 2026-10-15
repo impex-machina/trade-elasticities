@@ -63,6 +63,25 @@ repository under its version, v0.3.0 to v0.11.0, so `revision="v0.10.2"` (or
 `scripts/download_outputs.R --manifest <that release's manifest> --revision <tag>`
 fetches and verifies one.
 
+
+**Measured since v0.11.0 (2026-10-15, patches 0122–0123; no estimate changes).**
+(1) Known truth (`validation/known_truth_stage2.R`; `docs/results/known_truth_stage2.md`):
+on synthetic panels built to the estimator's own assumptions — Soderbery's model with
+known σ and γ, 30 years, no unit-value measurement error, 3 seeds — the shipped
+pipeline's within-cell γ deviations correlate with the true ones at r = 0.05 at
+baseline shock volatility and 0.09 at three times it (0.21 and 0.18 even with the true
+σ and no shrinkage). On real data the within-cell spread of γ reproduces within a
+period (r = 0.36), but neither it nor the within-cell ordering is exporter-level supply
+information; the v0.8.1 entry's "about half the within-cell heterogeneity is signal"
+no longer stands. (2) σ out of sample (`docs/results/sigma_eb_period_census_v0110.md`):
+on the 1995–2009 / 2010–2024 split of a 2% product subsample, one global σ predicts a
+cell's estimate in the other period better (median absolute error in ln(σ − 1) 0.87
+and 0.83) than the cell's own published σ (1.00 and 0.98) or its empirical-Bayes
+posterior (0.95 and 0.94): cell-level differences in σ do not carry across periods,
+and empirical-Bayes shrinkage of σ is not adopted. (3) Whether γ and `opt_tariff`
+track true differences between products, and between importers within a product, is
+being measured on structured synthetic panels (patch 0123).
+
 > **v0.11.0 (2026-10-14).** One Stage-2 re-estimation on the v0.9.x
 > Stage-1 table (patches 0110–0114). Eq. (11)'s export side is built on log
 > export values (`--stage2-export-moment value`), the form of Soderbery's

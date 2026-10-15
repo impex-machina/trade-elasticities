@@ -29,9 +29,20 @@
 # unit-value measurement error; it is the most favourable case, not a
 # calibration to BACI.
 #
+# Structure (patch 0123). By default every pair's gamma is an independent
+# draw, ln gamma ~ N(ln 0.7, 0.7^2): no good or importer has systematically
+# higher gammas, so there is nothing between goods for the pipeline to find.
+# good_sd / importer_sd add a good effect and an importer effect,
+#   ln gamma_Ijg = ln 0.7 + a_g + b_I + e_Ijg,  a ~ N(0, good_sd^2),
+#   b ~ N(0, importer_sd^2), e ~ N(0, within_sd^2),
+# drawn from a separate RNG stream (seed + 7919) so that sigma, the shocks
+# and the trade pattern are the same as the unstructured world of the same
+# seed; with both at 0 the world is the one patch 0121 generated, bit for bit.
+#
 # CLI:
 #   Rscript validation/synthetic_baci.R --out DIR [--seed N] [--shock-scale S]
 #           [--goods G] [--countries C] [--years 1995:2024]
+#           [--good-sd A] [--importer-sd B] [--within-sd E]
 #   DIR is created as DIR/BACI_HS92_V202601 (the runner parses the source
 #   tag from the path) with DIR/truth.rds beside it.
 # ===========================================================================
@@ -47,6 +58,10 @@ suppressPackageStartupMessages(library(data.table))
 #' @param seed RNG seed.
 #' @param shock_scale multiplies every shock innovation s.d. (volatility).
 #' @param p_trade probability that an exporter sells a good to an importer.
+#' @param good_sd,importer_sd s.d. of the good and importer effects on ln gamma
+#'   (patch 0123; 0 = none, the default).
+#' @param within_sd s.d. of the pair's own deviation (0.7, the default, is the
+#'   unstructured world's whole dispersion).
 #' @return invisibly, list(sigma = (importer, good, sigma_true),
 #'   gamma = (importer, exporter, good, gamma_true)).
 make_synthetic_baci_dir <- function(out_dir,
@@ -54,16 +69,31 @@ make_synthetic_baci_dir <- function(out_dir,
                                     countries = c(842L, 276L, 392L, 156L, 251L, 826L, 380L, 124L, 484L,
                                                   410L, 528L, 724L, 752L, 32L, 710L),
                                     years = 1995:2024, seed = 20261015L,
-                                    shock_scale = 1, p_trade = 0.75) {
+                                    shock_scale = 1, p_trade = 0.75,
+                                    good_sd = 0, importer_sd = 0, within_sd = 0.7) {
   set.seed(seed)
   dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
-  hs6_all <- data.table(hs4 = c("0101", "0101", "8703", "8703", "2709", "6109", "6109", "8471"),
-                        hs6 = c("010110", "010190", "870321", "870322", "270900", "610910", "610990", "847130"),
-                        uv_rel = c(1.0, 0.7, 1.0, 1.4, 1.0, 1.0, 0.8, 1.0))
+  # (patch 0123) seven more goods appended after the original five, so a world
+  # of n_goods <= 5 is unchanged
+  hs6_all <- data.table(hs4 = c("0101", "0101", "8703", "8703", "2709", "6109", "6109", "8471",
+                                "3004", "7208", "9403", "9403", "8517", "0901", "3901", "6403"),
+                        hs6 = c("010110", "010190", "870321", "870322", "270900", "610910", "610990", "847130",
+                                "300490", "720890", "940360", "940350", "851710", "090111", "390110", "640399"),
+                        uv_rel = c(1.0, 0.7, 1.0, 1.4, 1.0, 1.0, 0.8, 1.0, 1.0, 1.0, 1.0, 0.9, 1.0, 1.0, 1.0, 1.0))
   goods <- unique(hs6_all$hs4)[seq_len(min(n_goods, uniqueN(hs6_all$hs4)))]
   hs6 <- hs6_all[hs4 %in% goods]
   TT <- length(years)
   rows <- list(); truth_sig <- list(); truth_gam <- list()
+  structured <- good_sd > 0 || importer_sd > 0
+  g_eff <- stats::setNames(rep(0, length(goods)), goods)
+  i_eff <- stats::setNames(rep(0, length(countries)), as.character(countries))
+  if (structured) {                                    # separate stream: the main one is untouched
+    main_state <- get(".Random.seed", envir = .GlobalEnv)
+    set.seed(seed + 7919L)
+    if (good_sd > 0) g_eff[] <- stats::rnorm(length(goods), 0, good_sd)
+    if (importer_sd > 0) i_eff[] <- stats::rnorm(length(countries), 0, importer_sd)
+    assign(".Random.seed", main_state, envir = .GlobalEnv)
+  }
   for (g in goods) {
     for (I in countries) {
       sig <- 1.6 + rlnorm(1, log(1.2), 0.5)            # sigma_Ig > 1
@@ -72,7 +102,8 @@ make_synthetic_baci_dir <- function(out_dir,
       ex  <- ex[runif(length(ex)) < p_trade]
       if (length(ex) < 3) next
       J <- length(ex)
-      gam <- rlnorm(J, log(0.7), 0.7)                   # inverse supply elasticities
+      gam <- if (structured) exp(log(0.7) + g_eff[[g]] + i_eff[[as.character(I)]] + rnorm(J, 0, within_sd))
+             else rlnorm(J, log(0.7), within_sd)        # inverse supply elasticities
       truth_sig[[length(truth_sig) + 1L]] <- data.table(importer = I, good = g, sigma_true = sig)
       truth_gam[[length(truth_gam) + 1L]] <- data.table(importer = I, exporter = ex, good = g, gamma_true = gam)
       sd_b <- shock_scale * runif(J, 0.05, 0.45); sd_e <- shock_scale * runif(J, 0.05, 0.45)
@@ -123,7 +154,9 @@ make_synthetic_baci_dir <- function(out_dir,
   }
   truth <- list(sigma = rbindlist(truth_sig), gamma = rbindlist(truth_gam),
                 meta = list(seed = seed, shock_scale = shock_scale, n_goods = length(goods),
-                            countries = countries, years = range(years), n_hs6_rows = nrow(d)))
+                            countries = countries, years = range(years), n_hs6_rows = nrow(d),
+                            good_sd = good_sd, importer_sd = importer_sd, within_sd = within_sd,
+                            good_effects = g_eff, importer_effects = i_eff))
   invisible(truth)
 }
 
@@ -143,7 +176,10 @@ if (sys.nframe() == 0L) {
   tr <- make_synthetic_baci_dir(baci_dir, n_goods = as.integer(get_arg("--goods", 5L)),
                                 countries = all_ctys[seq_len(min(n_cty, length(all_ctys)))], years = yrs,
                                 seed = as.integer(get_arg("--seed", 20261015L)),
-                                shock_scale = as.numeric(get_arg("--shock-scale", 1)))
+                                shock_scale = as.numeric(get_arg("--shock-scale", 1)),
+                                good_sd = as.numeric(get_arg("--good-sd", 0)),
+                                importer_sd = as.numeric(get_arg("--importer-sd", 0)),
+                                within_sd = as.numeric(get_arg("--within-sd", 0.7)))
   saveRDS(tr, file.path(out, "truth.rds"))
   cat(sprintf("synthetic BACI: %s HS6 rows, %d goods, %d countries, years %d-%d, shock scale %g -> %s (truth: %s)\n",
               format(tr$meta$n_hs6_rows, big.mark = ","), tr$meta$n_goods, length(tr$meta$countries),
