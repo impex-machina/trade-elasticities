@@ -64,7 +64,7 @@ repository under its version, v0.3.0 to v0.11.0, so `revision="v0.10.2"` (or
 fetches and verifies one.
 
 
-**Measured since v0.11.0 (2026-10-15, patches 0122–0126; no estimate changes).**
+**Measured since v0.11.0 (2026-10-15, patches 0122–0128; no estimate changes).**
 (1) Known truth (`validation/known_truth_stage2.R`; `docs/results/known_truth_stage2.md`):
 on synthetic panels built to the estimator's own assumptions — Soderbery's model with
 known σ and γ, 30 years, no unit-value measurement error, 3 seeds — the shipped
@@ -90,8 +90,31 @@ between importers within a product weakly; differences between exporters within 
 cell not at all. (4) The published files were re-downloaded from this hub at tag
 v0.11.0, matched `data/manifest.csv`, and pass the release gate's checks of schema,
 σ reconstruction from Stage 1, `sigma_robust`, `sigma_source` and `trim_reason`
-(`docs/results/gate_hub_v0110.md`).
+(`docs/results/gate_hub_v0110.md`). (5) Stage 1 at known truth
+(`docs/results/known_truth_routing.md`): cells whose closed form is inadmissible
+and that go through the Step-2 cascade -- 24.8% of the cells with an estimate in
+the shipped Stage 1 -- carry σ − 1 overstated by a median factor of about 1.4
+(1.2 after the edge and pole rules), against about 1.07 on the closed form's
+cells; whether the boundary search does better on those cells is being measured
+(patch 0129).
 
+> **v0.11.1 (2026-10-16).** No re-estimation; the 11 v0.11.0 files are unchanged.
+> Adds a product-level companion table,
+> `product/baci_hs92_v202601_elast_hs4_product_summary.csv`: one row per HS4 product
+> (1,240), built from the v0.11.0 Stage-2b table by `analysis/product_summary.R`
+> (patch 0128) -- the median γ over directly estimated rows, the median `opt_tariff`
+> over (importer, product) cells, σ, the share of cells with their own σ, and counts.
+> At known truth the pipeline recovers differences between products, weakly those
+> between importers within a product, and not those between exporters within a cell
+> (see the note above); product medians reproduce across independent halves of a 2%
+> product subsample (Spearman 0.99 for γ and 0.97 for `opt_tariff` between odd and
+> even years, 0.99 and 0.98 between 1995–2009 and 2010–2024; level gaps in
+> `docs/results/product_summary_census.md`). No interval columns: resampling
+> importers leaves the product prior -- a product's main source of uncertainty --
+> untouched. Read `good` as character.
+> Data revision: `<fill>`. **v0.11.0 remains available pinned at revision
+> `19843d50fb7cf71b437ca52af8f61fe4a8b20f11`.**
+>
 > **v0.11.0 (2026-10-14).** One Stage-2 re-estimation on the v0.9.x
 > Stage-1 table (patches 0110–0114). Eq. (11)'s export side is built on log
 > export values (`--stage2-export-moment value`), the form of Soderbery's

@@ -107,10 +107,10 @@ test_that("stage2b_convergence_census.R counts cells whose non-converged rows we
   expect_true(any(grepl("52 L-BFGS-B error, typically a failed line search", md, fixed = TRUE)))
 })
 
-test_that("the card keeps v0.11.0 as its top entry and carries the corrections note", {
+test_that("the card keeps the v0.11.0 entry (under v0.11.1 since patch 0128) and carries the corrections note", {
   card <- readLines(file.path(.a18_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8")
   heads <- regmatches(card, regexpr("^> \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+", card))   # hf_upload_release.py's Gate 0 pattern
-  expect_identical(heads[1], "> **v0.11.0")
+  expect_identical(heads[1:2], c("> **v0.11.1", "> **v0.11.0"))
   expect_true(any(grepl("^\\*\\*Corrections \\(2026-10-15", card)))
   expect_true(any(grepl("0.72% of directly estimated rows", card, fixed = TRUE)))
   expect_true(any(grepl("colClasses = list(character = \"good\")", card, fixed = TRUE)))

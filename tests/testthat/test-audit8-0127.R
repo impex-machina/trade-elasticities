@@ -42,7 +42,7 @@ test_that("routing check: accuracy by route and the reading", {
   expect_identical(e$kr_reading(bs)$verdict, "closed")
 })
 
-test_that("product table: counts, medians, bootstrap interval, one opt_tariff per cell", {
+test_that("product table: counts, medians, one opt_tariff per cell (no intervals since patch 0128)", {
   e <- .a27_env()
   s2b <- data.table::data.table(
     importer = rep(1:4, each = 3), exporter = rep(11:13, 4), good = rep(c("0101", "0202"), each = 6),
@@ -51,16 +51,14 @@ test_that("product table: counts, medians, bootstrap interval, one opt_tariff pe
     avg_trade = 1, sigma = rep(c(2.5, 3, 2.47, 2.47), each = 3), sigma_source = rep(c("estimated", "estimated", "fallback_sigma_pole", "estimated"), each = 3),
     opt_tariff = rep(c(0.6, 0.7, 1.2, 1.3), each = 3), trim_reason = NA_character_)
   s2b[12, trim_reason := "gamma_hi"]                                  # a flagged row is left out
-  tab <- e$product_summary(s2b, B = 50L)
+  tab <- e$product_summary(s2b)
   expect_identical(tab$good, c("0101", "0202"))
   expect_identical(tab$n_rows, c(6L, 5L))
   expect_identical(tab$n_rows_estimated, c(5L, 5L))                 # the Tier-3 row is not directly estimated
   expect_equal(tab$gamma_median, c(stats::median(c(0.5, 0.6, 0.55, 0.65, 0.75)), stats::median(c(1.0, 1.2, 1.4, 1.1, 1.3))))
   expect_equal(tab$opt_tariff_median, c(0.65, 1.25))                 # one value per cell
   expect_equal(tab$share_cells_own_sigma, c(1, 0.5))
-  expect_true(all(tab$gamma_lo <= tab$gamma_median + 1e-12 & tab$gamma_hi >= tab$gamma_median - 1e-12))
-  one <- e$product_summary(s2b[importer == 1L], B = 50L)             # one cell: no interval
-  expect_true(is.na(one$gamma_lo))
+  expect_false(any(c("gamma_lo", "gamma_hi", "opt_tariff_lo", "opt_tariff_hi") %in% names(tab)))
 })
 
 test_that("product reproducibility and the reading", {

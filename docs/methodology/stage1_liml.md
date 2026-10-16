@@ -276,3 +276,19 @@ moved, 1,667 cells gained an estimate, σ_se is finite on 95.2% of ok cells
 (89.8% before), and 13,810 cells (7.6%) sit at the new edge, mostly
 boundary optima that followed it. `--stage2-sigma-edge fallback` is the
 rule for those (see `stage2_country.md`).
+
+## Routes at known truth (patches 0127–0128)
+
+`validation/known_truth_routing.R` reads the worlds `validation/known_truth_stage2.R`
+ran (σ known; no unit-value measurement error) and measures σ by route. On 18
+worlds (2,542 cells; `docs/results/known_truth_routing.md`) the median log ratio
+ln((σ̂ − 1)/(σ − 1)) is +0.07 / +0.06 on the closed form's cells, +0.12 / +0.02
+on the boundary search's and +0.38 / +0.32 on the Step-2 cascade's (baseline /
+triple shock volatility), with median absolute errors 0.23 / 0.22, 0.36 / 0.29
+and 0.38 / 0.33; after the edge and pole rules the Step-2 cells' published bias
+is +0.18. The rule fixed in patch 0127 reads "biased". In the shipped Stage 1
+the cascade takes 45,305 cells (24.8% of the cells with an estimate), 30,657 of
+them in the clean set whose median is the fallback σ. Every cell routed past an
+inadmissible closed form already carries its boundary optimum in the
+`*_hliml_bd` columns, so whether the boundary search does better on those cells
+can be measured on the existing tables without re-estimation (patch 0129).
