@@ -19,6 +19,11 @@
 #
 #  BACI uses Comtrade numeric country codes. This mapping covers the
 #  major trading nations. Unmapped codes are assigned to "OTHER".
+#  (patch 0126) On the estimation data (raw cache, 1995-2024) four codes are
+#  unmapped -- 316 Guam, 86 British Indian Ocean Territory, 260 French Southern
+#  Territories, 612 Pitcairn -- together 0.0060% of trade value as importers and
+#  0.0006% as exporters; the catch-all is kept (analysis/region_map_census.R,
+#  docs/results/region_map_census.md).
 #  Users should verify against their BACI country_codes metadata file
 #  and adjust as needed.
 # ===========================================================================

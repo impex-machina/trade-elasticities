@@ -64,7 +64,7 @@ repository under its version, v0.3.0 to v0.11.0, so `revision="v0.10.2"` (or
 fetches and verifies one.
 
 
-**Measured since v0.11.0 (2026-10-15, patches 0122–0124; no estimate changes).**
+**Measured since v0.11.0 (2026-10-15, patches 0122–0126; no estimate changes).**
 (1) Known truth (`validation/known_truth_stage2.R`; `docs/results/known_truth_stage2.md`):
 on synthetic panels built to the estimator's own assumptions — Soderbery's model with
 known σ and γ, 30 years, no unit-value measurement error, 3 seeds — the shipped
@@ -87,7 +87,10 @@ Stage-2a priors. With an importer effect added (s.d. 0.5), the cell mean ln γ t
 the importer differences within a product at only r = 0.16 and 0.23, keeping 2% and
 21% of their true spread. Differences between products are recovered; differences
 between importers within a product weakly; differences between exporters within a
-cell not at all.
+cell not at all. (4) The published files were re-downloaded from this hub at tag
+v0.11.0, matched `data/manifest.csv`, and pass the release gate's checks of schema,
+σ reconstruction from Stage 1, `sigma_robust`, `sigma_source` and `trim_reason`
+(`docs/results/gate_hub_v0110.md`).
 
 > **v0.11.0 (2026-10-14).** One Stage-2 re-estimation on the v0.9.x
 > Stage-1 table (patches 0110–0114). Eq. (11)'s export side is built on log

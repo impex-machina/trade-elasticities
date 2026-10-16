@@ -46,7 +46,7 @@ test_that("README and card carry the R4 record", {
   expect_match(readme, "Checked against known truth (`validation/known_truth_stage2.R`)", fixed = TRUE)
   expect_match(readme, "- **What the published \u03b3 and `opt_tariff` track at known truth.**", fixed = TRUE)
   card <- paste(readLines(file.path(.k24_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  expect_match(card, "patches 0122\u20130124; no estimate changes", fixed = TRUE)
+  expect_match(card, "patches 0122\u2013012", fixed = TRUE)   # 0124; 0126 extended the range
   expect_match(card, "Differences between products are recovered; differences\nbetween importers within a product weakly", fixed = TRUE)
   expect_false(grepl("is\nbeing measured on structured synthetic panels", card, fixed = TRUE))
 })

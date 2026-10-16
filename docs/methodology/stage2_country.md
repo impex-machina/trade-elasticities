@@ -1263,6 +1263,21 @@ fixed before it is run: a local Stage-1 A/B of a rule that keeps more
 observations is worth running if the current rule loses at least 5% of a
 cell's usable observations in at least 10% of cells; otherwise the rule stays.
 
+**Measured (2026-10-15, `docs/results/reference_exporter_census.md`; the full
+raw cache, 113.8 million rows, 1995–2024): closed, both rules stay.** The two
+references differ in 17.7% of the 181,779 cells with a Stage-1 estimate and
+published Stage-2 rows (the census's copy of the Stage-2 rule reproduces the
+published `ref_exporter` in 100.0% of 231,136 cells). Stage 1 uses 72,087,352
+observations; the best of each cell's five longest differenced series would
+give 72,182,375 (+0.13%), the counting-basis alternative 72,122,810 (+0.05%),
+and a reference present in every year 72,642,607 (+0.77%). The current rule
+loses at least 5% of a cell's observations in 4.3% of cells (median 0.0%, p99
+23.1%), under the 10% bar. Informational: the Stage-1 reference's own series
+has at least one |Δ ln p| ≥ 2 year in 36.6% of cells, and such years enter a
+median 8.5% of those cells' Stage-1 observations (p90 28.6%). The 2026-09-22
+sample decision keeps them; a reference rule that avoids them, without
+trimming any observation, would be a separate measurement.
+
 ### The export-share denominator: `--stage2-export-total {quantity|all}` (patch 0107, design fixed before the numbers)
 
 **The issue.** BACI carries some flows with a value but no quantity. They

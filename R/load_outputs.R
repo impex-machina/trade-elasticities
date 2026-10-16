@@ -4,7 +4,7 @@
 #' verifies SHA-256 checksums, downloads missing files.
 #'
 #' Exported functions:
-#'   load_outputs(force, verify, revision, manifest_path)
+#'   load_outputs(force, verify, revision, manifest_path, downloader)
 #'                                       -- download/verify all manifested files
 #'   hf_url_at_revision(url, revision)   -- point a hub resolve URL at a revision (patch 0116)
 #'   verify_checksum(path, expected_sha) -- single-file checksum verify
@@ -36,10 +36,22 @@ hf_url_at_revision <- function(url, revision = NULL) {
 #' failed on every file changed since). `manifest_path` reads another
 #' manifest -- e.g. an earlier release's, `git show v0.10.2:data/manifest.csv`
 #' -- whose hashes then verify the download.
+#'
+#' (patch 0126) R's download timeout (`options(timeout)`, 60 seconds unless
+#' R_DEFAULT_INTERNET_TIMEOUT says otherwise) covers the whole transfer: at
+#' ~3 MB/s it cut the 262 MB Stage-2b table at 187 MB, so the main table could
+#' not be fetched on an ordinary connection. The timeout is raised to at least
+#' an hour for the downloads and restored afterwards; a failed download names
+#' the file; and the move into place is checked (file.rename() returns FALSE
+#' rather than failing, e.g. across volumes), falling back to a copy.
+#' `downloader` exists for the tests (default utils::download.file).
 load_outputs <- function(force = FALSE, verify = TRUE, revision = NULL,
-                         manifest_path = "data/manifest.csv") {
+                         manifest_path = "data/manifest.csv",
+                         downloader = utils::download.file) {
   manifest <- data.table::fread(manifest_path)
   manifest$hf_url <- hf_url_at_revision(manifest$hf_url, revision)
+  old_timeout <- options(timeout = max(3600, getOption("timeout", 60)))
+  on.exit(options(old_timeout), add = TRUE)
   for (i in seq_len(nrow(manifest))) {
     local <- manifest$local_path[i]
     dir.create(dirname(local), showWarnings = FALSE, recursive = TRUE)
@@ -50,9 +62,19 @@ load_outputs <- function(force = FALSE, verify = TRUE, revision = NULL,
       next
     }
     tmp <- tempfile(fileext = paste0(".", tools::file_ext(local)))
-    utils::download.file(manifest$hf_url[i], tmp, mode = "wb", quiet = TRUE)
+    tryCatch(downloader(manifest$hf_url[i], tmp, mode = "wb", quiet = TRUE),
+             error = function(e) {
+               unlink(tmp)
+               stop(sprintf(paste0("download of %s failed: %s\n  (the local copy, if any, is untouched; ",
+                                   "re-run, or raise options(timeout) if the connection is slow)"),
+                            local, conditionMessage(e)), call. = FALSE)
+             })
     if (verify) verify_checksum(tmp, manifest$sha256[i])
-    file.rename(tmp, local)
+    if (!suppressWarnings(file.rename(tmp, local))) {
+      if (!file.copy(tmp, local, overwrite = TRUE))
+        stop(sprintf("downloaded and verified %s but could not move it into place", local), call. = FALSE)
+      unlink(tmp)
+    }
     message(sprintf("[ok] %s downloaded%s",
                     local, if (verify) " and verified" else ""))
   }
