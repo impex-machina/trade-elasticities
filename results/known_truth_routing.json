@@ -1,0 +1,134 @@
+{
+  "meta": {
+    "worlds_dir": "C:\\Users\\maxxj\\te_known_truth",
+    "worlds": ["w20261015_x1", "w20261015_x1_good", "w20261015_x1_good_importer", "w20261015_x3", "w20261015_x3_good", "w20261015_x3_good_importer", "w20261016_x1", "w20261016_x1_good", "w20261016_x1_good_importer", "w20261016_x3", "w20261016_x3_good", "w20261016_x3_good_importer", "w20261017_x1", "w20261017_x1_good", "w20261017_x1_good_importer", "w20261017_x3", "w20261017_x3_good", "w20261017_x3_good_importer"],
+    "cells": 2542,
+    "stage1": "data\\derived\\stage1\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "git_rev": "d62301a",
+    "timestamp": "2026-10-16 09:40:49 EDT"
+  },
+  "reading": {
+    "verdict": "biased",
+    "rule": "Step-2 raw bias > +0.2 AND raw error >= 1.5x the hliml route's, at every shock scale"
+  },
+  "overall": [
+    {
+      "route": "hliml",
+      "cells": 1913,
+      "bias_raw": 0.0659946420311574,
+      "error_raw": 0.223898853348563,
+      "within_1.5x": 0.710402509147935,
+      "share_clean": 0.85154208050183,
+      "bias_pub": 0.0770253955334571,
+      "error_pub": 0.185784031961237
+    },
+    {
+      "route": "hliml_boundary",
+      "cells": 345,
+      "bias_raw": 0.105512141017139,
+      "error_raw": 0.34684768613463,
+      "within_1.5x": 0.544927536231884,
+      "share_clean": 0.689855072463768,
+      "bias_pub": 0.0439962317461101,
+      "error_pub": 0.185691728903285
+    },
+    {
+      "route": "step2_weighted",
+      "cells": 284,
+      "bias_raw": 0.338359022279448,
+      "error_raw": 0.34293638485821,
+      "within_1.5x": 0.563380281690141,
+      "share_clean": 0.665492957746479,
+      "bias_pub": 0.183582333825099,
+      "error_pub": 0.224105358143161
+    }
+  ],
+  "by_scale": [
+    {
+      "scale": 1,
+      "route": "hliml",
+      "cells": 948,
+      "bias_raw": 0.0740701271041032,
+      "error_raw": 0.230183138460666,
+      "within_1.5x": 0.682489451476793,
+      "share_clean": 0.840717299578059,
+      "bias_pub": 0.0855660702383945,
+      "error_pub": 0.185144157616463
+    },
+    {
+      "scale": 1,
+      "route": "hliml_boundary",
+      "cells": 192,
+      "bias_raw": 0.120061319966431,
+      "error_raw": 0.360490476220294,
+      "within_1.5x": 0.53125,
+      "share_clean": 0.6875,
+      "bias_pub": 0.0809678136398002,
+      "error_pub": 0.168162031941424
+    },
+    {
+      "scale": 1,
+      "route": "step2_weighted",
+      "cells": 135,
+      "bias_raw": 0.383505952415473,
+      "error_raw": 0.383505952415473,
+      "within_1.5x": 0.540740740740741,
+      "share_clean": 0.674074074074074,
+      "bias_pub": 0.178725208613319,
+      "error_pub": 0.240719466983125
+    },
+    {
+      "scale": 3,
+      "route": "hliml",
+      "cells": 965,
+      "bias_raw": 0.0565629902788248,
+      "error_raw": 0.215843140138041,
+      "within_1.5x": 0.737823834196891,
+      "share_clean": 0.862176165803109,
+      "bias_pub": 0.0659946420311574,
+      "error_pub": 0.18659305417659
+    },
+    {
+      "scale": 3,
+      "route": "hliml_boundary",
+      "cells": 153,
+      "bias_raw": 0.0211535588995694,
+      "error_raw": 0.291132405317745,
+      "within_1.5x": 0.562091503267974,
+      "share_clean": 0.69281045751634,
+      "bias_pub": 0.00449105041782875,
+      "error_pub": 0.200154599366382
+    },
+    {
+      "scale": 3,
+      "route": "step2_weighted",
+      "cells": 149,
+      "bias_raw": 0.320160744651121,
+      "error_raw": 0.328904136538664,
+      "within_1.5x": 0.583892617449664,
+      "share_clean": 0.657718120805369,
+      "bias_pub": 0.184444866443732,
+      "error_pub": 0.212177785361957
+    }
+  ],
+  "real_routes": [
+    {
+      "route": "hliml",
+      "cells": 81146,
+      "share_of_estimated": 0.443634097270819,
+      "clean": 53136
+    },
+    {
+      "route": "hliml_boundary",
+      "cells": 56461,
+      "share_of_estimated": 0.308678490202939,
+      "clean": 29913
+    },
+    {
+      "route": "step2_weighted",
+      "cells": 45305,
+      "share_of_estimated": 0.247687412526242,
+      "clean": 30657
+    }
+  ]
+}
