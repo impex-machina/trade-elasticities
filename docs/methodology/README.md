@@ -136,6 +136,11 @@ Supporting scripts in `validation/`:
   `known_truth_stage2.R` ran and measures Stage-1 σ accuracy by route
   (closed form, boundary search, Step-2 cascade), raw and as published; its
   reading decides whether the parked routing comparison earns a local A/B.
+- `routing_ab.R` (patch 0129) — that A/B, from the tables as they are: every
+  cell routed past an inadmissible closed form carries its boundary optimum in
+  the `*_hliml_bd` columns, so Step 2's σ and the boundary σ are compared at
+  known truth, on the 1995–2009 / 2010–2024 Stage-1 windows, and on the
+  shipped Stage 1 (the fallback σ after a switch).
 
 `analysis/product_summary.R` (patch 0127) builds the product-level (HS4)
 companion table from the Stage-2b table -- median γ and median `opt_tariff`
