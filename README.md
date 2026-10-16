@@ -137,7 +137,7 @@ as it runs (`analysis/01_pillar1_empirical_overview.R`).
 
 ### The product-level table (since v0.11.1)
 
-`data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv` has one row per HS4 product (1,240), built from the table above by `analysis/product_summary.R`: `gamma_median` (the median γ over directly estimated rows), `opt_tariff_median` (the median over the product's (importer, product) cells), `sigma_median`, `share_cells_own_sigma`, and the counts `n_cells`, `n_rows`, `n_rows_estimated` and `trade` (the sum of `avg_trade`). It is the level the estimates support: at known truth the pipeline recovers differences between products, weakly those between importers within a product, and not those between exporters within a cell (Known limitations). Product medians reproduce across independent halves of a 2% product subsample (25 products): Spearman 0.99 for γ and 0.97 for `opt_tariff` between odd and even years, and 0.99 and 0.98 between 1995–2009 and 2010–2024 (`docs/results/product_summary_census.md`). σ is the global value (2.473) for nearly every product. Read `good` as character; the table carries no interval columns, because resampling importers leaves the product prior -- a product's main source of uncertainty -- untouched.
+`data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv` has one row per HS4 product (1,240), built from the table above by `analysis/product_summary.R`: `gamma_median` (the median γ over directly estimated rows), `opt_tariff_median` (the median over the product's (importer, product) cells), `sigma_median`, `share_cells_own_sigma`, and the counts `n_cells`, `n_rows`, `n_rows_estimated` and `trade` (the sum of `avg_trade`). It is the level the estimates support: at known truth the pipeline recovers differences between products, weakly those between importers within a product, and not those between exporters within a cell (Known limitations). Product medians reproduce across independent halves of a 2% product subsample (25 products): Spearman 0.99 for γ and 0.97 for `opt_tariff` between odd and even years, and 0.99 and 0.98 between 1995–2009 and 2010–2024 (`docs/results/product_summary_census.md`). Between the odd and even halves a product's median γ moves by a median 0.2% (2.0% at the 90th percentile across products): that is the table's error scale. σ is the global value (2.473) for nearly every product. Read `good` as character; the table carries no interval columns, because resampling importers leaves the product prior -- a product's main source of uncertainty -- untouched.
 
 ## Repository structure
 
@@ -151,7 +151,7 @@ trade-elasticities/
 ├── data/
 │   ├── raw/           # BACI input (gitignored; not redistributed)
 │   ├── derived/       # published outputs (downloaded from HF; gitignored)
-│   └── manifest.csv   # the 11 published data files, with SHA-256 checksums
+│   └── manifest.csv   # the 12 published data files, with SHA-256 checksums
 ├── docs/methodology/  # methodology write-up + three-pillar evidence base
 ├── inst/              # Grant & Soderbery (2024) reference PDF
 ├── results/           # generated summary JSONs feeding the README build

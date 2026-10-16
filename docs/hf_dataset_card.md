@@ -112,7 +112,7 @@ cells; whether the boundary search does better on those cells is being measured
 > `docs/results/product_summary_census.md`). No interval columns: resampling
 > importers leaves the product prior -- a product's main source of uncertainty --
 > untouched. Read `good` as character.
-> Data revision: `<fill>`. **v0.11.0 remains available pinned at revision
+> Data revision: `df6992bb38857dacce723bd3ee8d14d9e1372923`. **v0.11.0 remains available pinned at revision
 > `19843d50fb7cf71b437ca52af8f61fe4a8b20f11`.**
 >
 > **v0.11.0 (2026-10-14).** One Stage-2 re-estimation on the v0.9.x
