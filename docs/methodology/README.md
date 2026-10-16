@@ -132,6 +132,17 @@ Supporting scripts in `validation/`:
   `analysis/sigma_eb_period_census.R` is the real-data counterpart for the
   EB σ: which σ built from 1995–2009 best predicts the 2010–2024 estimate,
   and the reverse.
+- `known_truth_routing.R` (patch 0127) — reads the worlds that
+  `known_truth_stage2.R` ran and measures Stage-1 σ accuracy by route
+  (closed form, boundary search, Step-2 cascade), raw and as published; its
+  reading decides whether the parked routing comparison earns a local A/B.
+
+`analysis/product_summary.R` (patch 0127) builds the product-level (HS4)
+companion table from the Stage-2b table -- median γ and median `opt_tariff`
+per product with intervals from a bootstrap over importers, the product's σ
+and the share of its cells with their own σ -- and measures its
+reproducibility across products on the 2% subsample's odd/even halves and
+period windows before it is published.
 
 The historical patch script `patch_tier1_tier2_verdicts.R` (applied the
 2026-05-20 verdict edits to `validate_liml.R`) is retained locally for
