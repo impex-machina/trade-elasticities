@@ -292,3 +292,15 @@ them in the clean set whose median is the fallback σ. Every cell routed past an
 inadmissible closed form already carries its boundary optimum in the
 `*_hliml_bd` columns, so whether the boundary search does better on those cells
 can be measured on the existing tables without re-estimation (patch 0129).
+
+**The A/B (patch 0129; `docs/results/routing_ab.md`): keep Step 2.** The
+boundary optimum is usable on 23,592 of the shipped Step-2 cells (52.1%;
+omega_cap 15,303, omega_floor 6,420, sigma_cap 1,869). At known truth, on the
+255 comparable cells, it is less biased than Step 2 (+0.12 against +0.31) but
+noisier (median error 0.37 against 0.31; 0.33 against 0.22 as published), and
+on the real 1995–2009 / 2010–2024 split it predicts the other period's σ worse
+(median error 1.33 and 1.42 against 1.20 and 1.23). Its σ differs from Step 2's
+by a median of zero but widely (p10 / p90 of ln((σ_bd − 1)/(σ_s2 − 1)) −1.79 /
++1.92). Switching would move the fallback σ only from 2.473 to 2.486, so the
+Step-2 bias does not inflate the published fallback level. The route stays and
+the bias stays disclosed.

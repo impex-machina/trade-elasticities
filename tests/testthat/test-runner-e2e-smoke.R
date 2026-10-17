@@ -115,6 +115,23 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   newest <- function(pat) sort(list.files(meth, pattern = pat, full.names = TRUE), decreasing = TRUE)[1]
   file.copy(newest("^se_calibration_mc_per_param_\\d{8}\\.csv$"), file.path(dv, "validation", "se_calibration_mc_per_param.csv"))
   file.copy(newest("^bootstrap_se_cells_\\d{8}\\.csv$"), file.path(dv, "validation", "bootstrap_se_cells.csv"))
+  # (patch 0130) since v0.11.1 the manifest also lists the product-level table;
+  # build it from this run's Stage-2b table with the release's own tool, so the
+  # table builder runs end to end too (0129's smoke run stopped at master.R's
+  # completeness check because the scratch tree lacked it)
+  man <- data.table::fread(file.path(work, "data", "manifest.csv"))
+  prod_path <- grep("^data/derived/product/", man$local_path, value = TRUE)
+  if (length(prod_path)) {
+    pr <- .e2e_run(c(shQuote(file.path(root, "analysis", "product_summary.R")), "--stage2b", shQuote(f$s2b),
+                     "--table", prod_path, "--json", file.path(td, "ps.json"), "--md", file.path(td, "ps.md")), wd = work)
+    expect_equal(pr$status, 0L, info = paste(utils::tail(pr$out, 20), collapse = "\n"))
+    ptab <- data.table::fread(file.path(work, prod_path), colClasses = list(character = "good"))
+    expect_identical(nrow(ptab), data.table::uniqueN(pub$good))
+  }
+  # every file the manifest lists exists in the scratch tree (a new manifest row
+  # must be staged here, or master.R stops)
+  expect_true(all(file.exists(file.path(work, man$local_path))),
+              info = paste(man$local_path[!file.exists(file.path(work, man$local_path))], collapse = ", "))
 
   ma <- .e2e_run(file.path("analysis", "master.R"), wd = work)
   expect_equal(ma$status, 0L, info = paste(utils::tail(ma$out, 40), collapse = "\n"))

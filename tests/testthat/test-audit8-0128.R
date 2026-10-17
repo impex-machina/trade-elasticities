@@ -77,13 +77,17 @@ test_that("README: the product-table section and the routing bullet", {
   expect_match(readme, "Stage 1's Step-2 route overstates \u03c3 at known truth.", fixed = TRUE)
 })
 
-test_that("card: v0.11.1 on top without a data revision yet, the Step-2 disclosure", {
+test_that("card: the v0.11.1 entry (placeholder before the upload, its revision after), the Step-2 disclosure", {
   card <- readLines(file.path(.a28_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8")
   starts <- grep("^> \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+", card)
-  expect_match(card[starts[1]], "^> \\*\\*v0\\.11\\.1 ")
-  block <- paste(card[starts[1]:(starts[2] - 1L)], collapse = "\n")
-  expect_false(grepl("Data revision:[[:space:]>]*`[0-9a-f]{40}`", block))   # Gate 0: no revision yet
-  expect_match(block, "Data revision: `<fill>`", fixed = TRUE)
+  v0111 <- grep("^> \\*\\*v0\\.11\\.1 ", card)
+  expect_length(v0111, 1L)
+  nxt <- starts[starts > v0111][1]
+  block <- paste(card[v0111:(nxt - 1L)], collapse = "\n")
+  # (patch 0130) Gate 0's two states: `<fill>` until the upload, the hub revision after
+  # (this test asserted the first state only and failed once v0.11.1 shipped)
+  expect_true(grepl("Data revision: `<fill>`", block, fixed = TRUE) ||
+                grepl("Data revision:[[:space:]>]*`[0-9a-f]{40}`", block))
   expect_match(block, "product/baci_hs92_v202601_elast_hs4_product_summary.csv", fixed = TRUE)
   txt <- paste(card, collapse = "\n")
   expect_match(txt, "(5) Stage 1 at known truth", fixed = TRUE)

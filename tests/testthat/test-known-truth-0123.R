@@ -126,6 +126,6 @@ test_that("README clauses: known truth and sigma out of sample, with fallbacks",
   expect_match(readme, "cell-level differences in \u03c3 do not carry from one period to the other", fixed = TRUE)
   expect_false(grepl("about half the within-cell heterogeneity is signal", readme, fixed = TRUE))
   card <- paste(readLines(file.path(.k23_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  expect_match(card, "**Measured since v0.11.0 (2026-10-15, patches 0122\u2013012", fixed = TRUE)   # 0123; 0124 extended the range
+  expect_match(card, "**Measured since v0.11.0 (2026-10-15, patches 0122\u20130", fixed = TRUE)   # 0123; 0124 extended the range
   expect_match(card, "no longer stands", fixed = TRUE)
 })

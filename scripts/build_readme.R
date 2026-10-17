@@ -436,29 +436,45 @@ known_truth_structured_bullet <- function(kts) {
 # results/product_summary_census.json) and the Stage-1 routing check at known
 # truth (validation/known_truth_routing.R; results/known_truth_routing.json).
 # NULL-tolerant; the level-gap sentence appears once the census carries it.
-product_table_section <- function(ps, sigma_fallback) {
+product_table_section <- function(ps, sigma_fallback, pw = NULL) {
+  # (patch 0130) The odd/even and period halves of patch 0127's census re-ran
+  # Stage 2b only, with the full-panel Stage 1 and Stage-2a priors: they show
+  # that a product's median barely depends on which half of the Stage-2b data
+  # is used, given those priors -- not that product differences reproduce in
+  # independent data. Through 0129 this section called them "independent
+  # halves" and the gap "the table's error scale". The independent test is
+  # results/product_window_census.json (`pw`): Stage 1, 2a and 2b estimated
+  # separately on 1995-2009 and 2010-2024.
   if (is.null(ps)) return("")
   oe <- req(ps, "odd_even"); el <- ps$early_late
   sp <- function(x, k) format_num(as.numeric(req(req(x, k), "spearman")), 2L)
   gap <- ""
   g <- oe$gamma_median$gap_median; g90 <- oe$gamma_median$gap_p90
   if (!is.null(g) && !is.null(g90))
-    gap <- sprintf(" Between the odd and even halves a product's median \u03b3 moves by a median %.1f%% (%.1f%% at the 90th percentile across products): that is the table's error scale.",
+    gap <- sprintf(", and a product's median \u03b3 moves by a median %.1f%% (%.1f%% at the 90th percentile)",
                    100 * (exp(as.numeric(g)) - 1), 100 * (exp(as.numeric(g90)) - 1))
-  across <- if (is.null(el)) "" else sprintf(", and %s and %s between 1995\u20132009 and 2010\u20132024", sp(el, "gamma_median"), sp(el, "opt_tariff_median"))
+  across <- if (is.null(el)) "" else sprintf(" (%s and %s between 1995\u20132009 and 2010\u20132024)", sp(el, "gamma_median"), sp(el, "opt_tariff_median"))
+  indep <- " A test on independently estimated periods is pending."
+  if (!is.null(pw)) {
+    r <- req(pw, "reproducibility")
+    indep <- sprintf(" Estimated independently on 1995\u20132009 and on 2010\u20132024 -- each period's own Stage 1, Stage 2a and Stage 2b, on the same %d products -- product medians correlate at %s for \u03b3 and %s for `opt_tariff`; by the rule fixed in patch 0130 that is \"%s\" (`docs/results/product_window_census.md`).",
+                     as.integer(req(req(r, "gamma_median"), "products")), sp(r, "gamma_median"), sp(r, "opt_tariff_median"), req(pw, "reading"))
+  }
   sprintf(paste0("\n\n### The product-level table (since v0.11.1)\n\n",
                  "`data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv` has one row per HS4 product (%s), built from the table above by ",
                  "`analysis/product_summary.R`: `gamma_median` (the median \u03b3 over directly estimated rows), `opt_tariff_median` (the median over the ",
                  "product's (importer, product) cells), `sigma_median`, `share_cells_own_sigma`, and the counts `n_cells`, `n_rows`, `n_rows_estimated` and ",
                  "`trade` (the sum of `avg_trade`). It is the level the estimates support: at known truth the pipeline recovers differences between products, ",
-                 "weakly those between importers within a product, and not those between exporters within a cell (Known limitations). Product medians ",
-                 "reproduce across independent halves of a 2%% product subsample (%d products): Spearman %s for \u03b3 and %s for `opt_tariff` between odd and ",
-                 "even years%s (`docs/results/product_summary_census.md`).%s \u03c3 is the global value (%s) for nearly every product. Read `good` as character; ",
-                 "the table carries no interval columns, because resampling importers leaves the product prior -- a product's main source of uncertainty -- untouched."),
+                 "weakly those between importers within a product, and not those between exporters within a cell (Known limitations). ",
+                 "On a 2%% product subsample (%d products) the product medians hardly depend on which half of the Stage-2b data is used -- Spearman %s for ",
+                 "\u03b3 and %s for `opt_tariff` between odd and even years%s%s -- but those halves share the full-panel Stage 1 and Stage-2a priors that ",
+                 "dominate a product's median, so they do not show that product differences reproduce in independent data (`docs/results/product_summary_census.md`).%s ",
+                 "\u03c3 is the global value (%s) for nearly every product. Read `good` as character; the table carries no interval columns, because ",
+                 "resampling importers leaves the product prior -- a product's main source of uncertainty -- untouched."),
           format_int(as.integer(req(req(ps, "meta"), "products"))), as.integer(req(req(oe, "gamma_median"), "products")),
-          sp(oe, "gamma_median"), sp(oe, "opt_tariff_median"), across, gap, format_num(sigma_fallback, 3L))
+          sp(oe, "gamma_median"), sp(oe, "opt_tariff_median"), across, gap, indep, format_num(sigma_fallback, 3L))
 }
-routing_bullet <- function(kr) {
+routing_bullet <- function(kr, ab = NULL) {
   if (is.null(kr)) return("")
   bs <- req(kr, "by_scale"); ov <- req(kr, "overall"); real <- kr$real_routes
   pick <- function(rows, route, scale = NULL) {
@@ -475,7 +491,18 @@ routing_bullet <- function(kr) {
     if (length(r2)) real_txt <- sprintf(" In the shipped Stage 1 the Step-2 route carries %s cells (%s of the cells with an estimate), %s of them in the set whose median is the fallback \u03c3.",
                                         format_int(as.integer(r2[[1]]$cells)), sprintf("%.1f%%", 100 * as.numeric(r2[[1]]$share_of_estimated)), format_int(as.integer(r2[[1]]$clean)))
   }
-  verdict <- if (identical(kr$reading$verdict, "biased")) " By the rule fixed in patch 0127 that is \"biased\": whether the boundary search does better on those cells is the next measurement (patch 0129)." else ""
+  verdict <- if (identical(kr$reading$verdict, "biased")) " By the rule fixed in patch 0127 that is \"biased\"." else ""
+  # (patch 0130) the A/B of patch 0129 (results/routing_ab.json, `ab`)
+  if (!is.null(ab)) {
+    ov <- req(req(ab, "known_truth"), "overall")[[1]]; pr <- req(ab, "period"); sh <- req(ab, "shipped")
+    verdict <- paste0(verdict, sprintf(
+      " The alternative, the boundary search, is usable on %s of those cells (patch 0129): at known truth it is less biased (%s against %s) but noisier (median error %s against %s), and on the real 1995\u20132009 / 2010\u20132024 split it predicts the other period's \u03c3 worse (median error %s and %s against %s and %s). By the rule fixed in patch 0129 that is \"%s\"; switching would move the fallback \u03c3 only from %s to %s (`docs/results/routing_ab.md`).",
+      format_int(as.integer(req(sh, "with_usable_boundary"))), sprintf("%+.2f", as.numeric(ov$bias_bd)), sprintf("%+.2f", as.numeric(ov$bias_s2)),
+      format_num(as.numeric(ov$error_bd), 2L), format_num(as.numeric(ov$error_s2), 2L),
+      format_num(as.numeric(pr$early_to_late$mae_bd), 2L), format_num(as.numeric(pr$late_to_early$mae_bd), 2L),
+      format_num(as.numeric(pr$early_to_late$mae_s2), 2L), format_num(as.numeric(pr$late_to_early$mae_s2), 2L),
+      req(req(ab, "reading"), "verdict"), format_num(as.numeric(req(sh, "fallback_now")), 3L), format_num(as.numeric(req(sh, "fallback_after")), 3L)))
+  }
   sprintf("\n- **Stage 1's Step-2 route overstates \u03c3 at known truth.** On the known-truth worlds (`validation/known_truth_routing.R`, %d worlds), cells whose closed form is inadmissible and that Stage 1 routes through the Step-2 cascade carry \u03c3 \u2212 1 overstated by a median factor of %s and %s at baseline and triple shock volatility, against %s and %s on the closed form's cells; after the edge and pole rules the published factor is %s (`docs/results/known_truth_routing.md`).%s%s",
           length(req(req(kr, "meta"), "worlds")), f(s1$bias_raw), f(s3$bias_raw), f(h1$bias_raw), f(h3$bias_raw), f(so$bias_pub), real_txt, verdict)
 }
@@ -709,6 +736,8 @@ render_env$product_table_section <- product_table_section             # patch 01
 render_env$routing_bullet <- routing_bullet                           # patch 0128
 render_env$PS <- r[["product_summary_census"]]                          # patch 0128
 render_env$KR <- r[["known_truth_routing"]]                             # patch 0128
+render_env$AB <- r[["routing_ab"]]                                      # patch 0130
+render_env$PW <- r[["product_window_census"]]                           # patch 0130: NULL until committed
 
 rendered <- tryCatch(
   glue::glue(template_text,

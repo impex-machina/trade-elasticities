@@ -49,7 +49,7 @@ test_that("the 0125 readings are recorded and the card carries the hub check", {
   rm_src <- paste(readLines(file.path(.a26_root(), "R", "region_map.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   expect_match(rm_src, "0.0060% of trade value as importers", fixed = TRUE)
   card <- paste(readLines(file.path(.a26_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  expect_match(card, "patches 0122\u2013012", fixed = TRUE)   # 0126; 0128 extended the range
+  expect_match(card, "patches 0122\u20130", fixed = TRUE)   # 0126; 0128 extended the range
   expect_match(card, "(`docs/results/gate_hub_v0110.md`)", fixed = TRUE)
   rc <- jsonlite::fromJSON(file.path(.a26_root(), "results", "reference_exporter_census.json"))
   expect_identical(rc$reading, "closed")
