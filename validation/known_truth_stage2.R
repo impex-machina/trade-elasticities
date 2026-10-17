@@ -102,7 +102,11 @@ KT_ARMS <- list(
   lambda0    = list(args = c("--shrinkage-lambda", "0"), stage1 = "estimated"),
   truesigma  = list(args = character(), stage1 = "true"),
   truesigma0 = list(args = c("--shrinkage-lambda", "0"), stage1 = "true"),
-  sigma_eb   = list(args = c("--stage2-sigma-pole-rule", "none", "--stage2-sigma-edge", "publish"), stage1 = "eb")
+  sigma_eb   = list(args = c("--stage2-sigma-pole-rule", "none", "--stage2-sigma-edge", "publish"), stage1 = "eb"),
+  # (patch 0132) the precision-scaled ridge at three prior variances of ln gamma
+  ridge_t002 = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "0.02"), stage1 = "estimated"),
+  ridge_t01  = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "0.1"), stage1 = "estimated"),
+  ridge_t05  = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "0.5"), stage1 = "estimated")
 )
 KT_PREFIX <- "baci_hs92_v202601_elast_country_hs4"
 # (patch 0123) world structures: the s.d. of the good effect, the importer
@@ -306,6 +310,27 @@ kt_readings_r4 <- function(summary) {
        good_level_reading = identical(r4a, "recovered") && identical(r4b, "not recovered"))
 }
 
+#' The pre-registered reading R5 (patch 0132): does the precision-scaled ridge,
+#' at any of its prior variances, recover more than the shipped ridge in the
+#' good_importer worlds? "calibrate on real data" if some tau2 arm, at every
+#' shock scale (medians over seeds), reaches a within-good gamma r >= 0.40 or a
+#' within-cell r >= 0.30 while keeping the between-good gamma r >= 0.80;
+#' otherwise "closed".
+kt_readings_r5 <- function(summary) {
+  if (!"structure" %in% names(summary)) return(list(verdict = "not measured"))
+  x <- summary[structure == "good_importer"]
+  arms <- intersect(c("ridge_t002", "ridge_t01", "ridge_t05"), unique(x$arm_name))
+  if (!length(arms)) return(list(verdict = "not measured"))
+  per_arm <- lapply(c("shipped", arms), function(a) {
+    y <- x[arm_name == a][order(scale)]
+    list(arm = a, scales = y$scale, within_good_gamma_r = y$within_good_gamma_r, within_r = y$within_r,
+         between_good_gamma_r = y$between_good_gamma_r)
+  })
+  pass <- vapply(per_arm[-1], function(z) all(is.finite(z$between_good_gamma_r)) && all(z$between_good_gamma_r >= 0.80) &&
+                   (all(is.finite(z$within_good_gamma_r) & z$within_good_gamma_r >= 0.40) || all(is.finite(z$within_r) & z$within_r >= 0.30)), TRUE)
+  list(verdict = if (any(pass)) "calibrate on real data" else "closed", arms_passing = arms[pass], per_arm = per_arm)
+}
+
 #' Run the grid (reusing finished runs) and return the results list.
 kt_grid <- function(root, out, seeds, scales, arms, goods = 5L, countries = NULL, years = 1995:2024, ncores = 1L,
                     structures = "none") {
@@ -355,6 +380,7 @@ kt_grid <- function(root, out, seeds, scales, arms, goods = 5L, countries = NULL
   summary[, n_worlds := runs[, .N, by = .(structure, arm_name, scale)]$N]
   readings <- if ("none" %in% structures) kt_readings(summary, sigma_level, runs) else list()
   if (any(structures != "none")) readings <- c(readings, kt_readings_r4(summary))
+  if (any(grepl("^ridge_", arms))) readings$R5_ridge_scale <- kt_readings_r5(summary)   # patch 0132
   list(worlds = worlds, runs = runs, sigma_level = sigma_level, summary = summary, readings = readings)
 }
 
@@ -418,6 +444,15 @@ kt_md <- function(res, meta) {
                      paste(sprintf("%s %s", names(rd$R4b_within_goods$tariff_r_by_scale), f(unlist(rd$R4b_within_goods$tariff_r_by_scale))), collapse = ", ")),
              sprintf("- **Good-level reading: %s.**", if (isTRUE(rd$good_level_reading)) "yes -- gamma and opt_tariff carry differences between goods, not between importers within a good" else "no"), "")
   }
+  if (!is.null(rd$R5_ridge_scale) && !identical(rd$R5_ridge_scale$verdict, "not measured")) {
+    pa <- rd$R5_ridge_scale$per_arm
+    lines <- vapply(pa, function(z) sprintf("| %s | %s | %s | %s |", z$arm, paste(f(z$within_good_gamma_r), collapse = " / "),
+                                            paste(f(z$within_r), collapse = " / "), paste(f(z$between_good_gamma_r), collapse = " / ")), "")
+    out <- c(out, "## Reading R5: the precision-scaled ridge (patch 0132; good_importer worlds, shock scales in order)", "",
+             "| arm | within-good gamma r | within-cell r | between-good gamma r |", "|---|---|---|---|", lines, "",
+             sprintf("- **R5: %s.** Calibrate on real data if some tau2 arm reaches a within-good gamma r >= 0.40 or a within-cell r >= 0.30 at every scale, keeping the between-good gamma r >= 0.80.%s",
+                     rd$R5_ridge_scale$verdict, if (length(rd$R5_ridge_scale$arms_passing)) sprintf(" Passing: %s.", paste(rd$R5_ridge_scale$arms_passing, collapse = ", ")) else ""), "")
+  }
   c(out, "A synthetic world satisfies every assumption the estimator makes and has no unit-value measurement error: the most favourable case, not a calibration to BACI.")
 }
 
@@ -436,7 +471,8 @@ if (sys.nframe() == 0L) {
   structured <- any(structures != "none")
   seeds  <- as.integer(strsplit(get_arg("--seeds", "20261015,20261016,20261017"), ",")[[1]])
   scales <- as.numeric(strsplit(get_arg("--scales", "1,3"), ",")[[1]])
-  arms   <- strsplit(get_arg("--arms", if (structured) "shipped" else paste(names(KT_ARMS), collapse = ",")), ",")[[1]]
+  # (patch 0132) the default for an unstructured grid stays 0122's five arms; the ridge arms run when named
+  arms   <- strsplit(get_arg("--arms", if (structured) "shipped" else paste(setdiff(names(KT_ARMS), grep("^ridge_", names(KT_ARMS), value = TRUE)), collapse = ",")), ",")[[1]]
   if (length(setdiff(arms, names(KT_ARMS)))) stop("unknown arm(s): ", paste(setdiff(arms, names(KT_ARMS)), collapse = ", "))
   arms <- unique(c("shipped", arms))
   goods <- as.integer(get_arg("--goods", if (structured) 12L else 5L)); n_cty <- as.integer(get_arg("--countries", 15L))
@@ -447,7 +483,7 @@ if (sys.nframe() == 0L) {
   t0 <- Sys.time()
   res <- kt_grid(root, out, seeds, scales, arms, goods = goods, countries = n_cty, years = years, ncores = ncores, structures = structures)
   rev <- tryCatch(system2("git", c("-C", shQuote(root), "rev-parse", "--short", "HEAD"), stdout = TRUE, stderr = FALSE)[1], error = function(e) NA_character_)
-  meta <- list(script = "validation/known_truth_stage2.R", patch = if (structured) "0123" else "0122", seeds = seeds, scales = scales, arms = arms,
+  meta <- list(script = "validation/known_truth_stage2.R", patch = if (any(grepl("^ridge_", arms))) "0132" else if (structured) "0123" else "0122", seeds = seeds, scales = scales, arms = arms,
                structures = structures, goods = goods, countries = n_cty, years = years_s, ncores = ncores, out = out, git_rev = rev,
                timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), minutes = round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1))
   dir.create(dirname(json), recursive = TRUE, showWarnings = FALSE); dir.create(dirname(md), recursive = TRUE, showWarnings = FALSE)
@@ -459,6 +495,8 @@ if (sys.nframe() == 0L) {
   if (!is.null(rd$R1_within_cell_gamma))
     cat(sprintf("R1 within-cell gamma: %s | R2 cell opt_tariff: %s | R3 sigma EB: %s\n", rd$R1_within_cell_gamma$verdict,
                 rd$R2_cell_opt_tariff$verdict, rd$R3_sigma_eb$verdict))
+  if (!is.null(rd$R5_ridge_scale))
+    cat(sprintf("R5 ridge scale: %s\n", rd$R5_ridge_scale$verdict))
   if (!is.null(rd$R4a_between_goods))
     cat(sprintf("R4a between goods: %s | R4b within goods: %s | good-level reading: %s\n", rd$R4a_between_goods$verdict,
                 rd$R4b_within_goods$verdict, if (isTRUE(rd$good_level_reading)) "yes" else "no"))

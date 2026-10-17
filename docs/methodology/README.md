@@ -142,6 +142,15 @@ Supporting scripts in `validation/`:
   known truth, on the 1995–2009 / 2010–2024 Stage-1 windows, and on the
   shipped Stage 1 (the fallback σ after a switch).
 
+Two experiment flags (patch 0132; defaults are every release's) are measured
+locally before any re-estimation: `--stage2-ridge-scale cell` with
+`--stage2-ridge-tau2` (Stage 2b's data term in units of its own noise, so the
+ridge no longer scales with a cell's price volatility, and λ becomes the prior
+precision 1/τ²; reading R5 of `known_truth_stage2.R` on its `ridge_*` arms)
+and `--stage1-reference-rule stable` (a reference without unit-value jumps,
+within two years of the longest series; `analysis/reference_rule_census.R` on
+the 1995–2009 / 2010–2024 Stage-1 windows).
+
 `analysis/product_summary.R` (patch 0127) builds the product-level (HS4)
 companion table from the Stage-2b table -- median γ and median `opt_tariff`
 per product with intervals from a bootstrap over importers, the product's σ

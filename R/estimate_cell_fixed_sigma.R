@@ -397,6 +397,22 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
 # (patch 0071) ridge curvature per prior form, half-objective units times
 # `factor` (2 under the legacy SE form, 1 otherwise): log lambda/d^2,
 # level lambda/g^2, share lambda/(1+d)^4 (Gauss-Newton: s'(d)^2).
+#' (patch 0132) The cell scaling of --stage2-ridge-scale cell: returns the
+#' factor every row weight is multiplied by (1 / s2, s2 = 2 * ybar^2 / tbar,
+#' the noise variance of a time-averaged squared shock) and the lambda that
+#' replaces the shipped one (1 / tau2).
+.ridge_cell_scale <- function(wt, imp_y, n_periods, tau2) {
+  if (is.null(tau2) || length(tau2) != 1L || !is.finite(tau2) || tau2 <= 0)
+    stop("--stage2-ridge-scale cell needs --stage2-ridge-tau2 > 0", call. = FALSE)
+  ok <- is.finite(wt) & wt > 0 & is.finite(imp_y) & is.finite(n_periods) & n_periods > 0
+  if (!any(ok)) return(list(factor = 1, lambda = 1 / tau2, s2 = NA_real_))
+  ybar <- sum(wt[ok] * imp_y[ok]) / sum(wt[ok])
+  tbar <- sum(wt[ok] * n_periods[ok]) / sum(wt[ok])
+  s2 <- 2 * ybar^2 / tbar
+  if (!is.finite(s2) || s2 <= 0) return(list(factor = 1, lambda = 1 / tau2, s2 = NA_real_))
+  list(factor = 1 / s2, lambda = 1 / tau2, s2 = s2)
+}
+
 .ridge_curvature <- function(d_hat, shrinkage_lambda, ln_gamma_prior, prior_form, factor, prior_eps = 0.01) {
   K <- length(d_hat); out <- numeric(K)
   if (!(shrinkage_lambda > 0)) return(out)
@@ -635,6 +651,21 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     }
   }
   imp_const <- imp_const_cfg && exp_mom$M >= 2L   # identified only with >= 2 export rows
+
+  # (patch 0132) --stage2-ridge-scale cell: the data term in units of its own
+  # noise, so the log ridge's weight no longer scales with the fourth power of
+  # the cell's price volatility. Every row weight is divided by the noise
+  # variance of a time-averaged squared shock, 2 * ybar^2 / tbar (ybar the
+  # weighted mean import moment imp_y, tbar the weighted mean number of
+  # differenced periods behind a row), and lambda becomes the prior precision
+  # 1 / tau^2 of ln gamma around the product prior. Default "none": unchanged.
+  if (identical(cfg[["ridge_scale"]], "cell")) {
+    rs <- .ridge_cell_scale(wt_imp_vec, imp_Y_vec, dt_nonref[exporter %in% exporter_order, .N, by = exporter][match(exporter_order, exporter)]$N,
+                            cfg[["ridge_tau2"]])
+    wt_imp_vec <- wt_imp_vec * rs$factor
+    if (exp_mom$M > 0L) exp_mom$wt_exp <- exp_mom$wt_exp * rs$factor
+    shrinkage_lambda <- rs$lambda
+  }
 
   # --- Optimization: gamma only ---
   gam_init <- cfg$gamma_start

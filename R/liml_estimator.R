@@ -1997,7 +1997,18 @@ prepare_cell_moments <- function(trade_df,
                                  value_col = "value",
                                  quantity_col = "quantity",
                                  min_year = NULL,
-                                 uv_outlier_threshold = NA_real_) {
+                                 uv_outlier_threshold = NA_real_,
+                                 reference_rule = c("levels", "stable")) {
+  # reference_rule (patch 0132, experiment flag --stage1-reference-rule):
+  # "levels" (every release) takes the exporter with the most years in levels,
+  # ties by total value. "stable" takes, among exporters within two years of
+  # the most, the one with the fewest |d ln p| >= 2 years (Stage 2's trim
+  # threshold), then the most years, then the most value: the reference's own
+  # unit-value jump enters every exporter's observation of that year, and the
+  # reference-exporter census (patch 0125) found such a year in 36.6% of the
+  # shipped cells' references. Exact ties go to the smallest exporter code,
+  # as "levels" does.
+  reference_rule <- match.arg(reference_rule)
   # uv_outlier_threshold (patch 0057): when finite and > 0, drop differenced
   # observations with |lp_dif| >= threshold AFTER the calendar-lag
   # differencing and BEFORE the reference-exporter join -- the same rule, at
@@ -2059,10 +2070,16 @@ prepare_cell_moments <- function(trade_df,
         `:=`(ls_dif = NA_real_, lp_dif = NA_real_)]
     
     # Choose reference exporter: longest panel, ties by largest cusval
-    exp_summary <- d[, .(n_periods = data.table::uniqueN(t), cusval = sum(value)),
+    exp_summary <- d[, .(n_periods = data.table::uniqueN(t), cusval = sum(value),
+                         n_jumps = sum(is.finite(lp_dif) & abs(lp_dif) >= 2)),
                      by = exporter]
     max_periods <- max(exp_summary$n_periods)
-    ref_exporter <- exp_summary[n_periods == max_periods][which.max(cusval), exporter]
+    if (identical(reference_rule, "stable")) {   # patch 0132
+      cand <- exp_summary[n_periods >= max_periods - 2L]
+      ref_exporter <- cand[order(n_jumps, -n_periods, -cusval, exporter)][1L, exporter]
+    } else {
+      ref_exporter <- exp_summary[n_periods == max_periods][which.max(cusval), exporter]
+    }
     
     # Pull reference exporter's (ls_dif, lp_dif) by t
     ref_data <- d[exporter == ref_exporter, .(t, h_ls_dif = ls_dif, h_lp_dif = lp_dif)]
@@ -2120,11 +2137,18 @@ prepare_cell_moments <- function(trade_df,
     exp_summary <- do.call(rbind, lapply(split(d, d$exporter), function(g) {
       data.frame(exporter = g$exporter[1],
                  n_periods = length(unique(g$t)),
-                 cusval = sum(g$value))
+                 cusval = sum(g$value),
+                 n_jumps = sum(is.finite(g$lp_dif) & abs(g$lp_dif) >= 2))
     }))
     max_periods <- max(exp_summary$n_periods)
-    candidates <- exp_summary[exp_summary$n_periods == max_periods, ]
-    ref_exporter <- candidates$exporter[which.max(candidates$cusval)]
+    if (identical(reference_rule, "stable")) {   # patch 0132
+      cand <- exp_summary[exp_summary$n_periods >= max_periods - 2L, ]
+      cand <- cand[order(cand$n_jumps, -cand$n_periods, -cand$cusval, cand$exporter), ]
+      ref_exporter <- cand$exporter[1]
+    } else {
+      candidates <- exp_summary[exp_summary$n_periods == max_periods, ]
+      ref_exporter <- candidates$exporter[which.max(candidates$cusval)]
+    }
     ref_data <- d[d$exporter == ref_exporter, c("t", "ls_dif", "lp_dif")]
     names(ref_data)[2:3] <- c("h_ls_dif", "h_lp_dif")
     d <- merge(d, ref_data, by = "t", all.x = TRUE)

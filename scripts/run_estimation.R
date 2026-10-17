@@ -104,6 +104,9 @@ cat(sprintf("  Stage:            %s\n", opts[["stage"]]))
 cat(sprintf("  BW lag mode:      %s | exporter weight: %s | reference rule: %s | export total: %s\n", opts$bw_lag, opts$exporter_weight, opts$stage2_reference_rule, opts$stage2_export_total))   # patch 0091 / 0105 / 0107
 cat(sprintf("  Export moment:    %s | Stage-2a handoff rows: %s\n", opts$stage2_export_moment, opts$stage2a_handoff_rows))   # patch 0110
 cat(sprintf("  Stage-1 HLIML:    %s\n", opts$stage1_hliml))
+cat(sprintf("  Experiment flags: Stage-1 reference rule %s | Stage-2b ridge scale %s%s\n", opts$stage1_reference_rule,
+            opts$stage2_ridge_scale,
+            if (identical(opts$stage2_ridge_scale, "cell")) sprintf(" (tau2 %g)", opts$stage2_ridge_tau2) else ""))   # patch 0132 (parse_cli sets both defaults; %||% is not defined yet here)
 cat(sprintf("  Stage-1 CF rule:  %s\n", opts$stage1_cf_admissibility))
 cat(sprintf("  Stage-1 neg-omega: %s\n", opts$stage1_negative_omega))
 cat(sprintf("  Stage-1 edge SE:  %s\n", opts$stage1_edge_se))
@@ -318,6 +321,7 @@ if (should_run("1", opts, paths)) {
       negative_omega   = opts$stage1_negative_omega,      # patch 0046
       edge_se          = opts$stage1_edge_se,             # patch 0049
       uv_outlier_threshold = opts$stage1_uv_trim,         # patch 0057 (NA = off)
+      reference_rule   = opts$stage1_reference_rule,      # patch 0132 (default "levels" from parse_cli)
       step2_vce        = opts$stage1_step2_vce,           # patch 0061
       sigma_cap        = opts$stage1_sigma_cap,           # patch 0084 (10 = <= v0.8.3)
       verbose       = TRUE
@@ -474,6 +478,7 @@ if (should_run("2a", opts, paths)) {
 
     config_2a <- config_regional
     config_2a$shrinkage_lambda <- lambda_2a
+    config_2a$ridge_scale <- "none"                    # patch 0132: the ridge-scale experiment is Stage 2b's only
     config_2a$shrinkage_priors <- feenstra_priors
 
     rmap <- build_region_map()

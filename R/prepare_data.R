@@ -264,7 +264,9 @@ prepare_data <- function(cfg, raw_cache = NULL) {
 
   cell_stats <- dt[, .(n_exp = uniqueN(exporter), n_per = uniqueN(t)),
                    by = .(importer, good)]
-  cat(sprintf("  Cells: %s | Exporters/cell: median=%d, mean=%.1f | Periods/cell: median=%d, mean=%.1f\n\n",
+  # (patch 0132) %g, not %d: the median of an even number of cells can be x.5,
+  # and sprintf("%d", 7.5) stops the run (a small panel did, in the harness)
+  cat(sprintf("  Cells: %s | Exporters/cell: median=%g, mean=%.1f | Periods/cell: median=%g, mean=%.1f\n\n",
               format(nrow(cell_stats), big.mark = ","),
               median(cell_stats$n_exp), mean(cell_stats$n_exp),
               median(cell_stats$n_per), mean(cell_stats$n_per)))

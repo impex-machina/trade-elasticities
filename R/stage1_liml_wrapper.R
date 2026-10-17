@@ -71,6 +71,7 @@ run_stage1_liml <- function(baci_dt,
                             negative_omega = "reject",
                             edge_se = "hncs",
                             uv_outlier_threshold = NA_real_,
+                            reference_rule = "levels",                # patch 0132
                             step2_vce = "kclass",
                             sigma_cap = 10) {
   # sigma_cap (patch 0084): estimate_cell_liml()'s sigma_start_cap, which is
@@ -174,7 +175,8 @@ run_stage1_liml <- function(baci_dt,
         exporter_col = "exporter", time_col = "t",
         value_col = "value", quantity_col = "quantity",
         min_year = min_year,
-        uv_outlier_threshold = uv_outlier_threshold),
+        uv_outlier_threshold = uv_outlier_threshold,
+        reference_rule = reference_rule),                                  # patch 0132
       error = function(e) list(moments = NULL, n_obs = 0,
                                err = sprintf("prep_error_%s",
                                              substr(conditionMessage(e), 1, 40)))
@@ -322,7 +324,7 @@ run_stage1_liml <- function(baci_dt,
     parallel::clusterExport(cl,
                             c("min_year", "min_exporters", "min_periods", "process_one_cell",
                               "hliml_method", "cf_admissibility", "negative_omega", "edge_se",
-                              "uv_outlier_threshold", "step2_vce", "%||%"),
+                              "uv_outlier_threshold", "reference_rule", "step2_vce", "%||%"),
                             envir = environment())
     results <- parallel::clusterMap(cl, process_one_cell,
                                     idx = idx_vec,

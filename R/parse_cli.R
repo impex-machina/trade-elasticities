@@ -297,6 +297,12 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Export-totals table from scripts/build_export_totals.R, read under --stage2-export-total all. Default: <out-dir>/<prefix>_export_totals.rds beside the raw cache."),
     optparse::make_option(c("--stage2-reference-rule"), type = "character", default = "periods_value", metavar = "RULE",
       help = "How Stage 2 picks a cell's reference exporter: 'periods_value' (most periods, then largest total value; every release), 'periods_stable' (most periods, then the least variance of the price difference -- the reference's noise enters every exporter's differenced moments) or 'value' (largest total value). Patch 0105, experiment flag. Default: %default"),
+    optparse::make_option(c("--stage2-ridge-scale"), type = "character", default = "none", metavar = "SCALE",
+      help = "Patch 0132 experiment flag. 'none' (every release): the Stage-2b log ridge weighs lambda against the raw data term, so its pull scales with the fourth power of a cell's price volatility. 'cell': each cell's data term is divided by its own noise variance (2 * ybar^2 / tbar) and lambda becomes the prior precision 1 / --stage2-ridge-tau2 of ln gamma around the product prior. Stage 2a is unchanged. Default: %default"),
+    optparse::make_option(c("--stage2-ridge-tau2"), type = "double", default = NA, metavar = "TAU2",
+      help = "Prior variance of ln gamma around the product prior under --stage2-ridge-scale cell (required there, > 0). Default: unset"),
+    optparse::make_option(c("--stage1-reference-rule"), type = "character", default = "levels", metavar = "RULE",
+      help = "Patch 0132 experiment flag. How Stage 1 picks a cell's reference exporter: 'levels' (every release: most years in levels, ties by total value) or 'stable' (among exporters within two years of the most, the fewest |d ln p| >= 2 years, then the most years, then value -- a reference's unit-value jump enters every observation of its cell). Default: %default"),
     optparse::make_option(c("--stage2-sigma-pole-rule"), type = "character", default = "fallback", metavar = "RULE",
       help = "Stage-1 cells whose sigma is within --stage2-sigma-pole-se standard errors of the pole (sigma - 1 < c * sigma_se): 'fallback' (v0.10.0 default, patch 0101: treat as no estimate, as --stage2-sigma-edge fallback does at the cap; measured on the 2% subsample grid, r_within 0.333 -> 0.365 at c = 1) or 'none' (every release through v0.9.1). Default: %default"),
     optparse::make_option(c("--stage2-sigma-pole-se"), type = "double", default = 1, metavar = "C",
@@ -449,6 +455,14 @@ validate_cli_opts <- function(opts, parser = NULL) {
     fail(sprintf("--stage1-hliml must be 'bfgs', 'closed' or 'both', got: '%s'",
                  opts$stage1_hliml))
   }
+  # (patch 0132) the two experiment flags
+  if (!is.null(opts$stage1_reference_rule) && !opts$stage1_reference_rule %in% c("levels", "stable"))
+    fail(sprintf("--stage1-reference-rule must be 'levels' or 'stable', got: '%s'", opts$stage1_reference_rule))
+  if (!is.null(opts$stage2_ridge_scale) && !opts$stage2_ridge_scale %in% c("none", "cell"))
+    fail(sprintf("--stage2-ridge-scale must be 'none' or 'cell', got: '%s'", opts$stage2_ridge_scale))
+  if (identical(opts$stage2_ridge_scale, "cell") &&
+      !(!is.null(opts$stage2_ridge_tau2) && is.finite(opts$stage2_ridge_tau2) && opts$stage2_ridge_tau2 > 0))
+    fail("--stage2-ridge-scale cell needs --stage2-ridge-tau2 > 0")
   if (!is.na(opts$stage1_uv_trim) && !(is.finite(opts$stage1_uv_trim) && opts$stage1_uv_trim > 0)) {
     fail(sprintf("--stage1-uv-trim must be a positive number or omitted, got: '%s'", opts$stage1_uv_trim))
   }

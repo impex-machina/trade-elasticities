@@ -105,6 +105,8 @@ build_config <- function(opts) {
     stage2_gamma_v_passes = opts$stage2_gamma_v_passes %||% 3L,
     stage2_sigma_edge = opts$stage2_sigma_edge %||% "fallback",           # patch 0087: v0.9.0 default (publish = <= v0.8.3)
     stage2_reference_rule = opts$stage2_reference_rule %||% "periods_value",   # patch 0105: absent == every release
+    ridge_scale = opts$stage2_ridge_scale %||% "none",                # patch 0132: absent == every release
+    ridge_tau2 = if (is.null(opts$stage2_ridge_tau2)) NA_real_ else opts$stage2_ridge_tau2,   # patch 0132
     stage2_export_total = opts$stage2_export_total %||% "quantity",   # patch 0107: absent == every release
     stage2_export_moment = opts$stage2_export_moment %||% "value",    # patch 0113: v0.11.0 default (share = v0.10.x)
     stage2a_handoff_rows = opts$stage2a_handoff_rows %||% "published", # patch 0113: v0.11.0 default (all = v0.10.x)
