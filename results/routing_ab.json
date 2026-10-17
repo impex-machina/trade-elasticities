@@ -1,0 +1,83 @@
+{
+  "meta": {
+    "worlds_dir": "C:\\Users\\maxxj\\te_known_truth",
+    "worlds": 18,
+    "early": "C:\\Users\\maxxj\\te_m3\\w0_1995_2009\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "late": "C:\\Users\\maxxj\\te_m3\\w1_2010_2024\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "stage1": "data\\derived\\stage1\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "git_rev": "d3c2fe0",
+    "timestamp": "2026-10-17 15:13:51 EDT"
+  },
+  "reading": {
+    "verdict": "keep Step 2",
+    "known_truth_part": false,
+    "period_part": false
+  },
+  "known_truth": {
+    "overall": [
+      {
+        "cells": 255,
+        "bias_s2": 0.311367033237944,
+        "bias_bd": 0.121284736292081,
+        "error_s2": 0.313364927608083,
+        "error_bd": 0.367165004827639,
+        "error_pub_s2": 0.222457053263053,
+        "error_pub_bd": 0.330517557305631,
+        "share_bd_sigma_cap": 0.0588235294117647
+      }
+    ],
+    "by_scale": [
+      {
+        "scale": 1,
+        "cells": 121,
+        "bias_s2": 0.32484683907104,
+        "bias_bd": 0.102328246595498,
+        "error_s2": 0.32484683907104,
+        "error_bd": 0.364989413686071,
+        "error_pub_s2": 0.240719466983125,
+        "error_pub_bd": 0.360705018884064,
+        "share_bd_sigma_cap": 0.0413223140495868
+      },
+      {
+        "scale": 3,
+        "cells": 134,
+        "bias_s2": 0.282297869044134,
+        "bias_bd": 0.144984507005928,
+        "error_s2": 0.311854040220433,
+        "error_bd": 0.367603519797298,
+        "error_pub_s2": 0.197356866669399,
+        "error_pub_bd": 0.320463776179307,
+        "share_bd_sigma_cap": 0.0746268656716418
+      }
+    ]
+  },
+  "period": {
+    "early_to_late": {
+      "cells": 361,
+      "mae_s2": 1.19781098209034,
+      "mae_bd": 1.32815067672377
+    },
+    "late_to_early": {
+      "cells": 367,
+      "mae_s2": 1.22533853962072,
+      "mae_bd": 1.4213678568348
+    }
+  },
+  "shipped": {
+    "step2_cells": 45305,
+    "with_usable_boundary": 23592,
+    "share_usable": 0.520737225471802,
+    "boundary_edges": {
+      "omega_cap": 15303,
+      "omega_floor": 6420,
+      "sigma_cap": 1869
+    },
+    "shift_ln_sigma_minus_1": {
+      "p10": -1.78628138184124,
+      "p50": 0,
+      "p90": 1.91805107464114
+    },
+    "fallback_now": 2.472799162053,
+    "fallback_after": 2.48585632469177
+  }
+}
