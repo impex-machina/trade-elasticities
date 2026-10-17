@@ -1,0 +1,49 @@
+{
+  "meta": {
+    "w0": "C:\\Users\\maxxj\\te_m3\\w0_stage2",
+    "w1": "C:\\Users\\maxxj\\te_m3\\w1_stage2",
+    "products_w0": 25,
+    "products_w1": 25,
+    "git_rev": "cea2752",
+    "timestamp": "2026-10-17 16:59:52 EDT"
+  },
+  "reading": "reproduces",
+  "reproducibility": {
+    "gamma_median": {
+      "products": 25,
+      "spearman": 0.643076923076923,
+      "lo": 0.299581439034457,
+      "hi": 0.808354444094594,
+      "gap_median": 0.227162038695538,
+      "gap_p90": 0.667263956153301
+    },
+    "opt_tariff_median": {
+      "products": 25,
+      "spearman": 0.763846153846154,
+      "lo": 0.490965074958806,
+      "hi": 0.896495481778904,
+      "gap_median": 0.148743743745613,
+      "gap_p90": 0.447278225731872
+    }
+  },
+  "checks": {
+    "stage1_tables_differ": true,
+    "goods_w0_stage2_in_stage1": true,
+    "goods_w1_stage2_in_stage1": true,
+    "goods_same_across_windows": true
+  },
+  "shared_inputs": [
+    {
+      "a": "C:\\Users\\maxxj\\te_grid\\v0110_cfg_odd",
+      "b": "C:\\Users\\maxxj\\te_grid\\v0110_cfg_even",
+      "stage1": "shared",
+      "stage2a": "shared"
+    },
+    {
+      "a": "C:\\Users\\maxxj\\te_grid\\v0110_period_a",
+      "b": "C:\\Users\\maxxj\\te_grid\\v0110_period_b",
+      "stage1": "shared",
+      "stage2a": "own"
+    }
+  ]
+}
