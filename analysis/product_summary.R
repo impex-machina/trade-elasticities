@@ -22,10 +22,12 @@
 # prior -- the main source of a product's uncertainty. The census instead
 # reports how far a product's median moves between the halves (the level gap).
 # (patch 0130) Those halves are NOT independent for the product prior: the
-# odd/even (--t-parity) and period runs of the 2% subsample re-estimated Stage 2b
-# only, with the full-panel Stage 1 and Stage-2a priors, so the correlations and
-# the gap measure how little a product's median depends on the Stage-2b data
-# given those priors. The independent test is analysis/product_window_census.R.
+# odd/even (--t-parity) runs of the 2% subsample re-estimated Stage 2b only, with
+# the full-panel Stage 1 and Stage-2a tables, and the period runs re-estimated
+# Stage 2a and 2b on the full-panel Stage 1 (hash check, patch 0130), so the
+# correlations and the gap measure how little a product's median depends on the
+# Stage-2 data given that Stage 1. The independent test is
+# analysis/product_window_census.R (each period's own Stage 1, 2a and 2b).
 # sigma differs little across products: one global value (the fallback, 2.47)
 # predicts a cell's other-period sigma better than the cell's own estimate
 # (docs/results/sigma_eb_period_census_v0110.md).

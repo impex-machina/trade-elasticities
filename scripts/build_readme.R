@@ -448,17 +448,24 @@ product_table_section <- function(ps, sigma_fallback, pw = NULL) {
   if (is.null(ps)) return("")
   oe <- req(ps, "odd_even"); el <- ps$early_late
   sp <- function(x, k) format_num(as.numeric(req(req(x, k), "spearman")), 2L)
+  # (patch 0131) the shared-prior halves' level gap (0.2%) is no longer quoted
+  # here: it measured how little the Stage-2b data move a product's median given
+  # the priors, which is no guide to the table's uncertainty. The independent
+  # periods' gap below is.
   gap <- ""
-  g <- oe$gamma_median$gap_median; g90 <- oe$gamma_median$gap_p90
-  if (!is.null(g) && !is.null(g90))
-    gap <- sprintf(", and a product's median \u03b3 moves by a median %.1f%% (%.1f%% at the 90th percentile)",
-                   100 * (exp(as.numeric(g)) - 1), 100 * (exp(as.numeric(g90)) - 1))
   across <- if (is.null(el)) "" else sprintf(" (%s and %s between 1995\u20132009 and 2010\u20132024)", sp(el, "gamma_median"), sp(el, "opt_tariff_median"))
   indep <- " A test on independently estimated periods is pending."
   if (!is.null(pw)) {
     r <- req(pw, "reproducibility")
     indep <- sprintf(" Estimated independently on 1995\u20132009 and on 2010\u20132024 -- each period's own Stage 1, Stage 2a and Stage 2b, on the same %d products -- product medians correlate at %s for \u03b3 and %s for `opt_tariff`; by the rule fixed in patch 0130 that is \"%s\" (`docs/results/product_window_census.md`).",
                      as.integer(req(req(r, "gamma_median"), "products")), sp(r, "gamma_median"), sp(r, "opt_tariff_median"), req(pw, "reading"))
+    # (patch 0131) the independent periods' level gap: the scale of uncertainty for the table's values
+    gg <- r$gamma_median$gap_median; g9 <- r$gamma_median$gap_p90; og <- r$opt_tariff_median$gap_median; o9 <- r$opt_tariff_median$gap_p90
+    if (!is.null(gg) && !is.null(g9) && !is.null(og) && !is.null(o9)) {
+      pc <- function(v) sprintf("%.1f%%", 100 * (exp(as.numeric(v)) - 1))
+      indep <- paste0(indep, sprintf(" Between those periods a product's median \u03b3 differs by a median of %s (%s at the 90th percentile) and its median `opt_tariff` by %s (%s). Part of that is change over time, but it is the scale of uncertainty to read the table's values with: its ranking of products is better supported than its levels.",
+                                     pc(gg), pc(g9), pc(og), pc(o9)))
+    }
   }
   sprintf(paste0("\n\n### The product-level table (since v0.11.1)\n\n",
                  "`data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv` has one row per HS4 product (%s), built from the table above by ",
@@ -467,8 +474,9 @@ product_table_section <- function(ps, sigma_fallback, pw = NULL) {
                  "`trade` (the sum of `avg_trade`). It is the level the estimates support: at known truth the pipeline recovers differences between products, ",
                  "weakly those between importers within a product, and not those between exporters within a cell (Known limitations). ",
                  "On a 2%% product subsample (%d products) the product medians hardly depend on which half of the Stage-2b data is used -- Spearman %s for ",
-                 "\u03b3 and %s for `opt_tariff` between odd and even years%s%s -- but those halves share the full-panel Stage 1 and Stage-2a priors that ",
-                 "dominate a product's median, so they do not show that product differences reproduce in independent data (`docs/results/product_summary_census.md`).%s ",
+                 "\u03b3 and %s for `opt_tariff` between odd and even years%s%s -- but those halves share the full-panel Stage 1 (the odd/even halves also its ",
+                 "Stage-2a priors), from which a product's median is mostly built, so they do not show that product differences reproduce in independent data ",
+                 "(`docs/results/product_summary_census.md`; a hash check in `docs/results/product_window_census.md`).%s ",
                  "\u03c3 is the global value (%s) for nearly every product. Read `good` as character; the table carries no interval columns, because ",
                  "resampling importers leaves the product prior -- a product's main source of uncertainty -- untouched."),
           format_int(as.integer(req(req(ps, "meta"), "products"))), as.integer(req(req(oe, "gamma_median"), "products")),

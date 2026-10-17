@@ -112,14 +112,19 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > on which half of the Stage-2b data is used (Spearman 0.99 for γ and 0.97 for
 > `opt_tariff` between odd and even years, 0.99 and 0.98 between 1995–2009 and
 > 2010–2024; `docs/results/product_summary_census.md`), but those halves share the
-> full-panel Stage 1 and Stage-2a priors that dominate a product's median, so they do
-> not show that product differences reproduce in independent data. No interval
+> full-panel Stage 1 (the odd/even halves also its Stage-2a priors), from which a
+> product's median is mostly built, so they do not show that product differences
+> reproduce in independent data. No interval
 > columns: resampling importers leaves the product prior -- a product's main source of
 > uncertainty -- untouched. Read `good` as character. *(Corrected 2026-10-17, patch
 > 0130: this entry first called those halves independent and the gap between them the
-> table's error scale. A test on independently estimated periods -- each period's own
-> Stage 1, 2a and 2b -- is reported in the README's product-table section and
-> `docs/results/product_window_census.md`.)*
+> table's error scale. On independently estimated periods -- each period's own Stage 1,
+> 2a and 2b, on the subsample's 25 products -- product medians correlate at 0.64 for γ
+> and 0.76 for `opt_tariff` (`docs/results/product_window_census.md`): the ranking of
+> products reproduces, while between 1995–2009 and 2010–2024 a product's median differs
+> by a median of 25.5% for γ (94.9% at the 90th percentile) and 16.0% for `opt_tariff`
+> (56.4%) -- partly change over time, and the scale of uncertainty for the table's
+> values.)*
 > Data revision: `df6992bb38857dacce723bd3ee8d14d9e1372923`. **v0.11.0 remains available pinned at revision
 > `19843d50fb7cf71b437ca52af8f61fe4a8b20f11`.**
 >
