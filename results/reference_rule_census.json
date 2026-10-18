@@ -1,0 +1,29 @@
+{
+  "per_rule": {
+    "levels": {
+      "rule": "levels",
+      "cells": 2498,
+      "sigma_mad": 1.22969049132004,
+      "sigma_spearman": 0.0218826390607039,
+      "products": 25,
+      "prior_spearman": 0.640769230769231
+    },
+    "stable": {
+      "rule": "stable",
+      "cells": 2498,
+      "sigma_mad": 1.22351437639158,
+      "sigma_spearman": 0.031934019952273,
+      "products": 25,
+      "prior_spearman": 0.637692307692308
+    }
+  },
+  "reading": "closed",
+  "meta": {
+    "le": "C:\\Users\\maxxj\\te_m3\\w0_1995_2009\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "ll": "C:\\Users\\maxxj\\te_m3\\w1_2010_2024\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "se": "C:\\Users\\maxxj\\te_m3\\w0_stable\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "sl": "C:\\Users\\maxxj\\te_m3\\w1_stable\\baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "git_rev": "9f55380",
+    "timestamp": "2026-10-17 23:10:55 EDT"
+  }
+}
