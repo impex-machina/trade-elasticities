@@ -106,7 +106,12 @@ KT_ARMS <- list(
   # (patch 0132) the precision-scaled ridge at three prior variances of ln gamma
   ridge_t002 = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "0.02"), stage1 = "estimated"),
   ridge_t01  = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "0.1"), stage1 = "estimated"),
-  ridge_t05  = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "0.5"), stage1 = "estimated")
+  ridge_t05  = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "0.5"), stage1 = "estimated"),
+  # (patch 0133) the empirical-Bayes halves: Stage 2b on alternate four-year blocks (--t-parity
+  # block-a / block-b: no level year in both halves) at a weak prior (tau^2 = 1); Stage 1 copied,
+  # Stage 2a on the full panel (--t-parity applies to Stage 2b's panel only)
+  half_a_t1 = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "1", "--t-parity", "block-a"), stage1 = "estimated"),
+  half_b_t1 = list(args = c("--stage2-ridge-scale", "cell", "--stage2-ridge-tau2", "1", "--t-parity", "block-b"), stage1 = "estimated")
 )
 KT_PREFIX <- "baci_hs92_v202601_elast_country_hs4"
 # (patch 0123) world structures: the s.d. of the good effect, the importer
@@ -331,6 +336,48 @@ kt_readings_r5 <- function(summary) {
   list(verdict = if (any(pass)) "calibrate on real data" else "closed", arms_passing = arms[pass], per_arm = per_arm)
 }
 
+#' The pre-registered reading R6 (patch 0133): does the empirical-Bayes
+#' estimate of tau^2 (analysis/ridge_tau2_eb.R, from the half_a_t1 and
+#' half_b_t1 arms, alternate four-year blocks) land where the precision-scaled ridge recovers well?
+#' "EB validated" if tau2_eb lies in [0.05, 1] in at least five sixths of the
+#' good_importer worlds (R5's passing arms are tau^2 = 0.1 and 0.5);
+#' otherwise "EB not validated". Also reports the variance of the true
+#' deviations ln gamma - ln prior over the same rows, for reference.
+kt_readings_r6 <- function(world_dirs, root = ".") {
+  if (!length(world_dirs)) return(list(verdict = "not measured"))
+  e <- new.env()
+  for (f in c("R/utils_general.R", "R/iteration_helpers.R", "analysis/ridge_tau2_eb.R")) sys.source(file.path(root, f), envir = e)
+  per <- data.table::rbindlist(lapply(world_dirs, function(wd) {
+    f2b <- function(a) file.path(wd, a, paste0(KT_PREFIX, "_fixed_sigma.rds"))
+    f2a <- file.path(wd, "half_a_t1", "baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds")
+    if (!all(file.exists(c(f2b("half_a_t1"), f2b("half_b_t1"), f2a)))) return(NULL)
+    pri <- e$eb_priors(readRDS(f2a)); o <- readRDS(f2b("half_a_t1")); ev <- readRDS(f2b("half_b_t1"))
+    est <- e$eb_tau2(o, ev, pri)
+    tr <- readRDS(file.path(wd, "truth.rds"))
+    rows <- merge(e$eb_rows(o, pri), data.table::as.data.table(tr$gamma)[, .(importer = as.character(importer), exporter = as.character(exporter),
+                                                                             good = as.character(good), gamma_true)],
+                  by = c("importer", "exporter", "good"))
+    rows <- merge(rows, pri, by = "good")
+    # exporter-product effects: split-half reproducibility, and against their true counterparts
+    ex <- e$eb_exporter_effects(o, ev)
+    tg <- data.table::as.data.table(tr$gamma)[, .(importer = as.character(importer), exporter = as.character(exporter), good = as.character(good), lt = log(gamma_true))]
+    tg[, dt := lt - mean(lt), by = .(importer, good)]
+    te <- tg[, .(et = mean(dt)), by = .(exporter, good)]
+    exm <- merge(ex$effects, te, by = c("exporter", "good"))
+    data.table::data.table(world = basename(wd), rows = est$rows, tau2_eb = est$tau2_eb, tau2_eb_untrimmed = est$tau2_eb_untrimmed, row_spearman = est$row_spearman,
+                           true_var = stats::var(log(rows$gamma_true) - rows$ln_prior),
+                           exp_split_r = ex$pearson, exp_truth_r = if (nrow(exm) >= 10L) stats::cor((exm$e_o + exm$e_e) / 2, exm$et) else NA_real_)
+  }), fill = TRUE)
+  if (!nrow(per)) return(list(verdict = "not measured"))
+  c(kt_r6_verdict(per$tau2_eb), list(per_world = per))
+}
+
+#' R6's rule: tau2_eb in [0.05, 1] in at least five sixths of the worlds.
+kt_r6_verdict <- function(tau2_eb) {
+  ok <- is.finite(tau2_eb) & tau2_eb >= 0.05 & tau2_eb <= 1
+  list(verdict = if (length(ok) && mean(ok) >= 5 / 6) "EB validated" else "EB not validated", share_in_range = if (length(ok)) mean(ok) else NA_real_)
+}
+
 #' Run the grid (reusing finished runs) and return the results list.
 kt_grid <- function(root, out, seeds, scales, arms, goods = 5L, countries = NULL, years = 1995:2024, ncores = 1L,
                     structures = "none") {
@@ -381,6 +428,8 @@ kt_grid <- function(root, out, seeds, scales, arms, goods = 5L, countries = NULL
   readings <- if ("none" %in% structures) kt_readings(summary, sigma_level, runs) else list()
   if (any(structures != "none")) readings <- c(readings, kt_readings_r4(summary))
   if (any(grepl("^ridge_", arms))) readings$R5_ridge_scale <- kt_readings_r5(summary)   # patch 0132
+  if (all(c("half_a_t1", "half_b_t1") %in% arms) && "good_importer" %in% structures)   # patch 0133
+    readings$R6_eb <- kt_readings_r6(vapply(as.list(seeds), function(sd) vapply(as.list(scales), function(sc) kt_world_dir(out, sd, sc, "good_importer"), ""), character(length(scales))), root)
   list(worlds = worlds, runs = runs, sigma_level = sigma_level, summary = summary, readings = readings)
 }
 
@@ -453,6 +502,15 @@ kt_md <- function(res, meta) {
              sprintf("- **R5: %s.** Calibrate on real data if some tau2 arm reaches a within-good gamma r >= 0.40 or a within-cell r >= 0.30 at every scale, keeping the between-good gamma r >= 0.80.%s",
                      rd$R5_ridge_scale$verdict, if (length(rd$R5_ridge_scale$arms_passing)) sprintf(" Passing: %s.", paste(rd$R5_ridge_scale$arms_passing, collapse = ", ")) else ""), "")
   }
+  if (!is.null(rd$R6_eb) && !identical(rd$R6_eb$verdict, "not measured")) {
+    pw <- rd$R6_eb$per_world
+    out <- c(out, "## Reading R6: the empirical-Bayes tau^2 (patch 0133; good_importer worlds)", "",
+             "| world | rows in both halves | tau2_eb (2.5% trim) | untrimmed | Spearman of the deviations between halves | true variance of ln gamma - ln prior | exporter-product effects: split-half r | against the truth r |", "|---|---|---|---|---|---|---|---|",
+             sprintf("| %s | %s | %s | %s | %s | %s | %s | %s |", pw$world, format(pw$rows, big.mark = ","), f(pw$tau2_eb), f(pw$tau2_eb_untrimmed), f(pw$row_spearman), f(pw$true_var),
+                     f(pw$exp_split_r), f(pw$exp_truth_r)), "",
+             "The worlds carry no exporter component: an exporter-product's true effect is the mean of its pair-specific deviations. Effects that reproduce across halves without tracking that truth come from the data or the estimator, not from gamma.", "",
+             sprintf("- **R6: %s** (%s of worlds in [0.05, 1]; rule fixed in patch 0133: at least five sixths).", rd$R6_eb$verdict, sprintf("%.0f%%", 100 * rd$R6_eb$share_in_range)), "")
+  }
   c(out, "A synthetic world satisfies every assumption the estimator makes and has no unit-value measurement error: the most favourable case, not a calibration to BACI.")
 }
 
@@ -472,7 +530,7 @@ if (sys.nframe() == 0L) {
   seeds  <- as.integer(strsplit(get_arg("--seeds", "20261015,20261016,20261017"), ",")[[1]])
   scales <- as.numeric(strsplit(get_arg("--scales", "1,3"), ",")[[1]])
   # (patch 0132) the default for an unstructured grid stays 0122's five arms; the ridge arms run when named
-  arms   <- strsplit(get_arg("--arms", if (structured) "shipped" else paste(setdiff(names(KT_ARMS), grep("^ridge_", names(KT_ARMS), value = TRUE)), collapse = ",")), ",")[[1]]
+  arms   <- strsplit(get_arg("--arms", if (structured) "shipped" else paste(setdiff(names(KT_ARMS), grep("^(ridge|half)_", names(KT_ARMS), value = TRUE)), collapse = ",")), ",")[[1]]
   if (length(setdiff(arms, names(KT_ARMS)))) stop("unknown arm(s): ", paste(setdiff(arms, names(KT_ARMS)), collapse = ", "))
   arms <- unique(c("shipped", arms))
   goods <- as.integer(get_arg("--goods", if (structured) 12L else 5L)); n_cty <- as.integer(get_arg("--countries", 15L))
@@ -483,7 +541,7 @@ if (sys.nframe() == 0L) {
   t0 <- Sys.time()
   res <- kt_grid(root, out, seeds, scales, arms, goods = goods, countries = n_cty, years = years, ncores = ncores, structures = structures)
   rev <- tryCatch(system2("git", c("-C", shQuote(root), "rev-parse", "--short", "HEAD"), stdout = TRUE, stderr = FALSE)[1], error = function(e) NA_character_)
-  meta <- list(script = "validation/known_truth_stage2.R", patch = if (any(grepl("^ridge_", arms))) "0132" else if (structured) "0123" else "0122", seeds = seeds, scales = scales, arms = arms,
+  meta <- list(script = "validation/known_truth_stage2.R", patch = if (any(grepl("^half_", arms))) "0133" else if (any(grepl("^ridge_", arms))) "0132" else if (structured) "0123" else "0122", seeds = seeds, scales = scales, arms = arms,
                structures = structures, goods = goods, countries = n_cty, years = years_s, ncores = ncores, out = out, git_rev = rev,
                timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), minutes = round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1))
   dir.create(dirname(json), recursive = TRUE, showWarnings = FALSE); dir.create(dirname(md), recursive = TRUE, showWarnings = FALSE)
@@ -497,6 +555,8 @@ if (sys.nframe() == 0L) {
                 rd$R2_cell_opt_tariff$verdict, rd$R3_sigma_eb$verdict))
   if (!is.null(rd$R5_ridge_scale))
     cat(sprintf("R5 ridge scale: %s\n", rd$R5_ridge_scale$verdict))
+  if (!is.null(rd$R6_eb))
+    cat(sprintf("R6 EB tau2: %s\n", rd$R6_eb$verdict))
   if (!is.null(rd$R4a_between_goods))
     cat(sprintf("R4a between goods: %s | R4b within goods: %s | good-level reading: %s\n", rd$R4a_between_goods$verdict,
                 rd$R4b_within_goods$verdict, if (isTRUE(rd$good_level_reading)) "yes" else "no"))

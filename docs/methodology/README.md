@@ -151,6 +151,17 @@ and `--stage1-reference-rule stable` (a reference without unit-value jumps,
 within two years of the longest series; `analysis/reference_rule_census.R` on
 the 1995–2009 / 2010–2024 Stage-1 windows).
 
+`analysis/ridge_tau2_eb.R` (patch 0133) calibrates τ² for
+`--stage2-ridge-scale cell` by empirical Bayes: the covariance of two halves'
+deviations from the product prior, corrected for each row's data share,
+estimates the variance of the recoverable signal. The halves are alternate
+four-year blocks (`--t-parity block-a / block-b`), not odd and even years:
+under odd / even every level year -- and its unit-value measurement error --
+enters both halves, which the earlier split-half reliability figures share. Reading R6 of
+`known_truth_stage2.R` checks the estimator at known truth before it is used on
+real data; `--mode check` compares real halves re-estimated at that τ² with
+the shipped halves.
+
 `analysis/product_summary.R` (patch 0127) builds the product-level (HS4)
 companion table from the Stage-2b table -- median γ and median `opt_tariff`
 per product with intervals from a bootstrap over importers, the product's σ

@@ -272,7 +272,10 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Shift of the 'shiftlog' prior (patch 0074). Default: %default"),
     optparse::make_option(c("--t-parity"), type = "character", default = "all", metavar = "MODE",
       help = paste("Keep 'odd' or 'even' differenced observations (by t) after prepare_data, for same-period",
-                   "split-half experiments (patch 0074); 'all' keeps every observation. Default: %default")),
+                   "split-half experiments (patch 0074); 'all' keeps every observation. 'block-a' / 'block-b'",
+                   "(patch 0133) keep alternate four-year blocks of levels and drop the differences that straddle",
+                   "two blocks, so no year's level -- and no level measurement error -- enters both halves.",
+                   "Default: %default")),
     optparse::make_option(c("--stage2-maxit"), type = "integer", default = 5000L, metavar = "N",
       help = "L-BFGS-B iteration cap for the Stage-2 cell fit (Nelder-Mead fallback gets 2N); 500 reproduces v0.8.0 and earlier. Default: %default"),
     optparse::make_option(c("--stage2-fallback"), type = "character", default = "best", metavar = "RULE",
@@ -425,7 +428,8 @@ validate_cli_opts <- function(opts, parser = NULL) {
   }
   if (!opts[["stage2_prior"]] %in% c("log", "level", "share", "shiftlog")) fail(sprintf("--stage2-prior must be 'log', 'level', 'share' or 'shiftlog', got: '%s'", opts[["stage2_prior"]]))
   if (!is.numeric(opts$stage2_prior_eps) || opts$stage2_prior_eps <= 0) fail("--stage2-prior-eps must be positive")
-  if (!opts$t_parity %in% c("all", "odd", "even")) fail(sprintf("--t-parity must be 'all', 'odd' or 'even', got: '%s'", opts$t_parity))
+  if (!opts$t_parity %in% c("all", "odd", "even", "block-a", "block-b"))
+    fail(sprintf("--t-parity must be 'all', 'odd', 'even', 'block-a' or 'block-b', got: '%s'", opts$t_parity))
   if (!is.numeric(opts$stage2_maxit) || opts$stage2_maxit < 1) fail("--stage2-maxit must be a positive integer")
   if (!opts$stage2_ref_export_moment %in% c("off", "on")) fail(sprintf("--stage2-ref-export-moment must be 'off' or 'on', got: '%s'", opts$stage2_ref_export_moment))
   if (!opts$stage2_import_constant %in% c("off", "on")) fail(sprintf("--stage2-import-constant must be 'off' or 'on', got: '%s'", opts$stage2_import_constant))

@@ -237,9 +237,11 @@ prep_country <- prepare_data(config_country, raw_cache = raw_cache)
 # split-half experiments; the Stage-2a priors/lookups come from a full-panel 2a
 # table, so this is for --stage 2b passes.
 if (!is.null(opts$t_parity) && opts$t_parity != "all") {
-  .keep_par <- if (opts$t_parity == "odd") 1L else 0L
   .n0 <- nrow(prep_country$dt)
-  prep_country$dt <- prep_country$dt[t %% 2L == .keep_par]
+  # (patch 0133) t_parity_keep() in R/utils_general.R: odd / even by t (as
+  # before), or the block halves, whose first level year is the panel's
+  .y0 <- min(prep_country$dt$t) - 1L
+  prep_country$dt <- prep_country$dt[t_parity_keep(t, opts$t_parity, y0 = .y0)]
   cat(sprintf("t-parity filter (%s): %s of %s differenced observations kept\n\n", opts$t_parity,
               format(nrow(prep_country$dt), big.mark = ","), format(.n0, big.mark = ",")))
 }

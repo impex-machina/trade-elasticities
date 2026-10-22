@@ -341,3 +341,26 @@ boundary_flags <- function(edge, sigma, omega, sigma_cap, omega_cap,
 # NULL-only base version, which this masks deliberately.
 # ---------------------------------------------------------------------------
 `%||%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a
+
+
+#' (patch 0133) Which differenced observations a --t-parity half keeps.
+#' A difference at year t uses the levels of t - 1 and t. "odd" / "even" keep
+#' t by parity, so every level year (but the ends) enters one odd and one even
+#' difference, and a level's measurement error enters both halves' squared
+#' moments. "block-a" / "block-b" group level years into blocks of `block`
+#' consecutive years from y0 (the first level year), keep the differences
+#' whose two levels sit in the same block, and give even-numbered blocks to
+#' half a and odd-numbered blocks to half b: no level year is in both halves.
+#' The differences that straddle two blocks (one in `block`) are dropped.
+t_parity_keep <- function(t, mode, y0 = min(t) - 1L, block = 4L) {
+  t <- as.integer(t)
+  switch(mode,
+         all = rep(TRUE, length(t)),
+         odd = t %% 2L == 1L,
+         even = t %% 2L == 0L,
+         "block-a" = , "block-b" = {
+           lo <- (t - 1L - y0) %/% block; hi <- (t - y0) %/% block
+           lo == hi & (hi %% 2L) == if (mode == "block-a") 0L else 1L
+         },
+         stop("t_parity_keep(): unknown mode ", mode))
+}
