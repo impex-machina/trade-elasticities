@@ -151,6 +151,10 @@ if (sys.nframe() == 0L) {
     json <- get_arg("--json", "results/ridge_tau2_eb.json"); md <- get_arg("--md", "docs/results/ridge_tau2_eb.md")
     pri <- eb_priors(readRDS(p[["regional"]])); o <- readRDS(p[["odd"]]); e <- readRDS(p[["even"]])
     est <- eb_tau2(o, e, pri); ex <- eb_exporter_effects(o, e)
+    # (patch 0134) no rows estimated in both halves is a failed run, not a tau^2
+    if (!est$rows || !is.finite(est$tau2_eb))
+      stop(sprintf("no usable rows estimated in both halves (%d rows; half a %d, half b %d directly estimated rows) -- check the half runs' logs",
+                   est$rows, nrow(eb_rows(o, pri)), nrow(eb_rows(e, pri))), call. = FALSE)
     ex$effects <- NULL
     jsonlite::write_json(list(meta = c(as.list(p), git_rev = rev, timestamp = ts), tau2 = est, exporter_effects = ex),
                          json, auto_unbox = TRUE, pretty = TRUE, digits = NA)

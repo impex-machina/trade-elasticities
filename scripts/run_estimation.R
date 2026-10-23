@@ -695,6 +695,11 @@ if (should_run("2b", opts, paths)) {
 
     country_results <- estimate_all_fixed_sigma(
       config_2b, ncores = ncores, prepared_dt = dt_country)
+    # (patch 0134) a Stage 2b in which every cell failed stops here: no real run
+    # estimates nothing, and 0133's first real-data runs (every cell failed on
+    # PSOCK workers, see stage2_worker_fns) finished "successfully" with no rows.
+    if (nrow(country_results) && !any(is_estimated_row(country_results$tier, country_results$convergence), na.rm = TRUE))
+      stop("Stage 2b estimated no rows: every cell failed. The cell failure reasons are in this log.", call. = FALSE)
     # (patch 0086) native exporter-specific gamma_V iteration: pass 1 above
     # (regional median, or the table named by --stage2-gamma-v-table); each
     # further pass takes gamma_jV from the previous pass's own table, under the

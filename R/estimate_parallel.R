@@ -454,7 +454,12 @@ stage2_worker_fns <- c("estimate_product_fixed_sigma",
                        # (patch 0040) previously missing: the SE pipeline
                        # and the opt-in analytic gradient.
                        "compute_penalized_gn_se", "het_grad_fixed_sigma",
-                       ".ridge_curvature", ".import_block_means", "sample_products")   # patch 0071
+                       ".ridge_curvature", ".import_block_means", "sample_products",   # patch 0071
+                       # (patch 0134) the cell scaling of --stage2-ridge-scale cell (patch 0132).
+                       # Missing here, every cell failed on PSOCK workers (Windows, --ncores > 1)
+                       # with "could not find function" whenever the flag was on, while
+                       # single-core runs -- the tests and the known-truth harness -- were fine.
+                       ".ridge_cell_scale")
 
 #' Provision PSOCK workers for fixed-sigma Stage 2 estimation.
 #'
@@ -519,6 +524,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_reference_rule",                                  # patch 0105
             "stage2_export_total",                                    # patch 0107
             "stage2_export_moment",                                   # patch 0110
+            "ridge_scale", "ridge_tau2",                              # patch 0134 (0132's flags)
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
