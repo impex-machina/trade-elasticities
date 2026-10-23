@@ -48,12 +48,25 @@
 #                   move by a median of at most 0.10 in logs against the
 #                   shipped halves; otherwise "keep the shipped ridge".
 #
+# --mode tariff     (patch 0135) cell-level opt_tariff, a published column the
+#                   adoption reading did not test: at known truth a large tau^2
+#                   lowered its recovery under high volatility (0.73 -> 0.64
+#                   at tau^2 = 0.5). On the cells present in all four half
+#                   tables, the split-half correlation of ln opt_tariff under
+#                   tau2_eb against the shipped ridge's. Reading (fixed in
+#                   patch 0135, before the numbers): "proceed to a release" if
+#                   the candidate's correlation is no more than 0.02 below the
+#                   shipped's; otherwise "do not release". Row-level ln gamma
+#                   is reported beside it, for information.
+#
 # Usage (repo root; seconds):
 #   Rscript analysis/ridge_tau2_eb.R --mode estimate --half-a A.rds --half-b B.rds --regional R.rds
 #       [--json results/ridge_tau2_eb.json] [--md docs/results/ridge_tau2_eb.md]
 #   Rscript analysis/ridge_tau2_eb.R --mode check --cand-a A --cand-b B --ship-a C --ship-b D
 #       --regional R.rds --eb-json results/ridge_tau2_eb.json --kt-json results/known_truth_eb.json
 #       [--json results/ridge_tau2_check.json] [--md docs/results/ridge_tau2_check.md]
+#   Rscript analysis/ridge_tau2_eb.R --mode tariff --cand-a A --cand-b B --ship-a C --ship-b D
+#       [--json results/ridge_tariff_check.json] [--md docs/results/ridge_tariff_check.md]
 # ============================================================================
 
 suppressPackageStartupMessages({ library(data.table); library(jsonlite) })
@@ -137,6 +150,34 @@ eb_check <- function(co, ce, so, se, priors, tau2, kt_verdict) {
 }
 
 
+#' (patch 0135) Cell-level ln opt_tariff and row-level ln gamma, split-half,
+#' candidate against shipped, on the cells (rows) present in all four tables.
+eb_tariff_check <- function(co, ce, so, se, tol = 0.02) {
+  cells <- function(x) {
+    x <- data.table::as.data.table(x)
+    if ("trim_reason" %in% names(x)) x <- x[is.na(trim_reason)]
+    x[, `:=`(importer = as.character(importer), good = as.character(good))]
+    x[is.finite(opt_tariff) & opt_tariff > 0, .(lt = log(opt_tariff[1L])), by = .(importer, good)]
+  }
+  rows <- function(x) {
+    x <- data.table::as.data.table(x)
+    if ("trim_reason" %in% names(x)) x <- x[is.na(trim_reason)]
+    x <- x[is_estimated_row(tier, convergence) & is.finite(gamma) & gamma > 0]
+    x[, .(importer = as.character(importer), exporter = as.character(exporter), good = as.character(good), lg = log(gamma))]
+  }
+  ka <- c("importer", "good"); kr <- c("importer", "exporter", "good")
+  m4 <- function(f, k) {
+    tabs <- Map(function(x, nm) { d <- f(x); data.table::setnames(d, ncol(d), nm); d }, list(co, ce, so, se), c("ca", "cb", "sa", "sb"))
+    Reduce(function(a, b) merge(a, b, by = k), tabs)
+  }
+  mc <- m4(cells, ka); mr <- m4(rows, kr)
+  r <- function(a, b) if (length(a) >= 4L) suppressWarnings(stats::cor(a, b)) else NA_real_
+  tc <- r(mc$ca, mc$cb); ts <- r(mc$sa, mc$sb)
+  list(cells = nrow(mc), tariff_candidate = tc, tariff_shipped = ts,
+       rows = nrow(mr), gamma_candidate = r(mr$ca, mr$cb), gamma_shipped = r(mr$sa, mr$sb), tolerance = tol,
+       reading = if (is.finite(tc) && is.finite(ts) && tc >= ts - tol) "proceed to a release" else "do not release")
+}
+
 if (sys.nframe() == 0L) {
   args <- commandArgs(trailingOnly = TRUE)
   get_arg <- function(flag, default) { i <- match(flag, args); if (is.na(i) || i == length(args)) default else args[i + 1L] }
@@ -185,5 +226,19 @@ if (sys.nframe() == 0L) {
               cd$known_truth, cd$tau2_in_range, cd$reproducibility, cd$level_shift), "",
       sprintf("**Reading (fixed in patch 0133): %s.**", res$reading))), md, useBytes = TRUE)
     cat(sprintf("ridge check at tau2_eb %.4f: %s\n", tau2, res$reading))
-  } else stop("--mode estimate | check")
+  } else if (identical(mode, "tariff")) {
+    p <- c(co = get_arg("--cand-a", NA), ce = get_arg("--cand-b", NA), so = get_arg("--ship-a", NA), se = get_arg("--ship-b", NA))
+    if (anyNA(p) || !all(file.exists(p))) stop("usage: --mode tariff --cand-a A --cand-b B --ship-a C --ship-b D")
+    json <- get_arg("--json", "results/ridge_tariff_check.json"); md <- get_arg("--md", "docs/results/ridge_tariff_check.md")
+    res <- eb_tariff_check(readRDS(p[["co"]]), readRDS(p[["ce"]]), readRDS(p[["so"]]), readRDS(p[["se"]]))
+    jsonlite::write_json(c(list(meta = c(as.list(p), git_rev = rev, timestamp = ts)), res), json, auto_unbox = TRUE, pretty = TRUE, digits = NA)
+    writeLines(enc2utf8(c("# Cell-level opt_tariff under the precision-scaled ridge, on real data (patch 0135)", "",
+      sprintf("The block halves of patch 0133 (2%% product subsample): the candidate at tau2_eb against the shipped ridge; rev %s, %s.", rev, ts), "",
+      sprintf("- Cell-level ln opt_tariff, split-half correlation: %s at tau2_eb against %s shipped (%s cells in all four tables).",
+              f3(res$tariff_candidate), f3(res$tariff_shipped), format(res$cells, big.mark = ",")),
+      sprintf("- Row-level ln gamma, for information: %s against %s (%s rows).", f3(res$gamma_candidate), f3(res$gamma_shipped), format(res$rows, big.mark = ",")), "",
+      sprintf("**Reading (fixed in patch 0135, before the numbers): %s.** Proceed if the candidate's tariff correlation is no more than %s below the shipped's.",
+              res$reading, format(res$tolerance)))), md, useBytes = TRUE)
+    cat(sprintf("tariff check: %s (cell ln opt_tariff r %.3f candidate vs %.3f shipped; %d cells)\n", res$reading, res$tariff_candidate, res$tariff_shipped, res$cells))
+  } else stop("--mode estimate | check | tariff")
 }

@@ -515,6 +515,44 @@ routing_bullet <- function(kr, ab = NULL) {
           length(req(req(kr, "meta"), "worlds")), f(s1$bias_raw), f(s3$bias_raw), f(h1$bias_raw), f(h3$bias_raw), f(so$bias_pub), real_txt, verdict)
 }
 
+# (patch 0135) The precision-scaled ridge experiment (patches 0132-0135):
+# readings R5 and R6 of validation/known_truth_stage2.R, the empirical-Bayes
+# tau^2 and the adoption and tariff checks (analysis/ridge_tau2_eb.R).
+# NULL-tolerant: the bullet appears once R5 is committed, and each later
+# sentence once its JSON is.
+ridge_experiment_bullet <- function(kr5, keb, eb, ck, tc = NULL) {
+  if (is.null(kr5)) return("")
+  r5 <- req(req(kr5, "readings"), "R5_ridge_scale")
+  arm <- function(a) { x <- Filter(function(z) identical(z$arm, a), req(r5, "per_arm")); if (!length(x)) stop("README needs R5 arm ", a, call. = FALSE); x[[1]] }
+  sh <- arm("shipped"); t1 <- arm("ridge_t01")
+  f2 <- function(v) format_num(as.numeric(v), 2L)
+  out <- sprintf(paste0("\n- **A ridge that does not scale with price volatility is being tested (patches 0132\u20130135; not in the published data).** ",
+                        "Under `--stage2-ridge-scale cell` each cell's Stage-2b data term is divided by its own noise variance and \u03bb becomes the prior precision ",
+                        "1/\u03c4\u00b2 of ln \u03b3 around the product prior. At known truth it recovers importer differences within a product at r %s / %s (\u03c4\u00b2 = 0.1) ",
+                        "against %s / %s under the shipped ridge, keeping the product-level signal (reading R5: \"%s\"; `docs/results/known_truth_ridge.md`); ",
+                        "exporter differences within a cell stay unrecovered."),
+                 f2(t1$within_good_gamma_r[[1]]), f2(t1$within_good_gamma_r[[2]]), f2(sh$within_good_gamma_r[[1]]), f2(sh$within_good_gamma_r[[2]]), req(r5, "verdict"))
+  if (!is.null(keb)) {
+    r6 <- req(req(keb, "readings"), "R6_eb"); pw <- req(r6, "per_world")
+    ratio <- stats::median(vapply(pw, function(z) as.numeric(z$tau2_eb) / as.numeric(z$true_var), 0))
+    out <- paste0(out, sprintf(paste0(" \u03c4\u00b2 is set by empirical Bayes from two halves of the years (alternate four-year blocks, so that no year's level enters both): ",
+                                      "at known truth the estimate lands in the useful range in %s of the six worlds (reading R6: \"%s\"), overstating the true variance by a median %s%%."),
+                               sprintf("%.0f%%", 100 * as.numeric(req(r6, "share_in_range"))), req(r6, "verdict"), sprintf("%.0f", 100 * (ratio - 1))))
+  }
+  if (!is.null(eb) && !is.null(ck)) {
+    out <- paste0(out, sprintf(paste0(" On the 2%% product subsample it gives \u03c4\u00b2 = %s; there, importer differences within a product reproduce across the halves at %s ",
+                                      "against %s under the shipped ridge, and product medians move by a median %s%% (adoption reading: \"%s\"; `docs/results/ridge_tau2_check.md`)."),
+                               format_num(as.numeric(req(req(eb, "tau2"), "tau2_eb")), 2L), format_num(as.numeric(req(req(ck, "candidate"), "pearson")), 3L),
+                               format_num(as.numeric(req(req(ck, "shipped"), "pearson")), 3L), sprintf("%.0f", 100 * (exp(as.numeric(req(ck, "product_median_shift"))) - 1)),
+                               req(ck, "reading")))
+  }
+  if (!is.null(tc)) {
+    out <- paste0(out, sprintf(" Cell-level `opt_tariff` reproduces across the halves at %s against %s under the shipped ridge (rule fixed in patch 0135: no more than 0.02 below; \"%s\"; `docs/results/ridge_tariff_check.md`).",
+                               format_num(as.numeric(req(tc, "tariff_candidate")), 3L), format_num(as.numeric(req(tc, "tariff_shipped")), 3L), req(tc, "reading")))
+  }
+  out
+}
+
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
 # One rendered sentence for the validation section, built from
 # results/stage2_dgp_summary.json. NULL-tolerant on the fields added in
@@ -746,6 +784,9 @@ render_env$PS <- r[["product_summary_census"]]                          # patch 
 render_env$KR <- r[["known_truth_routing"]]                             # patch 0128
 render_env$AB <- r[["routing_ab"]]                                      # patch 0130
 render_env$PW <- r[["product_window_census"]]                           # patch 0130: NULL until committed
+render_env$ridge_experiment_bullet <- ridge_experiment_bullet           # patch 0135
+render_env$KR5 <- r[["known_truth_ridge"]]; render_env$KEB <- r[["known_truth_eb"]]     # patch 0135
+render_env$EB <- r[["ridge_tau2_eb"]]; render_env$CK <- r[["ridge_tau2_check"]]; render_env$TC <- r[["ridge_tariff_check"]]
 
 rendered <- tryCatch(
   glue::glue(template_text,

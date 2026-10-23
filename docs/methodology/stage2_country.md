@@ -1227,6 +1227,37 @@ them. The export-share denominator remains the one unmeasured item (it needs
 a cache rebuild from the BACI CSVs).
 
 
+### The precision-scaled ridge and its empirical-Bayes τ² (patches 0132–0135)
+
+The shipped log ridge weighs λ against each cell's raw data term, which is
+measured in squared log price and share changes, so the pull toward the
+product prior scales with roughly the fourth power of the cell's price
+volatility rather than with how informative its data are.
+`--stage2-ridge-scale cell` (patch 0132) divides every row weight of a cell by
+the noise variance of a time-averaged squared shock, 2·ȳ²/t̄, and replaces λ
+by 1/τ², the prior precision of ln γ around the product prior; Stage 2a keeps
+the shipped ridge. τ² is set by empirical Bayes (patch 0133,
+`analysis/ridge_tau2_eb.R`): Stage 2b is estimated on two halves of the years
+at a weak prior, and the covariance of the two halves' deviations from the
+prior, divided by the products of the rows' data shares, estimates the
+variance of the recoverable signal (2.5% trim of runaway rows). The halves are
+alternate four-year blocks (`--t-parity block-a / block-b`): under odd and
+even years every interior level year enters both halves, and with it a unit
+value's level measurement error.
+
+Measured: at known truth the scaled ridge recovers importer differences within
+a product far better than the shipped one and keeps the product-level signal
+(reading R5, `docs/results/known_truth_ridge.md`); the τ² estimator lands in
+the useful range in every world, overstating the true variance by a median of
+about a fifth (R6, `docs/results/known_truth_eb.md`). On the 2% subsample τ² =
+0.89 and the adoption reading is "adopt-candidate"
+(`docs/results/ridge_tau2_check.md`); the cell-level tariff check of patch
+0135 (`docs/results/ridge_tariff_check.md`) decides whether a release follows.
+Two caveats travel with it: τ² comes from the subsample's 25 products and is
+applied to all of them, and patch 0134 found that the option had never reached
+Windows PSOCK workers before then (`.ridge_cell_scale` was missing from
+`stage2_worker_fns`), so only single-core runs and the 0134 re-runs measured it.
+
 ### Reference exporters in the two stages (patch 0125)
 
 Both stages difference every exporter against a reference exporter chosen by
