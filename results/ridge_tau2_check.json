@@ -1,0 +1,30 @@
+{
+  "meta": {
+    "co": "C:\\Users\\maxxj\\te_eb\\eb_a\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "ce": "C:\\Users\\maxxj\\te_eb\\eb_b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "so": "C:\\Users\\maxxj\\te_eb\\ship_a\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "se": "C:\\Users\\maxxj\\te_eb\\ship_b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "regional": "C:\\Users\\maxxj\\te_eb\\t1_a\\baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds",
+    "eb": "results\\ridge_tau2_eb.json",
+    "kt": "results\\known_truth_eb.json",
+    "tau2_eb": 0.890180798699686,
+    "git_rev": "ce2e2bf",
+    "timestamp": "2026-10-23 02:30:54 EDT"
+  },
+  "candidate": {
+    "cells": 3914,
+    "pearson": 0.292107163235765
+  },
+  "shipped": {
+    "cells": 3922,
+    "pearson": 0.265941808950183
+  },
+  "product_median_shift": 0.0399303494709485,
+  "conditions": {
+    "known_truth": true,
+    "tau2_in_range": true,
+    "reproducibility": true,
+    "level_shift": true
+  },
+  "reading": "adopt-candidate"
+}

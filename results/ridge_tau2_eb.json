@@ -1,0 +1,23 @@
+{
+  "meta": {
+    "odd": "C:\\Users\\maxxj\\te_eb\\t1_a\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "even": "C:\\Users\\maxxj\\te_eb\\t1_b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "regional": "C:\\Users\\maxxj\\te_eb\\t1_a\\baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds",
+    "git_rev": "ce2e2bf",
+    "timestamp": "2026-10-22 23:42:06 EDT"
+  },
+  "tau2": {
+    "rows": 65445,
+    "rows_after_trim": 62310,
+    "tau2_eb": 0.890180798699686,
+    "tau2_eb_untrimmed": 1.31245440104938,
+    "mean_w_odd": 0.362314360511116,
+    "mean_w_even": 0.350936437535724,
+    "row_spearman": 0.149117398971444
+  },
+  "exporter_effects": {
+    "exporter_goods": 2118,
+    "pearson": 0.253955459682709,
+    "spearman": 0.296919670497427
+  }
+}
