@@ -40,5 +40,5 @@ test_that("README records the ridge experiment from its JSONs, NULL-tolerant", {
   expect_match(env$ridge_experiment_bullet(rd("known_truth_ridge"), rd("known_truth_eb"), rd("ridge_tau2_eb"), rd("ridge_tau2_check"), tc),
                "reproduces across the halves at 0.610 against 0.600", fixed = TRUE)
   readme <- paste(readLines(file.path(.r35_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  expect_match(readme, "A ridge that does not scale with price volatility is being tested", fixed = TRUE)
+  expect_match(readme, "A ridge that does not scale with price volatility ", fixed = TRUE)   # title by outcome since patch 0136
 })

@@ -526,7 +526,12 @@ ridge_experiment_bullet <- function(kr5, keb, eb, ck, tc = NULL) {
   arm <- function(a) { x <- Filter(function(z) identical(z$arm, a), req(r5, "per_arm")); if (!length(x)) stop("README needs R5 arm ", a, call. = FALSE); x[[1]] }
   sh <- arm("shipped"); t1 <- arm("ridge_t01")
   f2 <- function(v) format_num(as.numeric(v), 2L)
-  out <- sprintf(paste0("\n- **A ridge that does not scale with price volatility is being tested (patches 0132\u20130135; not in the published data).** ",
+  # (patch 0136) the title follows the outcome: closed once the tariff check
+  # (or the adoption reading) says no
+  closed <- (!is.null(tc) && !identical(tc$reading, "proceed to a release")) || (!is.null(ck) && !identical(ck$reading, "adopt-candidate"))
+  title <- if (closed) "A ridge that does not scale with price volatility was tested and not adopted (patches 0132\u20130136)."
+           else "A ridge that does not scale with price volatility is being tested (patches 0132\u20130135; not in the published data)."
+  out <- sprintf(paste0("\n- **", title, "** ",
                         "Under `--stage2-ridge-scale cell` each cell's Stage-2b data term is divided by its own noise variance and \u03bb becomes the prior precision ",
                         "1/\u03c4\u00b2 of ln \u03b3 around the product prior. At known truth it recovers importer differences within a product at r %s / %s (\u03c4\u00b2 = 0.1) ",
                         "against %s / %s under the shipped ridge, keeping the product-level signal (reading R5: \"%s\"; `docs/results/known_truth_ridge.md`); ",
@@ -549,7 +554,11 @@ ridge_experiment_bullet <- function(kr5, keb, eb, ck, tc = NULL) {
   if (!is.null(tc)) {
     out <- paste0(out, sprintf(" Cell-level `opt_tariff` reproduces across the halves at %s against %s under the shipped ridge (rule fixed in patch 0135: no more than 0.02 below; \"%s\"; `docs/results/ridge_tariff_check.md`).",
                                format_num(as.numeric(req(tc, "tariff_candidate")), 3L), format_num(as.numeric(req(tc, "tariff_shipped")), 3L), req(tc, "reading")))
+    if (!is.null(tc$gamma_candidate) && !is.null(tc$gamma_shipped))
+      out <- paste0(out, sprintf(" Row-level ln \u03b3 reproduces at %s against %s.", format_num(as.numeric(tc$gamma_candidate), 3L), format_num(as.numeric(tc$gamma_shipped), 3L)))
   }
+  if (closed)
+    out <- paste0(out, " At this \u03c4\u00b2 the looser shrinkage admits more noise than signal in the published columns, so the shipped ridge stays; the flags remain in the code, off by default (`docs/methodology/stage2_country.md`).")
   out
 }
 

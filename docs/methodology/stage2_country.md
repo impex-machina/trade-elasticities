@@ -1251,8 +1251,16 @@ a product far better than the shipped one and keeps the product-level signal
 the useful range in every world, overstating the true variance by a median of
 about a fifth (R6, `docs/results/known_truth_eb.md`). On the 2% subsample τ² =
 0.89 and the adoption reading is "adopt-candidate"
-(`docs/results/ridge_tau2_check.md`); the cell-level tariff check of patch
-0135 (`docs/results/ridge_tariff_check.md`) decides whether a release follows.
+(`docs/results/ridge_tau2_check.md`): importer differences within a product
+reproduce across the halves at 0.292 against 0.266 under the shipped ridge.
+The cell-level tariff check of patch 0135 (`docs/results/ridge_tariff_check.md`)
+read **"do not release"**: cell-level ln `opt_tariff` reproduces at 0.344
+against 0.391 shipped, and row-level ln γ at 0.240 against 0.337. At τ² = 0.89
+the looser shrinkage admits more noise than signal in the published columns.
+**The experiment is closed (patch 0136)**: the shipped ridge stays, and
+`--stage2-ridge-scale` / `--stage2-ridge-tau2` remain in the code, off by
+default. Not pursued: a fixed τ² = 0.1 (the balanced arm at known truth) would
+have been a second attempt after the pre-registered plan failed.
 Two caveats travel with it: τ² comes from the subsample's 25 products and is
 applied to all of them, and patch 0134 found that the option had never reached
 Windows PSOCK workers before then (`.ridge_cell_scale` was missing from
