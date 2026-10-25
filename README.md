@@ -139,6 +139,20 @@ as it runs (`analysis/01_pillar1_empirical_overview.R`).
 
 `data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv` has one row per HS4 product (1,240), built from the table above by `analysis/product_summary.R`: `gamma_median` (the median γ over directly estimated rows), `opt_tariff_median` (the median over the product's (importer, product) cells), `sigma_median`, `share_cells_own_sigma`, and the counts `n_cells`, `n_rows`, `n_rows_estimated` and `trade` (the sum of `avg_trade`). It is the level the estimates support: at known truth the pipeline recovers differences between products, weakly those between importers within a product, and not those between exporters within a cell (Known limitations). On a 2% product subsample (25 products) the product medians hardly depend on which half of the Stage-2b data is used -- Spearman 0.99 for γ and 0.97 for `opt_tariff` between odd and even years (0.99 and 0.98 between 1995–2009 and 2010–2024) -- but those halves share the full-panel Stage 1 (the odd/even halves also its Stage-2a priors), from which a product's median is mostly built, so they do not show that product differences reproduce in independent data (`docs/results/product_summary_census.md`; a hash check in `docs/results/product_window_census.md`). Estimated independently on 1995–2009 and on 2010–2024 -- each period's own Stage 1, Stage 2a and Stage 2b, on the same 25 products -- product medians correlate at 0.64 for γ and 0.76 for `opt_tariff`; by the rule fixed in patch 0130 that is "reproduces" (`docs/results/product_window_census.md`). Between those periods a product's median γ differs by a median of 25.5% (94.9% at the 90th percentile) and its median `opt_tariff` by 16.0% (56.4%). Part of that is change over time, but it is the scale of uncertainty to read the table's values with: its ranking of products is better supported than its levels. σ is the global value (2.473) for nearly every product. Read `good` as character; the table carries no interval columns, because resampling importers leaves the product prior -- a product's main source of uncertainty -- untouched.
 
+### Parquet copies (since v0.11.2)
+
+Every main table also ships as Parquet beside its `.rds` file -- `stage2b/…_fixed_sigma.parquet`, `stage1/…_feenstra_sigma.parquet`, `stage2a/…_regional_hs4_fixed_sigma.parquet` and `product/…_product_summary.parquet` -- written from the published files by `scripts/export_parquet.R` and checked value for value against them. `good` is a string there (HS4 with its leading zero). In Python:
+
+```python
+import pandas as pd
+base = "hf://datasets/impex-machina/trade-elasticities@v0.11.2/"
+products = pd.read_parquet(base + "product/baci_hs92_v202601_elast_hs4_product_summary.parquet")
+cars = pd.read_parquet(base + "stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.parquet",
+                       filters=[("good", "==", "8703")])
+```
+
+The same paths work in DuckDB (`SELECT * FROM 'hf://datasets/impex-machina/trade-elasticities@v0.11.2/…'`), Polars and R's arrow or nanoparquet packages. The `.rds` files stay the canonical copies; the Hugging Face dataset viewer opens on the product-level table.
+
 ## Repository structure
 
 ```

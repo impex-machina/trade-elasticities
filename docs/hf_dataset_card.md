@@ -10,6 +10,15 @@ tags:
   - baci
 pretty_name: "Trade Elasticities (BACI HS92 V202601)"
 configs:
+  - config_name: product_summary
+    data_files: "product/baci_hs92_v202601_elast_hs4_product_summary.parquet"
+    default: true
+  - config_name: stage2b_country
+    data_files: "stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.parquet"
+  - config_name: stage1_country
+    data_files: "stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.parquet"
+  - config_name: stage2a_regional
+    data_files: "stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.parquet"
   - config_name: bootstrap_se_cells
     data_files: "validation/bootstrap_se_cells.csv"
   - config_name: bootstrap_se_summary
@@ -100,6 +109,20 @@ does not do better (patch 0129, `docs/results/routing_ab.md`): less biased but n
 known truth, and worse at predicting the other period's σ on real data; the route stays,
 and switching would have moved the fallback σ only from 2.473 to 2.486.
 
+> **v0.11.2 (2026-10-25).** No re-estimation; the 12 v0.11.1 files are unchanged.
+> Adds Parquet copies of the Stage-2b, Stage-1 and Stage-2a tables and of the
+> product-level table, beside their sources with the same base names
+> (`stage2b/…_fixed_sigma.parquet`, `stage1/…_feenstra_sigma.parquet`,
+> `stage2a/…_regional_hs4_fixed_sigma.parquet`, `product/…_product_summary.parquet`),
+> written by `scripts/export_parquet.R` (patch 0137) and checked value for value
+> against the published files before upload. The dataset viewer now opens on the
+> product-level table and can browse, search and filter the main tables. `good` is a
+> string in the Parquet files (HS4 with its leading zero). Python:
+> `pandas.read_parquet("hf://datasets/impex-machina/trade-elasticities@v0.11.2/product/baci_hs92_v202601_elast_hs4_product_summary.parquet")`;
+> the same paths work in DuckDB and Polars. The `.rds` files stay the canonical copies.
+> Data revision: `<fill>`. **v0.11.1 remains available pinned at revision
+> `df6992bb38857dacce723bd3ee8d14d9e1372923`.**
+>
 > **v0.11.1 (2026-10-16).** No re-estimation; the 11 v0.11.0 files are unchanged.
 > Adds a product-level companion table,
 > `product/baci_hs92_v202601_elast_hs4_product_summary.csv`: one row per HS4 product

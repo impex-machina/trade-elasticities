@@ -133,6 +133,20 @@ A reader reproducing the headline numbers should find σ median ≈ {{format_num
 the canonical {{format_int(req(r$stage1, "n_products"))}}-product universe{{headline_sigma_note(r$stage2b)}}. `analysis/master.R` prints it
 as it runs (`analysis/01_pillar1_empirical_overview.R`).{{product_table_section(PS, req(r$stage2b$sigma_provenance, "fallback_value"), PW)}}
 
+### Parquet copies (since v0.11.2)
+
+Every main table also ships as Parquet beside its `.rds` file -- `stage2b/…_fixed_sigma.parquet`, `stage1/…_feenstra_sigma.parquet`, `stage2a/…_regional_hs4_fixed_sigma.parquet` and `product/…_product_summary.parquet` -- written from the published files by `scripts/export_parquet.R` and checked value for value against them. `good` is a string there (HS4 with its leading zero). In Python:
+
+```python
+import pandas as pd
+base = "hf://datasets/impex-machina/trade-elasticities@v0.11.2/"
+products = pd.read_parquet(base + "product/baci_hs92_v202601_elast_hs4_product_summary.parquet")
+cars = pd.read_parquet(base + "stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.parquet",
+                       filters=[("good", "==", "8703")])
+```
+
+The same paths work in DuckDB (`SELECT * FROM 'hf://datasets/impex-machina/trade-elasticities@v0.11.2/…'`), Polars and R's arrow or nanoparquet packages. The `.rds` files stay the canonical copies; the Hugging Face dataset viewer opens on the product-level table.
+
 ## Repository structure
 
 ```
