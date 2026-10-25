@@ -1,0 +1,29 @@
+{
+  "rows": 4982259,
+  "share_rows_matched": 1,
+  "replication_avg_trade": 1,
+  "replication_opt_tariff": 1,
+  "cells": 210098,
+  "cells_single_exporter": 997,
+  "cell_change": {
+    "p50": 0.0560384037487303,
+    "p90": 0.314744882742264,
+    "p99": 0.912797511950856
+  },
+  "share_cells_over_10pct": 0.353335110281868,
+  "products": 1240,
+  "product_change": {
+    "p50": 0.0561800974580173,
+    "p90": 0.135099355206634,
+    "p99": 0.202583003371954
+  },
+  "share_products_over_5pct": 0.541129032258065,
+  "reading": "material",
+  "meta": {
+    "raw_cache": "C:\\Users\\maxxj\\te_m3\\w1_2010_2024\\baci_hs92_v202601_elast_country_hs4_raw_cache.rds",
+    "stage2b": "data\\derived\\stage2b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "git_rev": "ece82b1",
+    "timestamp": "2026-10-25 19:19:22 EDT",
+    "minutes": 7.7
+  }
+}
