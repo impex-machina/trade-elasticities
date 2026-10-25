@@ -120,13 +120,28 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   # table builder runs end to end too (0129's smoke run stopped at master.R's
   # completeness check because the scratch tree lacked it)
   man <- data.table::fread(file.path(work, "data", "manifest.csv"))
-  prod_path <- grep("^data/derived/product/", man$local_path, value = TRUE)
+  prod_path <- grep("^data/derived/product/.*\\.csv$", man$local_path, value = TRUE)   # (0138) the CSV; v0.11.2 added a Parquet twin
   if (length(prod_path)) {
     pr <- .e2e_run(c(shQuote(file.path(root, "analysis", "product_summary.R")), "--stage2b", shQuote(f$s2b),
                      "--table", prod_path, "--json", file.path(td, "ps.json"), "--md", file.path(td, "ps.md")), wd = work)
     expect_equal(pr$status, 0L, info = paste(utils::tail(pr$out, 20), collapse = "\n"))
     ptab <- data.table::fread(file.path(work, prod_path), colClasses = list(character = "good"))
     expect_identical(nrow(ptab), data.table::uniqueN(pub$good))
+  }
+  # (patch 0138) since v0.11.2 the manifest also lists Parquet copies: write them
+  # with the release's own tool (which checks each copy against its source)
+  # where nanoparquet is installed; elsewhere (CI restores renv.lock, which does
+  # not carry it) drop those rows from this scratch copy of the manifest, so
+  # master.R's completeness check covers the files this run can stage
+  pq_rows <- grepl("\\.parquet$", man$local_path)
+  if (any(pq_rows)) {
+    if (requireNamespace("nanoparquet", quietly = TRUE)) {
+      px <- .e2e_run(shQuote(file.path(root, "scripts", "export_parquet.R")), wd = work)
+      expect_equal(px$status, 0L, info = paste(utils::tail(px$out, 20), collapse = "\n"))
+    } else {
+      man <- man[!pq_rows]
+      data.table::fwrite(man, file.path(work, "data", "manifest.csv"), quote = TRUE)
+    }
   }
   # every file the manifest lists exists in the scratch tree (a new manifest row
   # must be staged here, or master.R stops)

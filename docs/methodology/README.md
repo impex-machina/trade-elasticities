@@ -162,6 +162,12 @@ enters both halves, which the earlier split-half reliability figures share. Read
 real data; `--mode check` compares real halves re-estimated at that τ² with
 the shipped halves.
 
+`analysis/tariff_weight_census.R` (patch 0138) asks how much a cell's
+`opt_tariff` would move if exporters were weighted by their total customs value
+over their panel years instead of their mean annual value (`avg_trade`), from
+the raw cache and the published table, with the published tariff reproduced
+first as a check.
+
 `analysis/product_summary.R` (patch 0127) builds the product-level (HS4)
 companion table from the Stage-2b table -- median γ and median `opt_tariff`
 per product with intervals from a bootstrap over importers, the product's σ
