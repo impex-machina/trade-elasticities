@@ -120,7 +120,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > string in the Parquet files (HS4 with its leading zero). Python:
 > `pandas.read_parquet("hf://datasets/impex-machina/trade-elasticities@v0.11.2/product/baci_hs92_v202601_elast_hs4_product_summary.parquet")`;
 > the same paths work in DuckDB and Polars. The `.rds` files stay the canonical copies.
-> Data revision: `<fill>`. **v0.11.1 remains available pinned at revision
+> Data revision: `049aeb07a5f5fdeed289462743103f7c2b82facc`. **v0.11.1 remains available pinned at revision
 > `df6992bb38857dacce723bd3ee8d14d9e1372923`.**
 >
 > **v0.11.1 (2026-10-16).** No re-estimation; the 11 v0.11.0 files are unchanged.
