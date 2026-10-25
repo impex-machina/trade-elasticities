@@ -1,0 +1,18 @@
+{
+  "meta": {
+    "co": "C:\\Users\\maxxj\\te_eb\\eb_a\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "ce": "C:\\Users\\maxxj\\te_eb\\eb_b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "so": "C:\\Users\\maxxj\\te_eb\\ship_a\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "se": "C:\\Users\\maxxj\\te_eb\\ship_b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "git_rev": "550a763",
+    "timestamp": "2026-10-25 17:28:45 EDT"
+  },
+  "cells": 3912,
+  "tariff_candidate": 0.343882711970735,
+  "tariff_shipped": 0.391359279670126,
+  "rows": 71734,
+  "gamma_candidate": 0.239622436679622,
+  "gamma_shipped": 0.336741897956086,
+  "tolerance": 0.02,
+  "reading": "do not release"
+}
