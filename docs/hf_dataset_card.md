@@ -121,7 +121,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > `scripts/add_opt_tariff_total.R` (patch 0139), which writes nothing unless it reproduces the
 > published `avg_trade` on every row and `opt_tariff` in every cell; on a synthetic world its
 > table equals a native re-run of the patched estimator, which computes both columns from now on.
-> Data revision: `<fill>`. **v0.11.2 remains available pinned at revision
+> Data revision: `a8af84de0af983571c145b95e9f2a8892a7ed2fe`. **v0.11.2 remains available pinned at revision
 > `049aeb07a5f5fdeed289462743103f7c2b82facc`.**
 >
 > **v0.11.2 (2026-10-25).** No re-estimation; the 12 v0.11.1 files are unchanged.
