@@ -361,6 +361,11 @@
       "Maintainer": "Matthew Lincoln <matthew.d.lincoln@gmail.com>",
       "Repository": "CRAN"
     },
+    "codetools": {
+      "Package": "codetools",
+      "Version": "0.2.20",
+      "Source": "Repository"
+    },
     "cpp11": {
       "Package": "cpp11",
       "Version": "0.5.4",
