@@ -1,0 +1,52 @@
+{
+  "meta": {
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "stage2b_sha256": "55019411efeadb099629e4e817661c0d19e5022c273e4c6674498cf07e257a45",
+    "label": "v0113",
+    "git_rev": "71c608e",
+    "timestamp": "2026-10-26 19:46:27 EDT"
+  },
+  "census": {
+    "n_rows": 6801742,
+    "n_tier_lt3": 5003154,
+    "n_estimated": 4982259,
+    "n_nonconverged": 35825,
+    "share_nonconverged": 0.0071905133795734,
+    "n_cells_estimated": 210098,
+    "n_cells_nonconverged": 1775,
+    "n_imputed_reference": 20895,
+    "share_imputed_reference": 0.00417636554861194,
+    "n_tier3": 1798588,
+    "codes_estimated": {
+      "0": 4946434,
+      "1": 2397,
+      "52": 33428
+    },
+    "n_status_non_converged": 35825
+  },
+  "by_tier": [
+    {
+      "tier": 0,
+      "rows": 222765,
+      "estimated": 201870,
+      "non_converged": 1626,
+      "imputed": 20895
+    },
+    {
+      "tier": 1,
+      "rows": 4765628,
+      "estimated": 4765628,
+      "non_converged": 34026,
+      "imputed": 0
+    },
+    {
+      "tier": 2,
+      "rows": 14761,
+      "estimated": 14761,
+      "non_converged": 173,
+      "imputed": 0
+    }
+  ],
+  "status_matches_codes": true,
+  "n_cells_nonconverged_incl_flagged": 1928
+}

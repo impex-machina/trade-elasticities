@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "stage1": "data/derived/stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "stage1_sha256": "908c8f53f2ea653835a0c1506df44df9e378fba94f8afed1a0f1bae6146e5b7b",
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "stage2b_sha256": "55019411efeadb099629e4e817661c0d19e5022c273e4c6674498cf07e257a45",
+    "label": "v0113",
+    "pole_c": 1,
+    "git_rev": "71c608e",
+    "timestamp": "2026-10-26 19:47:17 EDT"
+  },
+  "census": {
+    "clean_cells": 113706,
+    "dropped_edge": 13810,
+    "dropped_pole": 55396,
+    "unassessed_cells": 413,
+    "unassessed_by_route": {
+      "hliml_boundary": 413
+    },
+    "unassessed_by_edge": {
+      "omega_cap": 270,
+      "omega_floor": 143
+    },
+    "unassessed_by_se_status": {
+      "edge_se_negative_variance": 374,
+      "edge_se_singular_curvature": 39
+    },
+    "unassessed_boundary_corner": 22,
+    "unassessed_sigma_quantiles": {
+      "p10": 1.013707,
+      "p25": 1.392836,
+      "p50": 2.355618,
+      "p75": 4.071735,
+      "p90": 8.523493
+    },
+    "unassessed_sigma_lt": {
+      "1.2": 70,
+      "1.5": 125,
+      "2": 177
+    },
+    "would_drop_at_route_median_rel_se": 72,
+    "route_median_rel_se": {
+      "hliml_boundary omega_cap": 0.218939,
+      "hliml -": 0.190593,
+      "step2_weighted -": 0.18133,
+      "hliml_boundary omega_floor": 0.155184
+    },
+    "stage2b_rows": 2855,
+    "stage2b_rows_tier3": 1184,
+    "stage2b_sigma_robust_true": 0,
+    "stage2b_gamma_median_these": 0.598179247608059,
+    "stage2b_gamma_median_all_estimated": 0.786976813850018
+  }
+}
