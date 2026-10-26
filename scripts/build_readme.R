@@ -224,6 +224,32 @@ pick_census_opt <- function(prefix, table = "stage2b", res = r) {
 }
 # --- end freshness helpers (patch 0109) --------------------------------------
 
+# --- Release tag (patch 0141, fresh-eyes audit #9) ---------------------------
+# The Parquet example quotes the hub tag of the release the manifest pins
+# (hf://datasets/.../trade-elasticities@<tag>/...). Derive it from the
+# manifest's hf_url column (resolve/<tag>/<path>) rather than typing it into
+# the template: the template carried a typed `@v0.11.2` after v0.11.3 shipped,
+# so a reader following the example loaded the v0.11.2 Parquet, which lacks
+# the `total_trade` and `opt_tariff_total` columns the table above it
+# documents. Every manifest row must pin the same tag, and it must look like a
+# release (vX.Y.Z); anything else is a build error, not a README.
+manifest_release_tag <- function(hf_url) {
+  hf_url <- as.character(hf_url)
+  hit <- grepl("/resolve/[^/]+/", hf_url)
+  if (!all(hit))
+    stop(sprintf("manifest_release_tag(): %d manifest hf_url value(s) carry no resolve/<tag>/ segment",
+                 sum(!hit)), call. = FALSE)
+  tags <- unique(sub("^.*/resolve/([^/]+)/.*$", "\\1", hf_url))
+  if (length(tags) != 1L)
+    stop(sprintf("manifest_release_tag(): the manifest pins more than one tag: %s",
+                 paste(tags, collapse = ", ")), call. = FALSE)
+  if (!grepl("^v[0-9]+\\.[0-9]+\\.[0-9]+$", tags))
+    stop(sprintf("manifest_release_tag(): '%s' is not a release tag (vX.Y.Z)", tags), call. = FALSE)
+  tags
+}
+release_tag <- manifest_release_tag(MANIFEST$hf_url)
+# --- end release tag (patch 0141) --------------------------------------------
+
 # --- patch 0116 phrases (fresh-eyes audit #7) ---------------------------------
 # A1: the provenance bullet. Through patch 0115 it read "the rest fall to the
 # Step 2 fallback", written before boundary routing (v0.6.0): 71% of the
@@ -764,6 +790,7 @@ render_env$step2_vce_clause <- step2_vce_clause        # patch 0064
 render_env$bootstrap_clause <- bootstrap_clause        # patch 0064
 render_env$fallback_clause <- fallback_clause          # patch 0080
 render_env$manifest_n_files <- manifest_n_files
+render_env$release_tag <- release_tag                  # patch 0141: the manifest's hub tag
 # (patch 0109) census picks for the template: the shipped table's census if
 # one exists, else the newest with its vintage stated (stale_note()).
 render_env$SHRINK   <- pick_census("stage2_shrinkage_census")

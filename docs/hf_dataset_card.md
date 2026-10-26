@@ -110,8 +110,10 @@ known truth, and worse at predicting the other period's σ on real data; the rou
 and switching would have moved the fallback σ only from 2.473 to 2.486.
 
 > **v0.11.3 (2026-10-25).** No re-estimation; every existing column is unchanged. The
-> Stage-2b table gains `total_trade` (the pair's total customs value over its years in the
-> estimation panel; `avg_trade` is the mean over the same years) and `opt_tariff_total`
+> Stage-2b table gains `total_trade` (the pair's total customs value over its observations in
+> the differenced Stage-2 estimation panel -- the years after the first of each consecutive run,
+> less those the |Δ ln p| ≥ 2 unit-value trim removed, so not the pair's total trade over the
+> period; `avg_trade` is the mean over the same observations) and `opt_tariff_total`
 > (the cell's optimal tariff with exporters weighted by `total_trade` instead of
 > `avg_trade`, so a pair that traded heavily for a few years weighs less than one that
 > traded steadily for decades); the product table gains `opt_tariff_total_median`; both
