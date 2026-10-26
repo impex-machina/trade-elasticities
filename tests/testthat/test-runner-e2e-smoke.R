@@ -111,6 +111,7 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   }
   file.copy(file.path(root, "README.template.md"), work)
   dir.create(file.path(work, "docs", "methodology"), recursive = TRUE)   # 00_setup.R reads the Pillar-2/3 CSVs here
+  file.copy(file.path(root, "docs", "known_limitations_record.template.md"), file.path(work, "docs"))   # patch 0143: the second template
   file.copy(list.files(file.path(root, "docs", "methodology"), pattern = "\\.csv$", full.names = TRUE),
             file.path(work, "docs", "methodology"))
   dir.create(file.path(work, "data"))
@@ -169,10 +170,14 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   expect_equal(s2bj$sigma_provenance$n_fallback, sum(pub$sigma_source != "estimated"))
 
   # --- 3. the README build on the JSONs that run wrote ------------------------
-  rd <- file.path(td, "README.md")
-  br <- .e2e_run(shQuote(file.path(root, "scripts", "build_readme.R")), wd = work, env = paste0("README_BUILD_OUTPUT=", rd))
+  rd <- file.path(td, "README.md"); rec <- file.path(td, "known_limitations_record.md")   # patch 0143
+  br <- .e2e_run(shQuote(file.path(root, "scripts", "build_readme.R")), wd = work,
+                 env = c(paste0("README_BUILD_OUTPUT=", rd), paste0("README_RECORD_BUILD_OUTPUT=", rec)))
   expect_equal(br$status, 0L, info = paste(utils::tail(br$out, 20), collapse = "\n"))
   txt <- paste(readLines(rd, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   expect_match(txt, sprintf("Outputs cover %d HS4 products", data.table::uniqueN(pub$good)), fixed = TRUE)
   expect_false(grepl("{{", txt, fixed = TRUE))
+  rtxt <- paste(readLines(rec, warn = FALSE, encoding = "UTF-8"), collapse = "\n")   # patch 0143: the record renders too
+  expect_match(rtxt, "the long-form record", fixed = TRUE)
+  expect_false(grepl("{{", rtxt, fixed = TRUE))
 })

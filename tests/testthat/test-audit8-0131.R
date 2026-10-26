@@ -27,7 +27,7 @@ test_that("README: the independent level gap, the shared-prior gap dropped", {
   expect_match(txt, "share the full-panel Stage 1 (the odd/even halves also its Stage-2a priors)", fixed = TRUE)
   pw_nogap <- pw; pw_nogap$reproducibility$gamma_median$gap_median <- NULL
   expect_false(grepl("differs by a median of", env$product_table_section(ps, 2.4728, pw_nogap), fixed = TRUE))
-  readme <- paste(readLines(file.path(.a31_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.a31_root())   # patch 0143: README.md + the long-form record
   expect_match(readme, "differs by a median of 25.5%", fixed = TRUE)
 })
 

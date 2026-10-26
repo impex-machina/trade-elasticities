@@ -55,7 +55,7 @@ test_that("README: the product section is corrected and the routing bullet carri
   expect_match(rb, "is usable on 23,592 of those cells (patch 0129)", fixed = TRUE)
   expect_match(rb, "that is \"keep Step 2\"; switching would move the fallback \u03c3 only from 2.473 to 2.486", fixed = TRUE)
   expect_false(grepl("is the next measurement", rb, fixed = TRUE))
-  readme <- paste(readLines(file.path(.a30_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.a30_root())   # patch 0143: README.md + the long-form record
   expect_false(grepl("independent halves", readme, fixed = TRUE))
   expect_match(readme, "that is \"keep Step 2\"", fixed = TRUE)
 })

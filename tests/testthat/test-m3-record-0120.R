@@ -44,7 +44,7 @@ test_that("pick_latest() takes the newest release-tagged census; the template ca
   res <- list(window_drift_census_v0110 = list(a = 1), window_drift_census_v0102 = list(a = 2), other = 3)
   expect_identical(env$pick_latest("window_drift_census", res = res)$key, "window_drift_census_v0110")
   expect_null(env$pick_latest("sigma_window_census", res = res))
-  tpl <- readLines(file.path(dirname(locate_source_dir()), "README.template.md"), warn = FALSE, encoding = "UTF-8")
+  tpl <- generated_templates_text()   # patch 0143: README.template.md + the record template
   expect_true(any(grepl("{{sigma_window_clause(SWIN)}}", tpl, fixed = TRUE)))
   expect_true(any(grepl("{{window_drift_clause(WDRIFT)}}", tpl, fixed = TRUE)))
 })

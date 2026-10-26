@@ -65,7 +65,7 @@ test_that("product table: opt_tariff_total_median where the column exists", {
 })
 
 test_that("README rows and note; the card's v0.11.3 entry", {
-  readme <- paste(readLines(file.path(.o39_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.o39_root())   # patch 0143: README.md + the long-form record
   expect_match(readme, "| `opt_tariff_total` | Since v0.11.3.", fixed = TRUE)
   expect_match(readme, "| `avg_trade`, `total_trade` |", fixed = TRUE)
   expect_match(readme, "more than 10% in 35.3% of cells", fixed = TRUE)

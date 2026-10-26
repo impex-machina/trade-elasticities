@@ -73,7 +73,7 @@ test_that("README: the product-table section and the routing bullet", {
   rb <- env$routing_bullet(kr)
   expect_match(rb, "Stage 1's Step-2 route overstates \u03c3 at known truth.", fixed = TRUE)
   expect_match(rb, "45,305 cells (24.8% of the cells with an estimate)", fixed = TRUE)
-  readme <- paste(readLines(file.path(.a28_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.a28_root())   # patch 0143: README.md + the long-form record
   expect_match(readme, "### The product-level table (since v0.11.1)", fixed = TRUE)
   expect_match(readme, "Stage 1's Step-2 route overstates \u03c3 at known truth.", fixed = TRUE)
 })

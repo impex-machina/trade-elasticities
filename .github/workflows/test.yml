@@ -57,12 +57,17 @@ jobs:
         # normalized. This step is the enforced gate; the hook is a
         # convenience that catches drift before it reaches CI.
         run: |
-          TMP="$(mktemp)"
-          README_BUILD_OUTPUT="$TMP" Rscript scripts/build_readme.R
+          TMP="$(mktemp)"; TMPREC="$(mktemp)"
+          README_BUILD_OUTPUT="$TMP" README_RECORD_BUILD_OUTPUT="$TMPREC" Rscript scripts/build_readme.R
           if ! diff -u <(tr -d '\r' < "$TMP") <(tr -d '\r' < README.md); then
             echo "::error::README.md is out of sync with README.template.md + results/*.json."
             echo "::error::Regenerate with: Rscript scripts/build_readme.R  (then commit README.md)"
             exit 1
           fi
-          echo "README.md is in sync with its build inputs."
+          if ! diff -u <(tr -d '\r' < "$TMPREC") <(tr -d '\r' < docs/known_limitations_record.md); then
+            echo "::error::docs/known_limitations_record.md is out of sync with its template + results/*.json (patch 0143)."
+            echo "::error::Regenerate with: Rscript scripts/build_readme.R  (then commit docs/known_limitations_record.md)"
+            exit 1
+          fi
+          echo "README.md and docs/known_limitations_record.md are in sync with their build inputs."
         shell: bash

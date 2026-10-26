@@ -48,7 +48,7 @@ test_that("card configs, the v0.11.2 entry and the README section", {
   txt <- paste(card, collapse = "\n")
   # (patch 0138) `<fill>` until the upload, the hub revision after (0137 asserted the first state only)
   expect_match(txt, "Data revision: `(<fill>|[0-9a-f]{40})`. \\*\\*v0.11.1 remains available pinned at revision")
-  readme <- paste(readLines(file.path(.p37_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.p37_root())   # patch 0143: README.md + the long-form record
   expect_match(readme, "### Parquet copies (since v0.11.2)", fixed = TRUE)
   expect_match(readme, 'filters=[("good", "==", "8703")]', fixed = TRUE)
 })

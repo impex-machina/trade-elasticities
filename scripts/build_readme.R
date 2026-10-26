@@ -53,9 +53,19 @@ TEMPLATE_PATH <- "README.template.md"
 # committed one without modifying the working tree.
 OUTPUT_PATH   <- Sys.getenv("README_BUILD_OUTPUT", unset = "README.md")
 RESULTS_DIR   <- "results"
+# (patch 0143) the long-form Known-limitations record, rendered from its own
+# template with the same environment, under the same lock (hook + CI compare
+# both outputs). README_RECORD_BUILD_OUTPUT redirects it the way
+# README_BUILD_OUTPUT redirects the README.
+RECORD_TEMPLATE_PATH <- "docs/known_limitations_record.template.md"
+RECORD_OUTPUT_PATH   <- Sys.getenv("README_RECORD_BUILD_OUTPUT", unset = "docs/known_limitations_record.md")
 
 if (!file.exists(TEMPLATE_PATH)) {
   message(sprintf("FATAL: template not found at %s (run from repo root)", TEMPLATE_PATH))
+  quit(status = 3L)
+}
+if (!file.exists(RECORD_TEMPLATE_PATH)) {
+  message(sprintf("FATAL: record template not found at %s (run from repo root)", RECORD_TEMPLATE_PATH))
   quit(status = 3L)
 }
 if (!dir.exists(RESULTS_DIR)) {
@@ -447,6 +457,15 @@ known_truth_overview <- function(kt, kts) {
           .kt_by_scale(req(b, "gamma_r_by_scale")), .kt_by_scale(req(b, "gamma_sd_ratio_by_scale"), .kt_pct), verb_c,
           .kt_pair(req(kt_row(kt, "shipped", 1), "within_r"), req(kt_row(kt, "shipped", 3), "within_r"), function(v) format_num(v, 2L)))
 }
+# (patch 0143) the known-truth support sentence for the README's short Known
+# limitations: known_truth_overview() without its paragraph break and its "See
+# Known limitations" pointer. Same accessors, same NULL tolerance.
+known_truth_support_sentence <- function(kt, kts) {
+  s <- known_truth_overview(kt, kts)
+  if (!nzchar(s)) return("")
+  s <- sub("^\\n\\n", " ", s)
+  sub(" See Known limitations\\.$", "", s)
+}
 known_truth_structured_bullet <- function(kts) {
   if (is.null(kts)) return("")
   meta <- req(kts, "meta"); a <- req(req(kts, "readings"), "R4a_between_goods"); b <- req(req(kts, "readings"), "R4b_within_goods")
@@ -823,6 +842,7 @@ render_env$sigma_eb_period_clause <- sigma_eb_period_clause           # patch 01
 render_env$KT <- r[["known_truth_stage2"]]                             # patch 0123: NULL until committed
 render_env$SEB <- pick_latest("sigma_eb_period_census")                # patch 0123
 render_env$known_truth_overview <- known_truth_overview                 # patch 0124
+render_env$known_truth_support_sentence <- known_truth_support_sentence   # patch 0143
 render_env$known_truth_structured_bullet <- known_truth_structured_bullet   # patch 0124
 render_env$KTS <- r[["known_truth_structured"]]                         # patch 0124: NULL until committed
 render_env$product_table_section <- product_table_section             # patch 0128
@@ -836,41 +856,41 @@ render_env$tariff_weight_note <- tariff_weight_note; render_env$TW <- r[["tariff
 render_env$KR5 <- r[["known_truth_ridge"]]; render_env$KEB <- r[["known_truth_eb"]]     # patch 0135
 render_env$EB <- r[["ridge_tau2_eb"]]; render_env$CK <- r[["ridge_tau2_check"]]; render_env$TC <- r[["ridge_tariff_check"]]
 
-rendered <- tryCatch(
-  glue::glue(template_text,
-             .open = "{{", .close = "}}",
-             .envir = render_env,
-             .trim = FALSE),
-  error = function(e) {
-    message("FATAL during template render: ", conditionMessage(e))
-    quit(status = 1L)
+# (patch 0143) one render for both templates: README.md and the long-form
+# Known-limitations record share the environment above.
+render_one <- function(text, out_path, what) {
+  rendered <- tryCatch(
+    glue::glue(text,
+               .open = "{{", .close = "}}",
+               .envir = render_env,
+               .trim = FALSE),
+    error = function(e) {
+      message("FATAL during ", what, " render: ", conditionMessage(e))
+      quit(status = 1L)
+    }
+  )
+  # --- Post-render sanity check ------------------------------------------
+  # Any remaining "{{" or "}}" in the rendered output means a placeholder
+  # wasn't substituted (typo in key name, double-brace literal that should
+  # have been escaped, etc.). Bail loudly rather than committing a broken
+  # file.
+  if (grepl("\\{\\{|\\}\\}", rendered)) {
+    message(sprintf("FATAL: rendered %s contains leftover placeholders ({{ or }}).", what))
+    message("       Likely template typo. Search the output for '{{' to find it.")
+    broken_path <- paste0(out_path, ".broken")
+    writeLines(as.character(rendered), con = file(broken_path, encoding = "UTF-8"))
+    message(sprintf("       Wrote broken output to %s for inspection.", broken_path))
+    quit(status = 2L)
   }
-)
-
-# --- Post-render sanity check ----------------------------------------------
-# Any remaining "{{" or "}}" in the rendered output means a placeholder
-# wasn't substituted (typo in key name, double-brace literal that should
-# have been escaped, etc.). Bail loudly rather than committing a broken
-# README.
-
-if (grepl("\\{\\{|\\}\\}", rendered)) {
-  message("FATAL: rendered output contains leftover placeholders ({{ or }}).")
-  message("       Likely template typo. Search the output for '{{' to find it.")
-  # Write the broken output (next to the intended output path) for inspection
-  broken_path <- paste0(OUTPUT_PATH, ".broken")
-  writeLines(as.character(rendered), con = file(broken_path,
-                                                  encoding = "UTF-8"))
-  message(sprintf("       Wrote broken output to %s for inspection.", broken_path))
-  quit(status = 2L)
+  # --- Write the output --------------------------------------------------
+  # Explicit UTF-8 connection. writeLines with a connection avoids the default
+  # system-encoding behavior on Windows.
+  dir.create(dirname(out_path), showWarnings = FALSE, recursive = TRUE)
+  con <- file(out_path, open = "wb", encoding = "UTF-8")
+  writeLines(as.character(rendered), con = con, useBytes = TRUE)
+  close(con)
+  message(sprintf("build_readme.R: wrote %s (%d bytes)", out_path, file.info(out_path)$size))
 }
-
-# --- Write the output ------------------------------------------------------
-# Explicit UTF-8 connection. writeLines with a connection avoids the default
-# system-encoding behavior on Windows.
-
-con <- file(OUTPUT_PATH, open = "wb", encoding = "UTF-8")
-writeLines(as.character(rendered), con = con, useBytes = TRUE)
-close(con)
-
-message(sprintf("build_readme.R: wrote %s (%d bytes)",
-                OUTPUT_PATH, file.info(OUTPUT_PATH)$size))
+render_one(template_text, OUTPUT_PATH, "README")
+record_text <- paste(readLines(RECORD_TEMPLATE_PATH, encoding = "UTF-8", warn = FALSE), collapse = "\n")
+render_one(record_text, RECORD_OUTPUT_PATH, "record")

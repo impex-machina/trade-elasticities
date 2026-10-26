@@ -62,7 +62,7 @@ test_that("README phrases (0118): convergence split, fallback wording, M1 and M2
 })
 
 test_that("the template's v0.8.3 sentence no longer says the restart is for cells at the cap", {
-  tpl <- readLines(file.path(.a18_root(), "README.template.md"), warn = FALSE, encoding = "UTF-8")
+  tpl <- generated_templates_text(.a18_root())   # patch 0143: README.template.md + the record template
   expect_false(any(grepl("a cell that reaches that cap", tpl, fixed = TRUE)))
   expect_true(any(grepl("whose L-BFGS-B fit does not converge", tpl, fixed = TRUE)))
   expect_true(any(grepl("{{pole_accuracy_clause(r$pole_rule_accuracy)}}", tpl, fixed = TRUE)))

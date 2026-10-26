@@ -106,3 +106,24 @@ assert_cpp_files_present <- function(cpp_dir = NULL) {
 
 # Compatibility for older R versions; testthat already provides %||%.
 `%||%` <- function(a, b) if (is.null(a) || (length(a) == 1L && is.na(a))) b else a   # patch 0053: same semantics as R/utils_general.R
+
+
+#' (patch 0143) The generated documentation as one string: README.md followed by
+#' docs/known_limitations_record.md, the long-form Known-limitations record
+#' that scripts/build_readme.R renders from its own template under the same
+#' lock. The record tests of patches 0116-0139 lock sentences that the README
+#' stated in full through patch 0142 and that the split moved into the record;
+#' they read this so the lock is "the generated docs state it", wherever it sits.
+generated_docs_text <- function(root = dirname(locate_source_dir())) {
+  paste(c(readLines(file.path(root, "README.md"), warn = FALSE, encoding = "UTF-8"),
+          readLines(file.path(root, "docs", "known_limitations_record.md"), warn = FALSE, encoding = "UTF-8")),
+        collapse = "\n")
+}
+
+#' (patch 0143) Both templates as one string, for tests that lock a placeholder
+#' or a clause call rather than rendered text.
+generated_templates_text <- function(root = dirname(locate_source_dir())) {
+  paste(c(readLines(file.path(root, "README.template.md"), warn = FALSE, encoding = "UTF-8"),
+          readLines(file.path(root, "docs", "known_limitations_record.template.md"), warn = FALSE, encoding = "UTF-8")),
+        collapse = "\n")
+}

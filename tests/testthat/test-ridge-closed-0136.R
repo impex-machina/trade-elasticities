@@ -19,7 +19,7 @@ test_that("README: the bullet's title and close follow the tariff reading", {
   expect_match(closed, "so the shipped ridge stays; the flags remain in the code, off by default", fixed = TRUE)
   open_ <- do.call(env$ridge_experiment_bullet, args)
   expect_match(open_, "is being tested", fixed = TRUE)
-  readme <- paste(readLines(file.path(.c36_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.c36_root())   # patch 0143: README.md + the long-form record
   expect_match(readme, "was tested and not adopted (patches 0132\u20130136).", fixed = TRUE)
   doc <- paste(readLines(file.path(.c36_root(), "docs", "methodology", "stage2_country.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   expect_match(doc, "**The experiment is closed (patch 0136)**", fixed = TRUE)

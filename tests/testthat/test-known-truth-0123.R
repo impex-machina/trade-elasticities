@@ -121,7 +121,7 @@ test_that("README clauses: known truth and sigma out of sample, with fallbacks",
   expect_match(cl, "Out of sample the global value does better still", fixed = TRUE)
   expect_match(cl, "Empirical-Bayes shrinkage of \u03c3 is not adopted", fixed = TRUE)
 
-  readme <- paste(readLines(file.path(.k23_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.k23_root())   # patch 0143: README.md + the long-form record
   expect_match(readme, "Reproducible is not the same as recovered (patch 0122)", fixed = TRUE)
   expect_match(readme, "cell-level differences in \u03c3 do not carry from one period to the other", fixed = TRUE)
   expect_false(grepl("about half the within-cell heterogeneity is signal", readme, fixed = TRUE))

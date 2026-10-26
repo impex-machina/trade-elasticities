@@ -88,9 +88,11 @@ fi
 # --- Build README to a temp file -------------------------------------------
 TMP_OUT="$(mktemp 2>/dev/null || echo "${TMPDIR:-/tmp}/readme_build.$$")"
 # Ensure cleanup on any exit
-trap 'rm -f "$TMP_OUT" "$TMP_OUT.broken"' EXIT
+trap 'rm -f "$TMP_OUT" "$TMP_OUT.broken" "$TMP_OUT.record" "$TMP_OUT.record.broken"' EXIT
 
-README_BUILD_OUTPUT="$TMP_OUT" "$RSCRIPT" "$BUILD_SCRIPT" >/dev/null 2>"$TMP_OUT.err"
+RECORD="docs/known_limitations_record.md"   # (patch 0143) the second generated file, under the same lock
+TMP_REC="$TMP_OUT.record"
+README_BUILD_OUTPUT="$TMP_OUT" README_RECORD_BUILD_OUTPUT="$TMP_REC" "$RSCRIPT" "$BUILD_SCRIPT" >/dev/null 2>"$TMP_OUT.err"
 BUILD_STATUS=$?
 
 if [ "$BUILD_STATUS" -ne 0 ]; then
@@ -113,11 +115,17 @@ if [ ! -f "$README" ]; then
 fi
 
 # Strip CR for comparison only (does not modify either file).
-if diff -q <(tr -d '\r' < "$TMP_OUT") <(tr -d '\r' < "$README") >/dev/null 2>&1; then
-  # In sync. Allow the commit.
+if [ ! -f "$RECORD" ]; then
+  echo "pre-commit: $RECORD does not exist but the build produced it (patch 0143)." >&2
+  echo "            Run: $RSCRIPT $BUILD_SCRIPT  (then stage $RECORD)" >&2
+  exit 1
+fi
+if diff -q <(tr -d '\r' < "$TMP_OUT") <(tr -d '\r' < "$README") >/dev/null 2>&1 \
+   && diff -q <(tr -d '\r' < "$TMP_REC") <(tr -d '\r' < "$RECORD") >/dev/null 2>&1; then
+  # In sync (both generated files). Allow the commit.
   exit 0
 else
-  echo "pre-commit: README.md is OUT OF SYNC with its build inputs." >&2
+  echo "pre-commit: README.md or docs/known_limitations_record.md is OUT OF SYNC with its build inputs." >&2
   echo "" >&2
   echo "  README.md does not match what build_readme.R generates from the" >&2
   echo "  current README.template.md and results/*.json." >&2

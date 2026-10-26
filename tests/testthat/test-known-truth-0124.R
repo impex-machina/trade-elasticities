@@ -42,7 +42,7 @@ test_that("R4 clauses follow the verdicts and are empty without the JSON", {
 })
 
 test_that("README and card carry the R4 record", {
-  readme <- paste(readLines(file.path(.k24_root(), "README.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+  readme <- generated_docs_text(.k24_root())   # patch 0143: README.md + the long-form record
   expect_match(readme, "Checked against known truth (`validation/known_truth_stage2.R`)", fixed = TRUE)
   expect_match(readme, "- **What the published \u03b3 and `opt_tariff` track at known truth.**", fixed = TRUE)
   card <- paste(readLines(file.path(.k24_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
