@@ -1535,7 +1535,9 @@ prior of 757 of 1,240 goods (|Δ ln| p50 1.2e-4, p90 0.0093, p99 0.112, max
 0.447) and the regional γ_V of 2,499 of 25,064 region × good cells (p99 0.398,
 max 5.41); 135 cells have a regional γ_V only because of flagged rows. The
 decision stands: `published` at the next Stage-2 session. The README states it
-under Known limitations.
+under Known limitations. (Patch 0144) The census above is of the v0.10.2
+Stage-2a table; `scripts/refresh_table_censuses.R` re-ran it on the shipped
+v0.11.3 table: `docs/results/stage2a_handoff_census_v0113.md`.
 
 **Optimizer fallbacks of the v0.10.0 run** (`out_H`, pass 3;
 `docs/results/stage2_fallback_census_v0101.md`): 2,730 cells reached the

@@ -154,7 +154,7 @@ The same paths work in DuckDB (`SELECT * FROM 'hf://datasets/impex-machina/trade
 ```
 trade-elasticities/
 ├── R/                 # estimation library (HLIML, Stage 2 solvers, SEs, CLI)
-├── scripts/           # entry points: run_estimation.R, download_outputs.R, build_readme.R
+├── scripts/           # entry points: run_estimation.R, download_outputs.R, build_readme.R, refresh_table_censuses.R
 ├── analysis/          # master.R + 7 numbered pillar scripts (figures/tables)
 ├── validation/        # synthetic-recovery and SE Monte Carlo harnesses
 ├── tests/             # testthat suite

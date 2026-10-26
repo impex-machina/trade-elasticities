@@ -197,6 +197,10 @@ pick_census <- function(prefix, legacy = character(0), table = "stage2b", res = 
   sha <- shipped_sha256(table)
   fresh <- vapply(names(cand), function(k) identical(tolower(.nz(res[[k]]$meta[[paste0(table, "_sha256")]], "")), sha), TRUE)
   k <- if (any(fresh)) names(cand)[which(fresh)[1L]] else names(cand)[1L]
+  # (patch 0144) a dated census is a refresh away when it reads only the tables
+  if (!any(fresh))
+    message(sprintf("build_readme.R: %s reads the %s %s table, not the shipped one; scripts/refresh_table_censuses.R re-runs the table censuses (no EC2)",
+                    k, cand[[k]], table))
   list(data = res[[k]], key = k, vintage = cand[[k]], fresh = any(fresh))
 }
 stale_note <- function(p, open = " (", close = ")") {
