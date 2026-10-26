@@ -109,6 +109,21 @@ does not do better (patch 0129, `docs/results/routing_ab.md`): less biased but n
 known truth, and worse at predicting the other period's σ on real data; the route stays,
 and switching would have moved the fallback σ only from 2.473 to 2.486.
 
+> **v0.11.3 (2026-10-25).** No re-estimation; every existing column is unchanged. The
+> Stage-2b table gains `total_trade` (the pair's total customs value over its years in the
+> estimation panel; `avg_trade` is the mean over the same years) and `opt_tariff_total`
+> (the cell's optimal tariff with exporters weighted by `total_trade` instead of
+> `avg_trade`, so a pair that traded heavily for a few years weighs less than one that
+> traded steadily for decades); the product table gains `opt_tariff_total_median`; both
+> Parquet copies follow. `opt_tariff` keeps its definition. The weighting matters: against
+> `opt_tariff` the cell value moves by a median 5.6% and by more than 10% in 35% of cells,
+> and product medians by a median 5.6% (`docs/results/tariff_weight_census.md`). Added by
+> `scripts/add_opt_tariff_total.R` (patch 0139), which writes nothing unless it reproduces the
+> published `avg_trade` on every row and `opt_tariff` in every cell; on a synthetic world its
+> table equals a native re-run of the patched estimator, which computes both columns from now on.
+> Data revision: `<fill>`. **v0.11.2 remains available pinned at revision
+> `049aeb07a5f5fdeed289462743103f7c2b82facc`.**
+>
 > **v0.11.2 (2026-10-25).** No re-estimation; the 12 v0.11.1 files are unchanged.
 > Adds Parquet copies of the Stage-2b, Stage-1 and Stage-2a tables and of the
 > product-level table, beside their sources with the same base names

@@ -13,6 +13,7 @@
 #   trade                               sum of avg_trade over published rows
 #   gamma_median                        median gamma over directly estimated rows
 #   opt_tariff_median                   median over cells of the cell's opt_tariff
+#   opt_tariff_total_median             (since v0.11.3) the same for opt_tariff_total
 #   sigma_median                        median over cells of the published sigma
 #   share_cells_own_sigma               cells whose sigma is their own estimate
 # (patch 0128) No interval columns. Patch 0127 bootstrapped the product median
@@ -61,14 +62,16 @@ product_summary <- function(s2b) {
   x[, `:=`(importer = as.character(importer), good = as.character(good))]
   x[, est := is_estimated_row(tier, convergence)]
   has_src <- "sigma_source" %in% names(x)
-  cells <- x[, .(opt_tariff = opt_tariff[1L], sigma = sigma[1L],
+  has_tot <- "opt_tariff_total" %in% names(x)                              # patch 0139
+  cells <- x[, .(opt_tariff = opt_tariff[1L], opt_tariff_total = if (has_tot) opt_tariff_total[1L] else NA_real_, sigma = sigma[1L],
                  own_sigma = if (has_src) sigma_source[1L] == "estimated" else NA), by = .(good, importer)]
   out <- x[, .(n_cells = data.table::uniqueN(importer), n_rows = .N, n_rows_estimated = sum(est),
                trade = sum(avg_trade, na.rm = TRUE)), by = good]
   gs <- x[est == TRUE & is.finite(gamma) & gamma > 0, .(gamma_median = stats::median(gamma)), by = good]
   os <- cells[is.finite(opt_tariff), .(opt_tariff_median = stats::median(opt_tariff)), by = good]
+  ts <- if (has_tot) cells[is.finite(opt_tariff_total), .(opt_tariff_total_median = stats::median(opt_tariff_total)), by = good]
   ss <- cells[, .(sigma_median = stats::median(sigma), share_cells_own_sigma = mean(own_sigma)), by = good]
-  out <- Reduce(function(a, b) merge(a, b, by = "good", all.x = TRUE), list(out, gs, os, ss))
+  out <- Reduce(function(a, b) merge(a, b, by = "good", all.x = TRUE), Filter(Negate(is.null), list(out, gs, os, ts, ss)))
   data.table::setorder(out, good)
   out[]
 }

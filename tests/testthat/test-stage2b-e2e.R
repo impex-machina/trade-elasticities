@@ -33,8 +33,8 @@ EXPECTED_COLS <- c(
   # sigma-uncertainty propagation columns (added by commit 53d751c)
   "gamma_se_total", "sigma_robust", "sigma_se", "dgamma_dsigma",
   "ref_exporter",
-  "opt_tariff", "opt_tariff_all",
-  "convergence", "obj_value", "tier", "avg_trade",
+  "opt_tariff", "opt_tariff_all", "opt_tariff_total",   # opt_tariff_total: patch 0139
+  "convergence", "obj_value", "tier", "avg_trade", "total_trade",
   "gamma_v_resid", "trim_reason"   # patch 0093
 )
 

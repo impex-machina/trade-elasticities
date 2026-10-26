@@ -278,6 +278,12 @@ recompute_opt_tariff <- function(dt) {
     },
     opt_tariff_all = optimal_tariff(gamma, sigma[1], avg_trade)
   ), by = .(importer, good)]
+  # (patch 0139) opt_tariff_total, the same statistic weighted by total_trade
+  if (all(c("total_trade", "opt_tariff_total") %in% names(dt)))
+    dt[pub, opt_tariff_total := {
+      est <- is_estimated_row(tier, convergence)
+      if (any(est)) optimal_tariff(gamma[est], sigma[est][1], total_trade[est]) else NA_real_
+    }, by = .(importer, good)]
   after <- cell_view(dt[pub])
   dif <- function(a, b) !((is.na(a) & is.na(b)) | (!is.na(a) & !is.na(b) & abs(a - b) <= 1e-9 * pmax(abs(a), 1)))
   invisible(list(

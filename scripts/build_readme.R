@@ -470,7 +470,8 @@ product_table_section <- function(ps, sigma_fallback, pw = NULL) {
   sprintf(paste0("\n\n### The product-level table (since v0.11.1)\n\n",
                  "`data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv` has one row per HS4 product (%s), built from the table above by ",
                  "`analysis/product_summary.R`: `gamma_median` (the median \u03b3 over directly estimated rows), `opt_tariff_median` (the median over the ",
-                 "product's (importer, product) cells), `sigma_median`, `share_cells_own_sigma`, and the counts `n_cells`, `n_rows`, `n_rows_estimated` and ",
+                 "product's (importer, product) cells), `opt_tariff_total_median` (since v0.11.3, the same for `opt_tariff_total`), ",
+                 "`sigma_median`, `share_cells_own_sigma`, and the counts `n_cells`, `n_rows`, `n_rows_estimated` and ",
                  "`trade` (the sum of `avg_trade`). It is the level the estimates support: at known truth the pipeline recovers differences between products, ",
                  "weakly those between importers within a product, and not those between exporters within a cell (Known limitations). ",
                  "On a 2%% product subsample (%d products) the product medians hardly depend on which half of the Stage-2b data is used -- Spearman %s for ",
@@ -560,6 +561,16 @@ ridge_experiment_bullet <- function(kr5, keb, eb, ck, tc = NULL) {
   if (closed)
     out <- paste0(out, " At this \u03c4\u00b2 the looser shrinkage admits more noise than signal in the published columns, so the shipped ridge stays; the flags remain in the code, off by default (`docs/methodology/stage2_country.md`).")
   out
+}
+
+# (patch 0139) How much the weighting moves the cell tariff, from
+# results/tariff_weight_census.json (patch 0138). NULL-tolerant.
+tariff_weight_note <- function(tw) {
+  if (is.null(tw)) return("")
+  pc <- function(x) sprintf("%.1f%%", 100 * as.numeric(x))
+  sprintf(paste0(" The choice matters: against `opt_tariff`, the cell value moves by a median %s and by more than 10%% in %s of cells, ",
+                 "and product medians move by a median %s (`docs/results/tariff_weight_census.md`)."),
+          pc(req(req(tw, "cell_change"), "p50")), pc(req(tw, "share_cells_over_10pct")), pc(req(req(tw, "product_change"), "p50")))
 }
 
 # --- Stage-2 DGP harness line (G4, v0.4.1) ---------------------------------
@@ -794,6 +805,7 @@ render_env$KR <- r[["known_truth_routing"]]                             # patch 
 render_env$AB <- r[["routing_ab"]]                                      # patch 0130
 render_env$PW <- r[["product_window_census"]]                           # patch 0130: NULL until committed
 render_env$ridge_experiment_bullet <- ridge_experiment_bullet           # patch 0135
+render_env$tariff_weight_note <- tariff_weight_note; render_env$TW <- r[["tariff_weight_census"]]   # patch 0139
 render_env$KR5 <- r[["known_truth_ridge"]]; render_env$KEB <- r[["known_truth_eb"]]     # patch 0135
 render_env$EB <- r[["ridge_tau2_eb"]]; render_env$CK <- r[["ridge_tau2_check"]]; render_env$TC <- r[["ridge_tariff_check"]]
 

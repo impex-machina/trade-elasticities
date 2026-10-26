@@ -927,8 +927,11 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
       gv <- attr(est, "gamma_v_resolution")                             # patch 0085
       if (!is.null(gv)) gvres_g[[length(gvres_g) + 1L]] <- gv
       est[, good := g]
+      # (patch 0139) total_trade beside avg_trade: the pair's total customs value
+      # over its years in the panel, the weight of opt_tariff_total
       trade_wt <- dt_g[importer == imp,
-                       .(avg_trade = mean(cusval, na.rm = TRUE)), by = exporter]
+                       .(avg_trade = mean(cusval, na.rm = TRUE),
+                         total_trade = sum(cusval, na.rm = TRUE)), by = exporter]
       est <- trade_wt[est, on = "exporter"]
 
       # -------------------------------------------------------------------
@@ -955,12 +958,15 @@ estimate_product_fixed_sigma <- function(g, dt_g, cfg) {
         ot <- optimal_tariff(est$gamma[is_estimated],
                               est$sigma[is_estimated][1],
                               est$avg_trade[is_estimated])
+        ott <- optimal_tariff(est$gamma[is_estimated],                    # patch 0139
+                              est$sigma[is_estimated][1],
+                              est$total_trade[is_estimated])
       } else {
-        ot <- NA_real_
+        ot <- NA_real_; ott <- NA_real_
       }
       ot_all <- optimal_tariff(est$gamma, est$sigma[1], est$avg_trade)
 
-      est[, `:=`(opt_tariff = ot, opt_tariff_all = ot_all)]
+      est[, `:=`(opt_tariff = ot, opt_tariff_all = ot_all, opt_tariff_total = ott)]
       results_g[[length(results_g) + 1L]] <- est
       n_ok <- n_ok + 1L
     }

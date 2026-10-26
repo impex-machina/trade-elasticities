@@ -956,8 +956,8 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     c("importer","exporter","good","sigma","gamma","gamma_se",
       "gamma_se_total","sigma_robust","sigma_se","dgamma_dsigma",
       "gamma_se_status","gamma_exposure","gamma_shrink_wt","ref_exporter",
-      "opt_tariff","opt_tariff_all","convergence","obj_value","tier",
-      "avg_trade","gamma_v_resid","trim_reason"))   # patch 0093
+      "opt_tariff","opt_tariff_all","opt_tariff_total","convergence","obj_value","tier",
+      "avg_trade","total_trade","gamma_v_resid","trim_reason"))   # patch 0093; 0139: total_trade, opt_tariff_total
   output <- output[, ..keep_cols]
 
   # --- Summary (over the published rows) ---

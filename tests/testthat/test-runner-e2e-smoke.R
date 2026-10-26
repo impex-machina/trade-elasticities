@@ -80,8 +80,19 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   expect_setequal(names(s2b), c("importer", "exporter", "good", "sigma", "gamma", "gamma_se", "gamma_se_total",
                                 "sigma_robust", "sigma_se", "dgamma_dsigma", "gamma_se_status", "gamma_exposure",
                                 "gamma_shrink_wt", "ref_exporter", "opt_tariff", "opt_tariff_all", "convergence",
-                                "obj_value", "tier", "avg_trade", "gamma_v_resid", "trim_reason", "sigma_source"))
+                                "obj_value", "tier", "avg_trade", "gamma_v_resid", "trim_reason", "sigma_source",
+                                "total_trade", "opt_tariff_total"))   # patch 0139
   pub <- s2b[is.na(trim_reason)]
+  # (patch 0139) the estimator writes total_trade and opt_tariff_total natively
+  expect_true(all(c("total_trade", "opt_tariff_total") %in% names(s2b)))
+  ug <- new.env(); sys.source(file.path(root, "R", "utils_general.R"), envir = ug)
+  est_rows <- ug$is_estimated_row(pub$tier, pub$convergence)
+  c1 <- pub[est_rows][, .N, by = .(importer, good)][N >= 2L][1L]
+  if (nrow(c1) && !is.na(c1$N)) {
+    cc <- pub[importer == c1$importer & good == c1$good]
+    e1 <- ug$is_estimated_row(cc$tier, cc$convergence)
+    expect_equal(cc$opt_tariff_total[1L], ug$optimal_tariff(cc$gamma[e1], cc$sigma[e1][1L], cc$total_trade[e1]))
+  }
   expect_gt(nrow(pub), 100L)
   # patch 0114: sigma_source reaches the saved table, on every row
   expect_false(anyNA(s2b$sigma_source))

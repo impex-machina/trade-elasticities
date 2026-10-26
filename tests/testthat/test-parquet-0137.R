@@ -44,7 +44,7 @@ test_that("card configs, the v0.11.2 entry and the README section", {
   expect_identical(trimws(y[i[1] + 2L]), "default: true")
   expect_match(y[i[1] + 1L], "product/baci_hs92_v202601_elast_hs4_product_summary.parquet", fixed = TRUE)
   heads <- regmatches(card, regexpr("^> \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+", card))
-  expect_identical(heads[1], "> **v0.11.2")
+  expect_true("> **v0.11.2" %in% heads)                                    # (patch 0139) v0.11.3 now on top
   txt <- paste(card, collapse = "\n")
   # (patch 0138) `<fill>` until the upload, the hub revision after (0137 asserted the first state only)
   expect_match(txt, "Data revision: `(<fill>|[0-9a-f]{40})`. \\*\\*v0.11.1 remains available pinned at revision")
