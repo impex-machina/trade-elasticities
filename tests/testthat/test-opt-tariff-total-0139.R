@@ -70,6 +70,7 @@ test_that("README rows and note; the card's v0.11.3 entry", {
   expect_match(readme, "| `avg_trade`, `total_trade` |", fixed = TRUE)
   expect_match(readme, "more than 10% in 35.3% of cells", fixed = TRUE)
   expect_match(readme, "`opt_tariff_total_median` (since v0.11.3", fixed = TRUE)
+  expect_match(readme, "the median cell tariff is 0.772 under total weights against 0.718", fixed = TRUE)   # patch 0140
   card <- paste(readLines(file.path(.o39_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   expect_match(card, "> **v0.11.3 (2026-10-25).**", fixed = TRUE)
   expect_match(card, "Data revision: `(<fill>|[0-9a-f]{40})`. \\*\\*v0.11.2 remains available pinned at revision")

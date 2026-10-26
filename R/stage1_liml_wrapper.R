@@ -58,6 +58,15 @@ stage1_psock_bootstrap <- function(cl, r_dir) {
 
 
 
+# (patch 0140) Everything process_one_cell() reads from run_stage1_liml()'s
+# frame, exported to PSOCK workers by name (test-stage1-psock-batch-0140.R
+# checks the list is complete). The worker copy of process_one_cell has the
+# global environment; sent with its defining frame it carried the whole input
+# panel with every task.
+stage1_worker_vars <- c("min_year", "min_exporters", "min_periods", "hliml_method", "cf_admissibility",
+                        "negative_omega", "edge_se", "uv_outlier_threshold", "reference_rule", "step2_vce",
+                        "sigma_cap", "%||%")
+
 run_stage1_liml <- function(baci_dt,
                             output_path,
                             n_cores = parallel::detectCores() - 1,
@@ -309,7 +318,9 @@ run_stage1_liml <- function(baci_dt,
   good_vec <- cells$good
   idx_vec <- seq_len(nrow(cells))
   
-  if (.Platform$OS.type == "windows" && n_cores > 1L) {
+  # (patch 0140) TE_STAGE1_PSOCK=1 takes the PSOCK branch on any OS (tests)
+  use_psock <- n_cores > 1L && (.Platform$OS.type == "windows" || identical(Sys.getenv("TE_STAGE1_PSOCK"), "1"))
+  if (use_psock) {
     # PSOCK cluster on Windows
     # outfile captures worker stdout/stderr so that crashes are diagnosable.
     # Without this, worker output is silently discarded on Windows.
@@ -321,18 +332,26 @@ run_stage1_liml <- function(baci_dt,
     # stage1_psock_bootstrap() so test-stage1-worker-env.R exercises the
     # exact production bootstrap. Do not source files inline here.
     stage1_psock_bootstrap(cl, .R_dir)
-    parallel::clusterExport(cl,
-                            c("min_year", "min_exporters", "min_periods", "process_one_cell",
-                              "hliml_method", "cf_admissibility", "negative_omega", "edge_se",
-                              "uv_outlier_threshold", "reference_rule", "step2_vce", "%||%"),
-                            envir = environment())
-    results <- parallel::clusterMap(cl, process_one_cell,
-                                    idx = idx_vec,
-                                    cell_data = cell_data_list,
-                                    imp = imp_vec,
-                                    gd = good_vec,
-                                    SIMPLIFY = FALSE,
-                                    .scheduling = "dynamic")
+    # (patch 0140) a worker copy of process_one_cell with the global environment,
+    # and the frame variables it reads, exported by name. Until 0140 the closure
+    # went out with its frame -- the whole input panel and every cell's data --
+    # on every one of the ~280,000 tasks, and sigma_cap reached workers only that
+    # way (it was not in the export list).
+    wenv <- new.env(parent = emptyenv())
+    wenv$process_one_cell <- process_one_cell
+    environment(wenv$process_one_cell) <- globalenv()
+    for (v in stage1_worker_vars) assign(v, get(v, envir = environment()), envir = wenv)
+    parallel::clusterExport(cl, c("process_one_cell", stage1_worker_vars), envir = wenv)
+    # (patch 0140) cells in contiguous batches, about 20 per worker, balanced
+    # dynamically: one task per cell made the per-task overhead dominate.
+    # Results come back in input order.
+    n_batch <- min(length(idx_vec), n_cores * 20L)
+    batches <- split(idx_vec, sort(rep_len(seq_len(n_batch), length(idx_vec))))
+    run_batch <- function(b) Map(process_one_cell, b$ix, b$cd, b$imp, b$gd)
+    environment(run_batch) <- globalenv()
+    res_b <- parallel::clusterApplyLB(cl, lapply(batches, function(ix)
+      list(ix = ix, cd = cell_data_list[ix], imp = imp_vec[ix], gd = good_vec[ix])), run_batch)
+    results <- unlist(res_b, recursive = FALSE, use.names = FALSE)
   } else if (n_cores > 1L) {
     # preschedule=TRUE: fork once per core, each worker burns through its
     # chunk of cells. Far faster than preschedule=FALSE for many short tasks.
