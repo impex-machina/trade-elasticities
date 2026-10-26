@@ -69,7 +69,9 @@ test_that("CLI, build_config, validate_config and the wrapper carry the sigma-ca
   bad <- cfg; bad$stage1_sigma_cap <- 1; expect_error(validate_config(bad), "stage1_sigma_cap")
   bad <- cfg; bad$stage1_capped_omega <- "maybe"; expect_error(validate_config(bad), "stage1_capped_omega")
   bad <- cfg; bad$stage2_sigma_fallback_pin <- 0.5; expect_error(validate_config(bad), "stage2_sigma_fallback_pin")
-  expect_equal(formals(run_stage1_liml)$sigma_cap, 10)                 # the LIBRARY default stays 10; the CLI/config default is 50 (patch 0086)
+  # (patch 0142) the wrapper has NO default for sigma_cap (the empty symbol): a
+  # caller must pass it; the primitive's library default stays 10 (patch 0086)
+  expect_true(identical(formals(run_stage1_liml)[["sigma_cap"]], quote(expr = )))
   expect_equal(formals(estimate_cell_liml)$sigma_start_cap, 10)
 })
 

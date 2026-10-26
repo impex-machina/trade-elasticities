@@ -134,9 +134,9 @@ test_that("wrapper column, CLI flag and config validation", {
     exporter = rep(1:6, each = 12L), t = rep(1995:2006, 6L),
     value = exp(rnorm(72)), quantity = exp(rnorm(72)))
   tmp <- tempfile(fileext = ".rds")
-  out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE)
-  outk <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  outk <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE, step2_vce = "legacy")
   expect_true("step2_vce_method" %in% names(out0))
   expect_true(all(out0$step2_vce_method[!is.na(out0$hliml_method)] == "kclass"))   # default (patch 0064)

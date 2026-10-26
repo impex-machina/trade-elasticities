@@ -15,9 +15,14 @@
 # Usage (from the repo root; needs the raw cache locally, ~5 GB in memory):
 #   Rscript analysis/sigma_uv_trim_sensitivity.R --cache <raw_cache.rds> \
 #       [--frac 0.03] [--seed 20260921] [--threshold 2.0] [--ncores 8] [--variant obs|row] \
+#       [--sigma-cap 50] \
 #       [--out results/sigma_uv_trim_sensitivity.json] \
 #       [--md docs/results/sigma_uv_trim_sensitivity.md]
 # On the box: the same, from /tmp/w/trade-elasticities with the cache in out_rc/.
+# --sigma-cap (patch 0142): the Stage-1 cap of both runs, default 50 (the
+# shipped cap since v0.9.0). The committed results (2026-09-21/22, v0.7.2's
+# Stage 1) were run at the wrapper's then library default of 10; pass
+# --sigma-cap 10 to reproduce them. The at-cap share below uses this value.
 # =============================================================================
 suppressPackageStartupMessages({ library(data.table); library(jsonlite) })
 # Load the library the way the runner does: feen94_het_baci.R sets .R_dir,
@@ -28,6 +33,7 @@ get_arg <- function(flag, default = NULL) { i <- match(flag, args); if (is.na(i)
 cache  <- get_arg("--cache"); frac <- as.numeric(get_arg("--frac", "0.03"))
 seed   <- as.integer(get_arg("--seed", "20260921")); thresh <- as.numeric(get_arg("--threshold", "2.0"))
 ncores <- as.integer(get_arg("--ncores", "8"))
+sigma_cap <- as.numeric(get_arg("--sigma-cap", "50"))   # patch 0142: explicit; the wrapper no longer defaults it
 # variant (patch 0057): "obs" (default) applies the trim to the DIFFERENCED
 # observation inside prepare_cell_moments() -- Stage 2's rule exactly; "row"
 # drops the raw (exporter, t) row, which also destroys the following year's
@@ -62,7 +68,7 @@ trim_uv <- function(d, thresh) {
 run <- function(d, tag, uv = NA_real_) {
   tmp <- tempfile(fileext = ".rds")
   r <- run_stage1_liml(d, output_path = tmp, n_cores = ncores, min_exporters = 2L, min_periods = 3L,
-                       verbose = FALSE, uv_outlier_threshold = uv)
+                       verbose = FALSE, uv_outlier_threshold = uv, sigma_cap = sigma_cap)   # patch 0142
   unlink(tmp); r[, run := tag]; r
 }
 if (variant == "row") {
@@ -99,7 +105,8 @@ res <- list(
   signed_median_rel = ok_both[, median(sig_b / sig_a - 1)],
   sigma_se_median = list(shipped = median(m[s_a == "ok", se_a], na.rm = TRUE), trimmed = median(m[s_b == "ok", se_b], na.rm = TRUE)),
   # (patch 0059) the rc turned on these: share of clean cells at the sigma cap, and the route mix
-  sigma_cap_share = list(shipped = m[s_a == "ok", mean(sig_a >= 10 - 1e-3)], trimmed = m[s_b == "ok", mean(sig_b >= 10 - 1e-3)]),
+  sigma_cap = sigma_cap,   # patch 0142: the cap both runs used
+  sigma_cap_share = list(shipped = m[s_a == "ok", mean(sig_a >= sigma_cap - 1e-3)], trimmed = m[s_b == "ok", mean(sig_b >= sigma_cap - 1e-3)]),
   sigma_se_finite_share = list(shipped = m[s_a == "ok", mean(is.finite(se_a))], trimmed = m[s_b == "ok", mean(is.finite(se_b))]),
   route_mix = list(shipped = m[s_a == "ok", .N, by = src_a][order(src_a)], trimmed = m[s_b == "ok", .N, by = src_b][order(src_b)]),
   omega_cap_share = list(shipped = m[s_a == "ok", mean(om_a >= 10 - 1e-3, na.rm = TRUE)], trimmed = m[s_b == "ok", mean(om_b >= 10 - 1e-3, na.rm = TRUE)]),

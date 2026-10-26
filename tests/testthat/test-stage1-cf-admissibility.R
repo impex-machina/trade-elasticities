@@ -165,7 +165,7 @@ test_that("run_stage1_liml() carries hliml_cf_admissibility on every Step-3 row"
       exporter = rep(1:6, each = 12L), t = rep(1995:2006, 6L),
       value = exp(rnorm(72)), quantity = exp(rnorm(72)))))
   tmp <- tempfile(fileext = ".rds")
-  out <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                          min_periods = 3L, verbose = FALSE,
                          cf_admissibility = "strict")
   expect_true("hliml_cf_admissibility" %in% names(out))
@@ -175,7 +175,7 @@ test_that("run_stage1_liml() carries hliml_cf_admissibility on every Step-3 row"
   expect_true(any(reached))
   expect_true(all(out$hliml_cf_admissibility[reached] == "strict"))
   expect_true(all(is.na(out$hliml_cf_admissibility[!reached])))
-  out2 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out2 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE)
   expect_true(all(out2$hliml_cf_admissibility[!is.na(out2$hliml_method)] == "legacy"))
   unlink(tmp)

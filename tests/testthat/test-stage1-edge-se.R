@@ -115,11 +115,11 @@ test_that("wrapper column, CLI flag and config validation", {
     exporter = rep(1:6, each = 12L), t = rep(1995:2006, 6L),
     value = exp(rnorm(72)), quantity = exp(rnorm(72)))
   tmp <- tempfile(fileext = ".rds")
-  out <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                          min_periods = 3L, verbose = FALSE, edge_se = "hncs")
   expect_true(all(c("edge_se_method", "edge_se_status") %in% names(out)))
   expect_true(all(out$edge_se_method[!is.na(out$hliml_method)] == "hncs"))
-  out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE)
   expect_true(all(out0$edge_se_method[!is.na(out0$hliml_method)] == "hncs"))   # default (0051)
   unlink(tmp)

@@ -45,7 +45,7 @@ test_that("the batched PSOCK branch reproduces the sequential Stage-1 table", {
   run <- function(n, out, psock) {
     old <- Sys.getenv("TE_STAGE1_PSOCK"); on.exit(Sys.setenv(TE_STAGE1_PSOCK = old), add = TRUE)
     Sys.setenv(TE_STAGE1_PSOCK = if (psock) "1" else "")
-    capture.output(r <- env$run_stage1_liml(data.table::copy(dt), output_path = out, n_cores = n, verbose = FALSE))
+    capture.output(r <- env$run_stage1_liml(data.table::copy(dt), output_path = out, n_cores = n, sigma_cap = 50, verbose = FALSE))
     data.table::as.data.table(readRDS(out))
   }
   a <- run(1L, file.path(d, "seq.rds"), FALSE)

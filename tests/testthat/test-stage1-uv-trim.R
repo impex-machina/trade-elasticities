@@ -77,8 +77,8 @@ test_that("wrapper argument reaches the estimator and the CLI flag parses", {
   source(file.path(root, "R", "stage1_liml_wrapper.R"), local = TRUE)
   d <- .uv_panel(); raw <- data.table::as.data.table(d); raw[, `:=`(importer = 1L, good = "0202")]
   tmp <- tempfile(fileext = ".rds")
-  o0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L, min_periods = 3L, verbose = FALSE)
-  o1 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L, min_periods = 3L, verbose = FALSE,
+  o0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L, min_periods = 3L, verbose = FALSE)
+  o1 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L, min_periods = 3L, verbose = FALSE,
                         uv_outlier_threshold = 2.0)
   expect_true(is.na(o0$stage1_uv_trim[1])); expect_equal(o1$stage1_uv_trim[1], 2.0)
   expect_equal(o0$n_obs[1] - o1$n_obs[1], 6L)                # the same six observations

@@ -37,7 +37,7 @@ test_that("run_stage1_liml() has the expected formals and runs on the default pa
   # the n_cores default must be a clean call (the 0025 regression put a formal inside it)
   expect_identical(deparse(formals(run_stage1_liml)$n_cores), "parallel::detectCores() - 1")
   out_path <- tempfile(fileext = ".rds")
-  res <- suppressMessages(run_stage1_liml(.raw_panel(), output_path = out_path, n_cores = 1L,
+  res <- suppressMessages(run_stage1_liml(.raw_panel(), output_path = out_path, n_cores = 1L, sigma_cap = 50,
                                           min_year = 1995L, min_exporters = 3L, min_periods = 3L,
                                           verbose = FALSE))
   expect_true(file.exists(out_path))
@@ -48,7 +48,7 @@ test_that("run_stage1_liml() has the expected formals and runs on the default pa
   expect_true("hliml_boundary_edge" %in% names(tab))
   # explicit bfgs reproduces the v0.5.x column semantics (NA cf columns)
   out_b <- tempfile(fileext = ".rds")
-  suppressMessages(run_stage1_liml(.raw_panel(), output_path = out_b, n_cores = 1L,
+  suppressMessages(run_stage1_liml(.raw_panel(), output_path = out_b, n_cores = 1L, sigma_cap = 50,
                                    min_year = 1995L, min_exporters = 3L, min_periods = 3L,
                                    verbose = FALSE, hliml_method = "bfgs"))
   tb <- readRDS(out_b)
@@ -64,7 +64,7 @@ test_that("run_stage1_liml(hliml_method = 'both') writes the closed-form and bou
   source(file.path(root, "R", "utils_general.R"), local = TRUE)   # finalize_saved_output()
   source(file.path(root, "R", "stage1_liml_wrapper.R"), local = TRUE)
   out_path <- tempfile(fileext = ".rds")
-  res <- suppressMessages(run_stage1_liml(.raw_panel(), output_path = out_path, n_cores = 1L,
+  res <- suppressMessages(run_stage1_liml(.raw_panel(), output_path = out_path, n_cores = 1L, sigma_cap = 50,
                                           min_year = 1995L, min_exporters = 3L, min_periods = 3L,
                                           verbose = FALSE, hliml_method = "both"))
   tab <- readRDS(out_path)

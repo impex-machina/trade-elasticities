@@ -265,10 +265,14 @@ and the template prose "cap value 10").
 
 **v0.9.0 (patch 0086).** `--stage1-sigma-cap` defaults to 50 and
 `--stage1-capped-omega` to `drop`; 10 / `keep` reproduce every release
-through v0.8.3. The library defaults of `run_stage1_liml(sigma_cap = 10)`
-and `estimate_cell_liml(sigma_start_cap = 10)` are unchanged, so harnesses
-that call the estimator directly keep the historical cap unless they pass
-one. The v0.9 rc session (S3 `v090rc_run_20261004/`, run A) measured the
+through v0.8.3. The library default of `estimate_cell_liml(sigma_start_cap
+= 10)` is unchanged, so a harness that calls the primitive directly keeps
+the historical cap unless it passes one. `run_stage1_liml()` carried the
+same default until patch 0142 (fresh-eyes audit #9, 2026-10-25); since then
+`sigma_cap` has no default and the wrapper stops unless one is passed, so a
+script that drives Stage 1 through the wrapper cannot silently run the
+pre-v0.9.0 estimator (`analysis/sigma_uv_trim_sensitivity.R` did, and now
+takes `--sigma-cap`, default 50). The runner passes `--stage1-sigma-cap`. The v0.9 rc session (S3 `v090rc_run_20261004/`, run A) measured the
 change on the universe: 68,518 cells (24.4%) publish a different σ — the
 24,780 that sat at the cap plus some 42,000 whose closed-form HLIML point
 had σ in (10, 50) and had been routed to Step 2 — no shipped interior cell

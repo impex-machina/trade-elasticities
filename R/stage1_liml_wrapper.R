@@ -82,8 +82,8 @@ run_stage1_liml <- function(baci_dt,
                             uv_outlier_threshold = NA_real_,
                             reference_rule = "levels",                # patch 0132
                             step2_vce = "kclass",
-                            sigma_cap = 10) {
-  # sigma_cap (patch 0084): estimate_cell_liml()'s sigma_start_cap, which is
+                            sigma_cap) {
+  # sigma_cap (patch 0084; NO DEFAULT since patch 0142): estimate_cell_liml()'s sigma_start_cap, which is
   # the ONE number behind the closed-form HLIML admissibility (sigma < cap),
   # the sigma edge of the boundary box, and the Step-2 clamp (a Step-2 sigma
   # at or above it is published AT the cap, adjust 4). 10 reproduces every
@@ -92,6 +92,22 @@ run_stage1_liml <- function(baci_dt,
   # continuous right tail -- half of the adjust-4 cells have an uncapped
   # Step-2 sigma <= 20 and 80% <= 50, with the closed-form HLIML agreeing on
   # the magnitude -- which is what --stage1-sigma-cap is for.
+  # (patch 0142, fresh-eyes audit #9) The wrapper carried `sigma_cap = 10` as
+  # its library default after v0.9.0 shipped at 50, so a harness or script
+  # that called it without the argument silently ran the pre-v0.9.0
+  # estimator (analysis/sigma_uv_trim_sensitivity.R did). The cap is now an
+  # explicit argument with no default: the runner passes --stage1-sigma-cap
+  # (build_config()$stage1_sigma_cap, 50 since v0.9.0; 10 reproduces every
+  # release through v0.8.3). estimate_cell_liml(sigma_start_cap = 10), the
+  # Stata-faithful primitive, keeps its default.
+  if (missing(sigma_cap) || is.null(sigma_cap))
+    stop("run_stage1_liml(): sigma_cap must be passed explicitly -- the shipped Stage 1 uses ",
+         "build_config()$stage1_sigma_cap (50 since v0.9.0; --stage1-sigma-cap); 10 reproduces ",
+         "every release through v0.8.3 (patch 0142)", call. = FALSE)
+  sigma_cap <- suppressWarnings(as.numeric(sigma_cap))
+  if (length(sigma_cap) != 1L || !is.finite(sigma_cap) || sigma_cap <= 1)
+    stop("run_stage1_liml(): sigma_cap must be one finite number greater than 1 (got ",
+         paste(format(sigma_cap), collapse = ", "), ")", call. = FALSE)
   # step2_vce (patch 0061; default "kclass" from v0.7.3, patch 0064):
   # sandwich behind the Step-2 SEs, "kclass" (k-class meat) or "legacy" (OLS
   # meat, the reproducer of tables shipped through v0.7.2); see

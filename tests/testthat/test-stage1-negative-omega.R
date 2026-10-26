@@ -130,10 +130,10 @@ test_that("the wrapper stamps hliml_negative_omega; the CLI flag parses and vali
     exporter = rep(1:6, each = 12L), t = rep(1995:2006, 6L),
     value = exp(rnorm(72)), quantity = exp(rnorm(72)))
   tmp <- tempfile(fileext = ".rds")
-  out <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                          min_periods = 3L, verbose = FALSE, negative_omega = "reject")
   expect_true(all(out$hliml_negative_omega[!is.na(out$hliml_method)] == "reject"))
-  out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out0 <- run_stage1_liml(raw, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                           min_periods = 3L, verbose = FALSE)
   expect_true(all(out0$hliml_negative_omega[!is.na(out0$hliml_method)] == "reject"))   # default (0047)
   expect_true("boundary_corner" %in% names(out0)); expect_true(all(out0$boundary_corner %in% c(TRUE, FALSE)))
@@ -141,7 +141,7 @@ test_that("the wrapper stamps hliml_negative_omega; the CLI flag parses and vali
   # panel has a thin cell that returns before the row constructor
   raw_thin <- rbind(raw, data.table::data.table(importer = 2L, good = "0303",
     exporter = rep(1:2, each = 3L), t = rep(1995:1997, 2L), value = runif(6, 1, 2), quantity = runif(6, 1, 2)))
-  out_t <- run_stage1_liml(raw_thin, output_path = tmp, n_cores = 1L, min_exporters = 2L,
+  out_t <- run_stage1_liml(raw_thin, output_path = tmp, n_cores = 1L, sigma_cap = 50, min_exporters = 2L,
                            min_periods = 3L, verbose = FALSE)
   expect_true(any(is.na(out_t$hliml_method)))                    # a pre-Step-3 row exists
   expect_false(any(is.na(out_t$boundary_corner)))                # ... and its flag is FALSE, not NA
