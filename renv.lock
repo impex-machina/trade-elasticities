@@ -363,8 +363,9 @@
     },
     "codetools": {
       "Package": "codetools",
-      "Version": "0.2.20",
-      "Source": "Repository"
+      "Version": "0.2-20",
+      "Source": "Repository",
+      "Repository": "CRAN"
     },
     "cpp11": {
       "Package": "cpp11",
@@ -1094,7 +1095,8 @@
     "nanoparquet": {
       "Package": "nanoparquet",
       "Version": "0.5.2",
-      "Source": "Repository"
+      "Source": "Repository",
+      "Repository": "CRAN"
     },
     "openssl": {
       "Package": "openssl",
