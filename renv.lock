@@ -1086,6 +1086,11 @@
       "Maintainer": "Lionel Henry <lionel@posit.co>",
       "Repository": "CRAN"
     },
+    "nanoparquet": {
+      "Package": "nanoparquet",
+      "Version": "0.5.2",
+      "Source": "Repository"
+    },
     "openssl": {
       "Package": "openssl",
       "Version": "2.4.0",
