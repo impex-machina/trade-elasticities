@@ -159,6 +159,19 @@ build_summary <- function(results, cfg, step1_results = NULL, scope = NULL) {
   n_trim_flagged <- if ("trim_reason" %in% names(results)) sum(!is.na(results$trim_reason)) else 0L
   results <- results[is_published_row(results)]
   dt <- results[!is.na(sigma) & !is.na(gamma)]
+  # (patch 0147) the rows the estimator fitted. A Tier-3 row carries the
+  # good-level prior -- one value per good, the same for every exporter in
+  # the cell -- and so does the reference row of an all-Tier-3 cell
+  # (convergence -1). Those rows hold no exporter information, yet in the
+  # Soderbery comparisons below (Table 2, the within-pair statistics, the
+  # variance decomposition) an all-Tier-3 cell read as exporters with
+  # identical gamma and every mixed cell gained a point mass at the prior --
+  # a distortion whose direction depends on where the prior sits.
+  # The comparisons are computed over the directly estimated rows
+  # (is_estimated_row(), the rows opt_tariff is built from); the global
+  # block still describes the published table and says how much of it is
+  # imputed.
+  est <- if (all(c("tier", "convergence") %in% names(dt))) dt[is_estimated_row(tier, convergence)] else dt
 
   # --- Config provenance ---
   provenance <- list(
@@ -242,7 +255,10 @@ build_summary <- function(results, cfg, step1_results = NULL, scope = NULL) {
     gamma_q25      = as.numeric(quantile(dt$gamma, 0.25)),
     gamma_q75      = as.numeric(quantile(dt$gamma, 0.75)),
     opt_tariff_median = median(dt$opt_tariff, na.rm = TRUE),
-    opt_tariff_mean   = mean(dt$opt_tariff, na.rm = TRUE)
+    opt_tariff_mean   = mean(dt$opt_tariff, na.rm = TRUE),
+    n_estimated       = nrow(est),                       # patch 0147
+    n_imputed         = nrow(dt) - nrow(est),            # patch 0147: Tier 3 at the prior
+    gamma_median_estimated = if (nrow(est)) median(est$gamma) else NA_real_   # patch 0147
   )
   # Trim bounds
   if (!is.null(meta) && !is.null(meta$trim_bounds)) {
@@ -251,14 +267,11 @@ build_summary <- function(results, cfg, step1_results = NULL, scope = NULL) {
     global$n_trimmed  <- meta$n_trimmed
   }
 
-  # --- Table 2 (per-importer) ---
-  table2 <- build_table2(results)
-
-  # --- Within importer-product heterogeneity ---
-  within_het <- within_pair_stats(results)
-
-  # --- Variance decomposition ---
-  var_decomp <- variance_decomposition(results)
+  # --- Table 2 (per-importer), within-pair statistics, variance decomposition ---
+  # (patch 0147) over the directly estimated rows (`est`, above)
+  table2 <- build_table2(est)
+  within_het <- within_pair_stats(est)
+  var_decomp <- variance_decomposition(est)
 
   # --- Two-step comparison ---
   step_comparison <- NULL
@@ -301,6 +314,7 @@ build_summary <- function(results, cfg, step1_results = NULL, scope = NULL) {
   }
 
   list(
+    heterogeneity_rows = "estimated",   # patch 0147: Table 2, within_het and var_decomp exclude Tier-3 prior rows
     provenance      = provenance,
     performance     = perf,
     quality         = quality,
@@ -429,7 +443,11 @@ write_summary_text <- function(summary, filepath) {
   # --- Global distributional statistics ---
   a("GLOBAL DISTRIBUTIONAL STATISTICS")
   dash()
-  a("  Total estimate rows:  %s", format(glob$n_estimates, big.mark = ","))
+  if (!is.null(glob$n_estimated)) {   # patch 0147
+    a("  Published rows:       %s", format(glob$n_estimates, big.mark = ","))
+    a("    directly estimated: %s", format(glob$n_estimated, big.mark = ","))
+    a("    Tier 3 (good-level prior, not estimated): %s", format(glob$n_imputed, big.mark = ","))
+  } else a("  Total estimate rows:  %s", format(glob$n_estimates, big.mark = ","))
   a("  Products:             %d", glob$n_products)
   a("  Importers:            %d", glob$n_importers)
   a("  Exporters:            %d", glob$n_exporters)
@@ -440,10 +458,12 @@ write_summary_text <- function(summary, filepath) {
   a("    Median=%.3f  Mean=%.3f  SD=%.3f  IQR=[%.3f, %.3f]",
     glob$sigma_median, glob$sigma_mean, glob$sigma_sd, glob$sigma_q25, glob$sigma_q75)
   a("")
-  a("  Gamma (inverse export supply elasticity):")
+  a("  Gamma (inverse export supply elasticity), all published rows:")
   a("    Median=%.3f  Mean=%.3f  SD=%.3f  MAD=%.3f  IQR=[%.3f, %.3f]",
     glob$gamma_median, glob$gamma_mean, glob$gamma_sd, glob$gamma_mad,
     glob$gamma_q25, glob$gamma_q75)
+  if (!is.null(glob$gamma_median_estimated))   # patch 0147
+    a("    Median over the directly estimated rows: %.3f", glob$gamma_median_estimated)
   a("")
   a("  Optimal tariff (Proposition 1):")
   a("    Median=%.3f  Mean=%.3f", glob$opt_tariff_median, glob$opt_tariff_mean)
@@ -458,7 +478,8 @@ write_summary_text <- function(summary, filepath) {
   a("")
 
   # --- Table 2 (per-importer) ---
-  a("PER-IMPORTER SUMMARY (cf. Soderbery Table 2)")
+  het_rows <- identical(summary$heterogeneity_rows, "estimated")   # patch 0147
+  a(if (het_rows) "PER-IMPORTER SUMMARY (cf. Soderbery Table 2; directly estimated rows)" else "PER-IMPORTER SUMMARY (cf. Soderbery Table 2)")
   dash()
   a("  %-20s %7s %8s %8s %8s %8s %8s %8s",
     "Importer", "Obs", "sig_mn", "sig_md", "sig_MAD", "gam_mn", "gam_md", "gam_MAD")
@@ -482,9 +503,16 @@ write_summary_text <- function(summary, filepath) {
 
   # --- Within importer-product heterogeneity ---
   if (!is.null(wh)) {
-    a("WITHIN IMPORTER-PRODUCT HETEROGENEITY (cf. Soderbery p. 52)")
+    a(if (het_rows) "WITHIN IMPORTER-PRODUCT HETEROGENEITY (cf. Soderbery p. 52; directly estimated rows)"
+      else "WITHIN IMPORTER-PRODUCT HETEROGENEITY (cf. Soderbery p. 52)")
     dash()
-    a("  Importer-product pairs with 2+ exporters: %s", format(wh$n_pairs, big.mark = ","))
+    a(if (het_rows) "  Importer-product pairs with 2+ directly estimated exporters: %s"
+      else "  Importer-product pairs with 2+ exporters: %s", format(wh$n_pairs, big.mark = ","))
+    if (het_rows) {
+      a("  Tier-3 rows (the good-level prior, one value per good) are left out of this")
+      a("  section, Table 2 and the variance decomposition: they hold no exporter")
+      a("  information (an all-Tier-3 cell would read as exporters with identical gamma).")
+    }
     a("")
     a("  Median gamma within pair:  %.3f  [Q25=%.3f, Q75=%.3f]",
       wh$median_of_within_med, wh$q25_within_med, wh$q75_within_med)
@@ -501,7 +529,8 @@ write_summary_text <- function(summary, filepath) {
 
   # --- Variance decomposition ---
   if (!is.null(vd)) {
-    a("VARIANCE DECOMPOSITION OF GAMMA (cf. Soderbery p. 52)")
+    a(if (het_rows) "VARIANCE DECOMPOSITION OF GAMMA (cf. Soderbery p. 52; directly estimated rows)"
+      else "VARIANCE DECOMPOSITION OF GAMMA (cf. Soderbery p. 52)")
     dash()
     a("  R-squared (importer x product FEs on log gamma): %.3f", vd$r_squared)
     a("  Observations: %s  Groups: %s",

@@ -638,4 +638,4 @@ message("00_setup.R: emitted results/stage1_summary.json (",
         "results/stage2b_summary.json (",
         stage2b_summary$n_cells, " cells), ",
         "results/pillar2_summary.json (Tier 1a 4x3 grid + 1b sweep), ",
-        "results/pillar3_summary.json (4-regime SE calibration)")
+        "results/pillar3_summary.json (SE calibration, ", length(pillar3_summary$regimes) / 4, " regimes x 4 formulas)")

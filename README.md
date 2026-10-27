@@ -29,8 +29,10 @@ pipeline:
   errors.
 
 Outputs cover 1,240 HS4 products across 233 importers and 233 exporters,
-producing 6,801,742 (importer, exporter, HS4) cell-level γ estimates with
-standard errors. Stage 1 attempts σ estimation on 280,649 (importer, HS4)
+producing 6,801,742 (importer, exporter, HS4) rows of γ:
+4,982,259 estimated cell by cell
+(71.7% of all rows with a clean standard error) and
+1,819,483 (Tier 3) set to the good-level prior, with no standard error. Stage 1 attempts σ estimation on 280,649 (importer, HS4)
 cells across 234 importers, returning an estimate for
 182,912 of them (one importer present at Stage 1 has no country-pair γ at Stage 2b after the minimum-destinations filter).
 

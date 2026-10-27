@@ -492,11 +492,13 @@ if (should_run("2a", opts, paths)) {
     config_2a$sigma_fallback <- sigma_fallback
 
     config_2a$sigma_V_default <- sigma_fallback
-    # (patch 0092) 'clean' (every release): the median omega over the whole
-    # clean set, floored / capped / sigma-edge cells included; 'priors': the
-    # median over the rows the good-level priors use (feenstra_gamma_clean),
-    # so the Stage-2a default gamma_V and the gamma start share the priors'
-    # population. Default-off: a flip is a Stage-2a methodology change.
+    # (patch 0092) 'clean': the median omega over the whole clean set,
+    # floored / capped / sigma-edge cells included (every release through
+    # v0.9.1); 'priors': the median over the rows the good-level priors use
+    # (feenstra_gamma_clean), so the Stage-2a default gamma_V and the gamma
+    # start share the priors' population -- the default since v0.10.0
+    # (patch 0101; build_config(): absent == 'priors'). Comment corrected in
+    # patch 0147; it still described 'clean' as the default.
     config_2a$gamma_V_default <- stage2a_gamma_v_default(sigma_clean, feenstra_gamma_clean,
                                                          config$stage2a_gamma_v_default)
     config_2a$sigma_start     <- sigma_fallback

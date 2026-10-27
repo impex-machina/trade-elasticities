@@ -29,8 +29,10 @@ pipeline:
   errors.
 
 Outputs cover {{format_int(req(r$stage1, "n_products"))}} HS4 products across {{req(r$stage2b, "n_importers")}} importers and {{req(r$stage2b, "n_exporters")}} exporters,
-producing {{format_int(req(r$stage2b, "n_cells"))}} (importer, exporter, HS4) cell-level γ estimates with
-standard errors. Stage 1 attempts σ estimation on {{format_int(req(r$stage1, "n_cells"))}} (importer, HS4)
+producing {{format_int(req(r$stage2b, "n_cells"))}} (importer, exporter, HS4) rows of γ:
+{{format_int(req(r$stage2b$se_status, "total") - req(r$stage2b$se_status, "tier3_prior"))}} estimated cell by cell
+({{format_pct(req(r$stage2b$se_status, "ok"), req(r$stage2b$se_status, "total"))}} of all rows with a clean standard error) and
+{{format_int(req(r$stage2b$se_status, "tier3_prior"))}} (Tier 3) set to the good-level prior, with no standard error. Stage 1 attempts σ estimation on {{format_int(req(r$stage1, "n_cells"))}} (importer, HS4)
 cells across {{req(r$stage1, "n_importers")}} importers, returning an estimate for
 {{format_int(req(r$stage1$status_breakdown, "ok"))}} of them{{asymmetry_phrase(req(r$stage2b, "n_importers_asymmetry_vs_stage1"))}}.{{known_truth_overview(KT, KTS)}}
 
