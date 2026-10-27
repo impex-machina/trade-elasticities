@@ -149,13 +149,13 @@ Every main table also ships as Parquet beside its `.rds` file -- `stage2b/…_fi
 
 ```python
 import pandas as pd
-base = "hf://datasets/impex-machina/trade-elasticities@v0.11.3/"
+base = "hf://datasets/impex-machina/trade-elasticities@v0.11.4/"
 products = pd.read_parquet(base + "product/baci_hs92_v202601_elast_hs4_product_summary.parquet")
 cars = pd.read_parquet(base + "stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.parquet",
                        filters=[("good", "==", "8703")])
 ```
 
-The same paths work in DuckDB (`SELECT * FROM 'hf://datasets/impex-machina/trade-elasticities@v0.11.3/…'`), Polars and R's arrow or nanoparquet packages. The `.rds` files stay the canonical copies; the Hugging Face dataset viewer opens on the product-level table.
+The same paths work in DuckDB (`SELECT * FROM 'hf://datasets/impex-machina/trade-elasticities@v0.11.4/…'`), Polars and R's arrow or nanoparquet packages. The `.rds` files stay the canonical copies; the Hugging Face dataset viewer opens on the product-level table.
 
 ## Repository structure
 

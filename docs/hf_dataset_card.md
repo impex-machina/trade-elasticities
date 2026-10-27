@@ -124,7 +124,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > with the ridge λ, so these describe the published presentation, not identified exporter
 > heterogeneity. The README's opening now gives the estimated and Tier-3 counts instead of calling
 > every row an estimate with a standard error.
-> Data revision: `<fill>`. **v0.11.3 remains available pinned at revision
+> Data revision: `3397d5e60f1ea8a9c62b0e2268581945bc9a042b`. **v0.11.3 remains available pinned at revision
 > `a8af84de0af983571c145b95e9f2a8892a7ed2fe`.**
 >
 > **v0.11.3 (2026-10-25).** No re-estimation; every existing column is unchanged. The
