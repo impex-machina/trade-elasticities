@@ -111,6 +111,22 @@ does not do better (patch 0129, `docs/results/routing_ab.md`): less biased but n
 known truth, and worse at predicting the other period's σ on real data; the route stays,
 and switching would have moved the fallback σ only from 2.473 to 2.486.
 
+> **v0.11.4 (2026-10-26).** No re-estimation; every table is unchanged. The two Stage-2b summary
+> files (`stage2b/..._summary.rds` and `..._summary.txt`) are rebuilt from the shipped table
+> (patches 0147–0148, `scripts/rebuild_stage2b_summary.R`). Their per-importer table, within-pair
+> statistics and variance decomposition, which the text compares with Soderbery (2018), had
+> summarized the Tier-3 rows as if estimated: 1,819,483 rows set to the good-level prior, one
+> value per good, holding no exporter information. Over the 4,982,259 directly estimated rows the
+> within-pair median MAD of γ is 0.120 (was 0.022; Soderbery 0.125), the median within-pair SD
+> 0.492 (was 0.363; Soderbery 0.625) and the importer × product R² 0.408 (was 0.439; Soderbery
+> 0.72), on 209,101 importer-product pairs with two or more estimated exporters (was 230,967); the
+> per-importer table's world median γ is 0.787 (was 0.804). The within-cell spread of γ scales
+> with the ridge λ, so these describe the published presentation, not identified exporter
+> heterogeneity. The README's opening now gives the estimated and Tier-3 counts instead of calling
+> every row an estimate with a standard error.
+> Data revision: `<fill>`. **v0.11.3 remains available pinned at revision
+> `a8af84de0af983571c145b95e9f2a8892a7ed2fe`.**
+>
 > **v0.11.3 (2026-10-25).** No re-estimation; every existing column is unchanged. The
 > Stage-2b table gains `total_trade` (the pair's total customs value over its observations in
 > the differenced Stage-2 estimation panel -- the years after the first of each consecutive run,

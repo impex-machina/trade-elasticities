@@ -524,6 +524,11 @@ write_summary_text <- function(summary, filepath) {
     a("  Interpretation: For the median importer-product, exporters have")
     a("  a median inverse supply elasticity of %.3f with within-pair", wh$median_of_within_med)
     a("  SD of %.3f. Soderbery reports: median=0.712, SD=0.625, MAD=0.125.", wh$median_of_within_sd)
+    if (het_rows) {   # patch 0148
+      a("  The within-cell spread of gamma scales with the ridge lambda (README, Known")
+      a("  limitations): these numbers describe the published presentation, not")
+      a("  identified exporter heterogeneity.")
+    }
     a("")
   }
 

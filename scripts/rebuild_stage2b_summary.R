@@ -100,7 +100,9 @@ main <- function(args = commandArgs(trailingOnly = TRUE)) {
     if (is.null(opt$summary)) opt$summary <- s_row$local_path
     for (r in list(t_row, s_row)) {
       if (!file.exists(r$local_path)) { cat("MISSING:", r$local_path, "-- fetch with Rscript scripts/download_outputs.R\n"); quit(status = 1L) }
-      con <- file(r$local_path, "rb"); h <- tolower(as.character(openssl::sha256(con))); close(con)
+      # (patch 0148) unclass(): openssl's hash string keeps class c("hash", "sha256"),
+      # and identical() against the manifest's plain string was FALSE on every file
+      con <- file(r$local_path, "rb"); h <- tolower(unclass(as.character(openssl::sha256(con)))); close(con)
       if (!identical(h, tolower(r$sha256))) { cat("DIFFERS FROM THE MANIFEST:", r$local_path, "-- Rscript scripts/download_outputs.R --force\n"); quit(status = 1L) }
     }
     cat("inputs match the manifest's sha256\n")

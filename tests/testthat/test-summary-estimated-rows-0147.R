@@ -61,8 +61,11 @@ test_that("the comparisons read the directly estimated rows; the global block co
   expect_equal(s$global$gamma_median_estimated, median(dt[tier < 3L & convergence != -1L & is.na(trim_reason), gamma]))
   expect_false("I99" %in% s$table2$importer)
   # the pre-0147 summary (from git) summarized the imputed rows too, for contrast
-  old_src <- tryCatch(system2("git", c("-C", shQuote(.sm_root()), "show", "origin/main:R/summary.R"), stdout = TRUE, stderr = FALSE),
-                      error = function(err) character(0))
+  # (patch 0148) the summary as it stood before patch 0147, at a fixed commit
+  # (726ab2b, patch 0146): reading origin/main made this contrast vanish once
+  # 0147 itself was pushed, and the suite's count moved with the remote.
+  old_src <- tryCatch(suppressWarnings(system2("git", c("-C", shQuote(.sm_root()), "show", "726ab2bd6abda6d4b5efe47c6c97bd195b886d68:R/summary.R"),
+                                               stdout = TRUE, stderr = FALSE)), error = function(err) character(0))
   if (length(old_src) > 100L && !any(grepl("patch 0147", old_src, fixed = TRUE))) {
     o <- .sm_env(rev = paste(old_src, collapse = "\n"))$build_summary(dt, .sm_cfg(), scope = "country")
     expect_equal(o$var_decomp$n_obs, 54L)
