@@ -1,4 +1,4 @@
-# The Stage-1 sample rule: tested, not adopted (2026-09-22)
+# The Stage-1 sample rule: tested, not adopted (2026-09-22; re-run at the shipped σ cap, 2026-10-26)
 
 ## Question
 
@@ -52,13 +52,42 @@ would move once and stabilise; instead it tracks the threshold. Feenstra's
 estimator identifies σ from the variance of Δ ln p across exporters; any
 rule that removes large price movements removes identifying variance,
 signal and noise alike, and pushes σ up without limit — at 1.5 a quarter of
-cells sit at or near the cap of 10. The universe rc shows the same thing
+cells sat at or near v0.7.2's cap of 10 (at the shipped cap of 50 the upper
+quartile at 1.5, 11.2, lies past that old cap). The universe rc shows the same thing
 from the other side: the trimmed run pins 19.0% of clean cells at the cap
 against 13.7%, and σ-SE coverage and the σ-robust screen fall with it.
 
 The γ stage, by contrast, is healthier under the trim (γ-SE coverage up ten
 points, boundary status down from 11.3% to 2.8%), which is why Stage 2
 trims and should continue to.
+
+## At the shipped cap (2026-10-26, patch 0145)
+
+The evidence above ran on v0.7.2's Stage 1 at a σ cap of 10; the shipped
+Stage 1 has used 50 since v0.9.0. The threshold curve was re-run on the
+shipped panel at the shipped cap (`--sigma-cap 50`, seed 20260921) on a 3%
+subsample of 8,419 cells. R draws the subsample sequentially, so it contains
+the September 2% subsample's 5,613 cells. The untrimmed run reproduces the
+published Stage-1 table cell by cell (σ within 1e-6 on all 5,513 cells ok in
+both; `--check-shipped`), so it is the shipped estimator on the shipped data
+(`docs/results/sigma_uv_trim_sensitivity_cap50_t{3,2,15}.md`).
+
+| rule | σ median, cap 10 (2%) | σ median, cap 50 (3%) | p25 / p75, cap 50 | cells moved > 10% | route changed | σ-SE finite | σ at the cap |
+|---|---|---|---|---|---|---|---|
+| untrimmed | 2.466 | 2.496 | 1.571 / 5.027 | — | — | 95.0% | 8.2% |
+| \|Δ ln p\| < 3.0 | 3.003 | 3.043 | 1.803 / 6.055 | 71.5% | 39.1% | 94.3% | 7.5% |
+| \|Δ ln p\| < 2.0 | 3.636 | 3.781 | 2.085 / 8.062 | 85.2% | 50.4% | 92.7% | 8.9% |
+| \|Δ ln p\| < 1.5 | 4.536 | 4.720 | 2.372 / 11.154 | 88.4% | 53.9% | 91.1% | 10.6% |
+
+The reading stands, and sharpens. σ rises with every tightening and never
+plateaus: +22%, +51%, +89% at the shipped cap, against +22%, +47%, +84% at
+10. At 1.5 the upper quartile (11.2) lies past the old cap, so the cap-10
+runs were truncating the rise, not creating it. What the cap of 10 did
+inflate is the pile-up at the cap: at 50, 8.2% of cells sit at the cap
+untrimmed and 10.6% at 1.5, against a quarter at or near 10 in September.
+σ-SE coverage falls with each tightening (95.0% → 91.1%). The universe A/B
+was not re-run (it is a full Stage-1 run); its cap-10 figures above remain
+the record.
 
 ## Decision
 
@@ -80,18 +109,23 @@ trims and should continue to.
 `--stage1-uv-trim` (0057), `analysis/sigma_uv_trim_sensitivity.R` (0052,
 0056, 0059: `--variant obs|row`, `--threshold`, cap-share and route-mix
 lines). Not adopted: the per-cell `sigma_untrimmed` columns proposed for a
-trimmed release (patch 0058, never applied).
+trimmed release (patch 0058, never applied). Patch 0145 added
+`--check-shipped` (the untrimmed run must reproduce the published Stage-1
+table before any trimmed run starts) and `--thresholds` (one baseline for
+several trims); the cap-50 records are
+`results/sigma_uv_trim_sensitivity_cap50_t{3,2,15}.json`.
 
 ## Paper paragraph (draft)
 
 *We tested whether σ should be estimated on the same trimmed sample as γ.
-Applying the |Δ ln p| < 2 rule inside the Feenstra stage raises the median
-σ from 2.46 to 3.73 on the full universe and moves 84% of cells by more
-than 10%; a threshold curve on a fixed subsample shows σ rising
-monotonically as the rule tightens (3.00, 3.64, 4.54 at 3.0, 2.0, 1.5) with
-no plateau, while the share of cells at the σ cap rises from 14% to 19%.
-The rule removes identifying price variance rather than a distinct
-population of mismeasured observations, so no threshold is privileged. We
-therefore report σ on the untrimmed sample, treat the trimmed estimates as
-a robustness check, and note that comparisons across studies must state
-the unit-value cleaning rule under which σ was estimated.*
+On a random 3% subsample of (importer, HS4) cells, whose untrimmed estimates
+reproduce the published σ cell by cell, applying the |Δ ln p| < 2 rule
+inside the Feenstra stage raises the median σ from 2.50 to 3.78 and moves
+85% of cells by more than 10%; tightening the rule from 3.0 to 2.0 to 1.5
+gives medians of 3.04, 3.78 and 4.72, with no plateau, while the share of
+cells with a finite σ standard error falls from 95.0% to 91.1%. The rule
+removes identifying price variance rather than a distinct population of
+mismeasured observations, so no threshold is privileged. We therefore
+report σ on the untrimmed sample, treat the trimmed estimates as a
+robustness check, and note that comparisons across studies must state the
+unit-value cleaning rule under which σ was estimated.*

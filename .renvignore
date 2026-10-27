@@ -12,3 +12,11 @@
 # renv.lock) out of renv::status()/restore() so the production environment
 # stays clean and the out-of-sync warning does not mask real issues.
 inst/legacy_verification/
+
+# Data and run trees (patch 0146). A .renvignore replaces .gitignore for renv's
+# dependency discovery, so the git-ignored data trees were scanned at every R
+# start-up in the project -- the "Dependency discovery took 15 seconds during
+# snapshot" notes printed by each Stage-1 PSOCK worker. None holds R code.
+data/
+grid/
+te_*/

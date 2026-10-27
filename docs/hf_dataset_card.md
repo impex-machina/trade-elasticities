@@ -42,17 +42,19 @@ configs:
   (v0.2.0 -> v0.4.1 changelogs existed only on the hub until this note).
 -->
 
-**Note on the Stage-1 sample (2026-09-22).** σ is estimated on the untrimmed
-unit-value panel, while γ (Stage 2) drops differenced observations with
-|Δ ln p| ≥ 2. This was tested, not assumed: applying the same rule inside the
-Feenstra stage raises the median σ from 2.46 to 3.73 on the full universe (v0.7.2's Stage 1, σ cap 10) and
-a threshold curve shows σ rising monotonically as the rule tightens (3.00 /
-3.64 / 4.54 at 3.0 / 2.0 / 1.5) with no plateau, while the share of cells at
-the σ cap rises from 14% to 19%. The rule removes identifying price variance
-rather than a distinct outlier population, so no threshold is privileged and
-none is shipped; the trimmed estimates are a robustness result
-(`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated
-under another cleaning rule must say which rule.
+**Note on the Stage-1 sample (2026-09-22; re-run at the shipped σ cap 2026-10-26).** σ is estimated
+on the untrimmed unit-value panel, while γ (Stage 2) drops differenced observations with
+|Δ ln p| ≥ 2. This was tested, not assumed: at the shipped σ cap of 50, on a random 3% subsample
+of cells whose untrimmed estimates reproduce the published σ, applying the same rule inside the
+Feenstra stage raises the median σ from 2.50 to 3.78 and moves 85% of cells by more than 10%,
+and a threshold curve shows σ rising monotonically as the rule tightens (3.04 / 3.78 / 4.72 at
+3.0 / 2.0 / 1.5) with no plateau, while the share of cells with a finite σ standard error falls
+from 95.0% to 91.1%. The September runs on v0.7.2's Stage 1 at a cap of 10 showed the same
+curve (3.00 / 3.64 / 4.54; 2.46 → 3.73 on the full universe at 2.0). The rule removes
+identifying price variance rather than a distinct outlier population, so no threshold is
+privileged and none is shipped; the trimmed estimates are a robustness result
+(`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated under another
+cleaning rule must say which rule.
 
 **Corrections (2026-10-15, patches 0116–0118; no estimate changes).** (1) The
 v0.10.0 and v0.11.0 entries give optimizer non-convergence as 0.42%: that was the

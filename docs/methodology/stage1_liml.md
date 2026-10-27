@@ -60,12 +60,16 @@ Stage 1 has no `min_year` filter beyond the cache's own year range.
 asymmetry was tested rather than assumed away. `--stage1-uv-trim THRESH`
 (patch 0057) applies Stage 2's rule inside Stage 1, at the same point and on
 the differenced observation; a full-universe rc at 2.0 and a threshold curve
-on a fixed 2% cell subsample are recorded in `sample_rule_decision.md` and
+on a fixed 2% cell subsample (v0.7.2's Stage 1, σ cap 10), and the curve
+re-run at the shipped cap of 50 on a 3% subsample that contains it (patch
+0145, 2026-10-26), are recorded in `sample_rule_decision.md` and
 `docs/results/sigma_uv_trim_sensitivity*.md`. σ rises monotonically with
-every tightening of the rule (untrimmed 2.47 → 3.00 at 3.0 → 3.64 at 2.0 →
-4.54 at 1.5 on the subsample; 2.46 → 3.73 on the universe at 2.0) with no
-plateau, and the share of cells pinned at the σ cap rises with it (13.7% →
-19.0%). That is not a distinct population of bad observations being removed;
+every tightening of the rule (at the shipped cap: untrimmed 2.50 → 3.04 at
+3.0 → 3.78 at 2.0 → 4.72 at 1.5; at the cap of 10: 2.47 → 3.00 → 3.64 → 4.54
+on the subsample, 2.46 → 3.73 on the universe at 2.0) with no plateau, while
+σ-SE coverage falls (95.0% → 91.1% at the shipped cap) and the share of
+cells pinned at the σ cap rises (8.2% → 10.6% at the shipped cap; 13.7% →
+19.0% on the cap-10 universe at 2.0). That is not a distinct population of bad observations being removed;
 it is the estimator losing the price variance it identifies σ from. No
 threshold can be defended as "the clean σ", so none is shipped. The Stage-2
 trim is retained because the γ moment equations do not lean on unit-value
