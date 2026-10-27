@@ -321,26 +321,14 @@ test_that("bw_lag modes: bit-identical on gapless data, divergent on gaps", {
   expect_false(identical(cell_l[exporter == "156"]$gamma,
                          cell_c[exporter == "156"]$gamma))
 
-  # ---- Direct cell calls: homogeneous import site ----------------------
+  # ---- Direct cell calls ------------------------------------------------
+  # (patch 0149) the homogeneous import site this section also checked --
+  # estimate_importer_product() -- was removed with the legacy estimator.
   cfg_l <- make_synthetic_cfg(); cfg_l$bw_lag <- "legacy"
   cfg_c <- make_synthetic_cfg(); cfg_c$bw_lag <- "calendar"
 
   gap_g   <- gapped_dt[good == "8501"]
   clean_g <- clean_dt[good == "8501"]
-
-  h_gap_l <- estimate_importer_product(copy(gap_g), "840", copy(gap_g), cfg_l)
-  h_gap_c <- estimate_importer_product(copy(gap_g), "840", copy(gap_g), cfg_c)
-  expect_s3_class(h_gap_l, "data.table")
-  expect_s3_class(h_gap_c, "data.table")
-  expect_identical(h_gap_l$convergence[1], 0L)
-  expect_false(identical(h_gap_l$gamma, h_gap_c$gamma))
-
-  h_clean_l <- estimate_importer_product(copy(clean_g), "840",
-                                         copy(clean_g), cfg_l)
-  h_clean_c <- estimate_importer_product(copy(clean_g), "840",
-                                         copy(clean_g), cfg_c)
-  expect_identical(h_clean_l, h_clean_c)
-
   # ---- Direct cell calls: legacy Feenstra site -------------------------
   f_gap_l <- estimate_feenstra_sigma_cell(copy(gap_g), "840", cfg_l)
   f_gap_c <- estimate_feenstra_sigma_cell(copy(gap_g), "840", cfg_c)

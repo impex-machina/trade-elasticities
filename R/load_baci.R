@@ -58,4 +58,4 @@ load_baci <- function(filepath) {
 # ===========================================================================
 
 #' Lightweight failure indicator for cell-level diagnostics.
-#' Returned instead of NULL so that estimate_product can log the reason.
+#' Returned instead of NULL so that estimate_product_fixed_sigma can log the reason.

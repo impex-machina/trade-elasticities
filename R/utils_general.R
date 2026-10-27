@@ -129,7 +129,7 @@ finalize_saved_output <- function(x,
 
 
 #' Lightweight failure indicator for cell-level diagnostics.
-#' Returned instead of NULL so that estimate_product can log the reason.
+#' Returned instead of NULL so that estimate_product_fixed_sigma can log the reason.
 cell_failure <- function(reason) {
   structure(list(reason = reason), class = "cell_failure")
 }

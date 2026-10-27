@@ -1,16 +1,19 @@
 #' R/estimate_cell_homogeneous.R
 #'
-#' Homogeneous (single-gamma) cell estimation: the Soderbery (2018) HLIML
-#' path that estimates sigma and a common gamma per cell.
-#' Extracted from feen94_het_baci.R (lines 517-902, 921-987) at refactor
-#' step 3; content identical to the original, only sectioned.
+#' Shared Stage-2 helpers: the exporter weights, the export-side moments of
+#' Eq. (11) and the per-product exporter lookup, used by the fixed-sigma
+#' estimator (R/estimate_cell_fixed_sigma.R, Stages 2a and 2b) and, for the
+#' weights, by the legacy Feenstra Stage 1 (R/estimate_stage1_feenstra.R).
+#' The file is named for the homogeneous (single-gamma) cell estimator it
+#' was extracted with (feen94_het_baci.R, refactor step 3).
+#' (Patch 0149) That estimator -- estimate_importer_product() and
+#' estimate_product(), driven by estimate_all_parallel() -- had no caller in
+#' the pipeline and was removed; git history keeps it (through v0.11.4).
 #'
 #' Exported functions:
 #'   compute_exporter_weights(dt_nonref, exporter_order, cfg)                — exporter weights
 #'   build_export_moments(exporter_order, focal_importer, all_dt, cfg, ...)  — export-side moments
 #'   compute_exporter_lookup(dt_g)                                           — exporter lookup table
-#'   estimate_importer_product(imp_dt, focal_importer, all_dt, cfg, ...)     — per importer-product fit
-#'   estimate_product(g, dt_g, cfg)                                          — per-product fit
 #'
 #' Depends on: liml_estimator.R
 
@@ -77,7 +80,7 @@ compute_exporter_weights <- function(dt_nonref, exporter_order, cfg) {
 #' shares across destinations. Returns the matrices, index map,
 #' and reference-destination elasticities needed by the objective.
 #'
-#' Extracted from estimate_importer_product for clarity.
+#' Extracted from the homogeneous cell estimator (removed in patch 0149) for clarity.
 #' The computation is identical — this is a structural refactor only.
 #'
 #' @param exporter_order Character vector of non-reference exporters.
@@ -117,8 +120,9 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
   gam_V_vec    <- numeric(0)
 
   # Post-v0.4.1 audit, deferred BW-lag item. This function computes the
-  # export-side fn-14 weights for BOTH Stage 1/2a (estimate_importer_product)
-  # and Stage 2b (estimate_importer_product_fixed_sigma), so gating it here
+  # export-side fn-14 weights for every caller -- Stages 2a and 2b
+  # (estimate_importer_product_fixed_sigma; the homogeneous estimator, removed
+  # in patch 0149, was the other), so gating it here
   # covers every export-side moment. Semantics mirror the import sites: see
   # build_config.R for the v0.5.0 default-flip record and absent-key rule.
   bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
@@ -290,266 +294,10 @@ build_export_moments <- function(exporter_order, focal_importer, all_dt, cfg,
 #' all_dt into O(1) list indexing. At HS6 scale (5,300 products, many
 #' exporters per product) this is a meaningful performance win.
 #'
-#' Called ONCE per product (not per importer) in estimate_product /
-#' estimate_product_fixed_sigma.
+#' Called ONCE per product (not per importer) in estimate_product_fixed_sigma.
 #'
 #' @param dt_g Product-level data.table.
 #' @return Named list; names are exporter codes, values are their subsets.
 compute_exporter_lookup <- function(dt_g) {
   split(dt_g, by = "exporter", keep.by = TRUE)
 }
-
-
-#' Estimate one (importer, product) cell.
-#'
-#' Returns a data.table on success, or a cell_failure object with
-#' a diagnostic reason on failure. The cell_failure is collected
-#' by estimate_product for the failure log.
-#'
-#' @param exp_lookup Optional pre-split per-exporter lookup (see
-#'   compute_exporter_lookup). Passed through to build_export_moments.
-estimate_importer_product <- function(imp_dt, focal_importer, all_dt, cfg,
-                                      exp_lookup = NULL) {
-
-  dt <- imp_dt[importer == focal_importer]
-
-  n_exp <- uniqueN(dt$exporter)
-  max_pd <- dt[, max(period_count)]
-
-  if (n_exp < cfg$min_exporters || max_pd < cfg$min_periods) {
-    return(cell_failure("insufficient_data"))
-  }
-
-  # Post-v0.4.1 audit, deferred BW-lag item: under bw_lag = "calendar" the
-  # fn-14 lag is attached HERE, on the pre-filter cell panel, so the
-  # cell-level row drops below cannot stale it into an x_{t-2+}. Under
-  # "legacy" (reproduces published v0.4.x output bit-for-bit; the CLI
-  # default before v0.5.0, still the absent-key behaviour) the positional
-  # shift at the weights block below runs unchanged. See build_config.R
-  # for the v0.5.0 default-flip record and the absent-key rule.
-  bw_lag_calendar <- identical(cfg$bw_lag, "calendar")
-  bw_lag_raw      <- identical(cfg$bw_lag, "raw")   # patch 0091
-  if (bw_lag_raw && !"cusval_lag" %in% names(dt))
-    stop("bw_lag = 'raw' needs the cusval_lag column prepare_data() attaches (patch 0091)")
-  if (bw_lag_calendar) {
-    dt[, cusval_lag := calendar_lag(dt, value = "cusval", t = "t",
-                                    by = "exporter")]
-  }
-
-  # --- Choose reference exporter k ---
-  ref_exporter <- choose_reference(dt)
-
-  # --- Reference-differencing (import side) ---
-  ref_vals <- dt[exporter == ref_exporter,
-                 .(t, ref_ls_dif = ls_imp_dif, ref_lp_dif = lp_dif)]
-
-  dt <- ref_vals[dt, on = "t"]
-  dt <- dt[!is.na(ref_ls_dif) & !is.na(ref_lp_dif)]
-
-  dt[, `:=`(Dk_lp = lp_dif - ref_lp_dif,
-            Dk_ls = ls_imp_dif - ref_ls_dif)]
-
-  # --- Import-side moment variables (eq 10) ---
-  dt[, `:=`(
-    imp_y  = Dk_lp^2,
-    imp_x1 = Dk_ls^2,
-    imp_x2 = Dk_ls * Dk_lp,
-    imp_x3 = Dk_ls * lp_dif,
-    imp_x4 = Dk_ls * ref_lp_dif,
-    imp_x5 = Dk_lp * ref_lp_dif
-  )]
-
-  dt <- dt[!is.na(imp_y) & !is.na(imp_x1) & !is.na(imp_x2)]
-
-  dt_nonref <- dt[exporter != ref_exporter]
-  if (nrow(dt_nonref) == 0L) return(cell_failure("no_nonref_exporters"))
-
-  # --- BW weights ---
-  # calendar mode: cusval_lag already attached on the pre-filter panel.
-  setorder(dt_nonref, exporter, t)
-  if (!bw_lag_calendar && !bw_lag_raw) {   # patch 0091
-    dt_nonref[, cusval_lag := shift(cusval, 1L), by = exporter]
-  }
-  dt_nonref[, bw_w := bw_weight(cusval, cusval_lag, period_count)]
-
-  # --- Time-average with BW weights ---
-  imp_moments <- dt_nonref[,
-    lapply(.SD, weighted.mean, w = bw_w, na.rm = TRUE),
-    by = exporter,
-    .SDcols = c("imp_y", "imp_x1", "imp_x2", "imp_x3", "imp_x4", "imp_x5")
-  ]
-  setorder(imp_moments, exporter)
-
-  J <- nrow(imp_moments)
-  if (J < 1L) return(cell_failure("no_valid_moments"))
-
-  exporter_order <- imp_moments$exporter
-  imp_Y_vec <- imp_moments$imp_y
-  imp_X_mat <- as.matrix(imp_moments[, .(imp_x1, imp_x2, imp_x3,
-                                          imp_x4, imp_x5)])
-  wt_imp_vec <- rep(1, J)
-
-
-  # =========================================================
-  #  EXPORT-SIDE MOMENT VARIABLES (eq 11)
-  # =========================================================
-
-  exp_mom <- build_export_moments(exporter_order, focal_importer, all_dt, cfg,
-                                   exp_lookup = exp_lookup)
-  exp_Y_vec    <- exp_mom$exp_Y
-  exp_X_mat    <- exp_mom$exp_X
-  exp_jmap_vec <- exp_mom$jmap
-  sig_V_vec    <- exp_mom$sig_V
-  gam_V_vec    <- exp_mom$gam_V
-  wt_exp_vec   <- exp_mom$wt_exp
-
-
-  # =========================================================
-  #  JOINT NONLINEAR SUR ESTIMATION
-  # =========================================================
-
-  # Per-cell starting values from regional estimates if available
-  sig_init <- cfg$sigma_start
-  gam_init <- cfg$gamma_start
-
-  if (!is.null(cfg$regional_starts)) {
-    g_code <- imp_dt$good[1]
-    imp_region <- focal_importer
-    # If running country-level, map country code to region
-    if (!is.null(cfg$regional_starts_rmap)) {
-      imp_region <- assign_regions(focal_importer, cfg$regional_starts_rmap)
-    }
-    match_row <- cfg$regional_starts[region == imp_region & good == g_code]
-    if (nrow(match_row) > 0L) {
-      sig_init <- match_row$sigma[1]
-      gam_init <- match_row$gamma[1]
-    }
-  }
-
-  d_start <- c(sig_init, gam_init, rep(gam_init, J))
-  lower_bounds <- c(1 + 1e-6, rep(1e-6, J + 1))
-
-  result <- tryCatch(
-    optim(
-      par    = d_start,
-      fn     = het_obj,
-      method = "L-BFGS-B",
-      lower  = lower_bounds,
-      upper  = rep(Inf, J + 2),
-      imp_Y  = imp_Y_vec,  imp_X = imp_X_mat,
-      exp_Y  = exp_Y_vec,  exp_X = exp_X_mat,
-      exp_jmap  = exp_jmap_vec,
-      exp_sig_V = sig_V_vec, exp_gam_V = gam_V_vec,
-      wt_imp = wt_imp_vec, wt_exp = wt_exp_vec,
-      control = list(maxit = 500)
-    ),
-    error = function(e) NULL
-  )
-
-  if (is.null(result) || result$convergence != 0) {
-    result <- tryCatch(
-      optim(
-        par = d_start, fn = het_obj, method = "Nelder-Mead",
-        imp_Y = imp_Y_vec, imp_X = imp_X_mat,
-        exp_Y = exp_Y_vec, exp_X = exp_X_mat,
-        exp_jmap = exp_jmap_vec,
-        exp_sig_V = sig_V_vec, exp_gam_V = gam_V_vec,
-        wt_imp = wt_imp_vec, wt_exp = wt_exp_vec,
-        control = list(maxit = 1000)
-      ),
-      error = function(e) NULL
-    )
-  }
-
-  if (is.null(result)) return(cell_failure("optimizer_failed"))
-
-  d_hat <- result$par
-  sigma_hat   <- d_hat[1]
-  gamma_k_hat <- d_hat[2]
-  gamma_j_hat <- d_hat[3:(J + 2)]
-
-  if (sigma_hat <= 1) sigma_hat <- NA_real_
-  gamma_k_hat <- max(gamma_k_hat, 0)
-  gamma_j_hat <- pmax(gamma_j_hat, 0)
-
-  data.table(
-    importer     = focal_importer,
-    exporter     = c(exporter_order, ref_exporter),
-    sigma        = sigma_hat,
-    gamma        = c(gamma_j_hat, gamma_k_hat),
-    ref_exporter = ref_exporter,
-    convergence  = result$convergence,
-    obj_value    = result$value
-  )
-}
-
-
-
-
-estimate_product <- function(g, dt_g, cfg) {
-  t0 <- proc.time()["elapsed"]
-  importers <- unique(dt_g$importer)
-  results_g <- list()
-  failures_g <- list()
-  n_cells <- 0L; n_ok <- 0L; n_skipped <- 0L
-
-  # --- Pre-filter: skip importers that cannot meet minimum requirements ---
-  imp_stats <- dt_g[, .(n_exp = uniqueN(exporter),
-                         max_pd = max(period_count)),
-                     by = importer]
-  viable_importers <- imp_stats[n_exp >= cfg$min_exporters &
-                                max_pd >= cfg$min_periods, importer]
-  n_skipped <- length(importers) - length(viable_importers)
-
-  # --- Pre-split per-exporter slices ONCE per product (HS6 perf) ---
-  exp_lookup <- compute_exporter_lookup(dt_g)
-
-  for (imp in viable_importers) {
-    n_cells <- n_cells + 1L
-    est <- tryCatch(
-      estimate_importer_product(dt_g, imp, dt_g, cfg, exp_lookup = exp_lookup),
-      error = function(e) cell_failure(paste0("error: ", conditionMessage(e)))
-    )
-
-    if (inherits(est, "cell_failure")) {
-      failures_g[[length(failures_g) + 1L]] <- list(
-        importer = imp, good = g, reason = est$reason)
-      next
-    }
-
-    if (!is.null(est)) {
-      est[, good := g]
-      trade_wt <- dt_g[importer == imp,
-                       .(avg_trade = mean(cusval, na.rm = TRUE)), by = exporter]
-      est <- trade_wt[est, on = "exporter"]
-      ot <- optimal_tariff(est$gamma, est$sigma[1], est$avg_trade)
-      est[, opt_tariff := ot]
-      results_g[[length(results_g) + 1L]] <- est
-      n_ok <- n_ok + 1L
-    }
-  }
-
-  elapsed <- as.numeric(proc.time()["elapsed"] - t0)
-  if (length(results_g) > 0L) {
-    out <- rbindlist(results_g)
-    attr(out, "timing") <- list(product = g, seconds = elapsed,
-                                cells = n_cells, succeeded = n_ok,
-                                skipped = n_skipped)
-    attr(out, "failures") <- failures_g
-    out
-  } else { NULL }
-}
-
-
-# ===========================================================================
-#  DATA PREPARATION PIPELINE
-# ===========================================================================
-
-#' Load and clean BACI data through HS4 aggregation (cacheable).
-#'
-#' Performs steps 1-5 of the data pipeline: load, clean, year filter,
-#' HS4 aggregation. The result can be cached and reused across stages
-#' to avoid reloading 270M+ rows multiple times.
-#'
-#' @param cfg Config list.
-#' @return data.table with columns: year, good, importer, exporter, cusval, quantity.

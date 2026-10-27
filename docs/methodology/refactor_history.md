@@ -31,7 +31,7 @@ layer plus an `src/` C++ layer, driven by a single CLI entry point.
 |------|------|
 | `R/feen94_het_baci.R` | Thin wrapper; sources the split files below in dependency order, then loads Rcpp objectives. Preserves the original library's source contract. (Disposition under review at N+6 / E2.) |
 | `R/estimate_cell_homogeneous.R`, `R/estimate_cell_fixed_sigma.R` | Cell-level optimization, tier assignment, SE computation |
-| `R/estimate_parallel.R` | `estimate_all_parallel` and `estimate_all_fixed_sigma` — the PSOCK-cluster drivers |
+| `R/estimate_parallel.R` | `estimate_all_parallel` and `estimate_all_fixed_sigma` — the PSOCK-cluster drivers (`estimate_all_parallel` and the homogeneous cell estimator it drove were removed in patch 0149: no caller) |
 | `R/estimate_stage1.R` | Feenstra/Soderbery Stage 1 estimators (used when not using LIML upstream) |
 | `R/prepare_data.R`, `R/load_baci.R`, `R/region_map.R`, `R/hs_codes.R` | Data preparation and country/HS mapping |
 | `R/summary.R`, `R/output_paths.R`, `R/quality_log.R` | Reporting and output management |
