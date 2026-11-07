@@ -30,5 +30,9 @@ else
 fi
 echo "preflight: OK -- inside tmux ($TMUX), role active, packages load, cache OK; $S1NOTE"
 echo "preflight: repo HEAD $(git rev-parse --short HEAD) | cores $(nproc) | free disk on /tmp $(df -h /tmp | awk 'NR==2{print $4}')"
-echo "preflight: expected durations on r7a.16xlarge at --ncores 62 -- Stage 2a ~3 min; one Stage-2b pass ~37-42 min; --stage all with Stage 1 loaded and 3 passes ~2 h"
+S2A="$OUT/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds"
+[ -f "$S2A" ] && S2ANOTE="Stage 2a will be LOADED" || S2ANOTE="Stage 2a will be re-estimated (~3 min)"
+echo "preflight: $S2ANOTE"
+echo "preflight: expected durations on r7a.16xlarge at --ncores 62 -- Stage 2a ~3 min; one Stage-2b pass ~37-42 min; the sigma profile (patch 0155, parallel over goods) ~5-10 min;"
+echo "preflight: --stage all under the defaults since patch 0155 = 3 gamma_V passes + profile + 1 update pass, with Stage 1 and 2a loaded: ~2 h 40 (v0.11.4's 3-pass run was ~1 h 50)"
 echo "preflight: detach with Ctrl-b d once the run is going; check it from outside tmux with grep on the log"

@@ -52,4 +52,16 @@ WANT=$(grep "stage1/$S1" data/manifest.csv | grep -o '[0-9a-f]\{64\}')
 GOT=$(sha256sum "$OUT/$S1" | cut -d' ' -f1)
 [ "$GOT" = "$WANT" ] || { echo "setup.sh: Stage-1 sha $GOT is not the manifest's $WANT"; exit 1; }
 echo "  Stage 1 placed and verified (${GOT:0:16})"
+# (patch 0156) the released Stage-2a table too: Stage 2a takes the Stage-1 sigma, which the sigma update
+# (patches 0152-0155, the default) does not touch, so a --stage all run LOADS it and 2a stays bit-identical
+S2A="baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds"
+if [ -f "data/derived/stage2a/$S2A" ]; then
+  cp "data/derived/stage2a/$S2A" "$OUT/"
+  WANT2=$(grep "stage2a/$S2A" data/manifest.csv | grep -o '[0-9a-f]\{64\}')
+  GOT2=$(sha256sum "$OUT/$S2A" | cut -d' ' -f1)
+  [ "$GOT2" = "$WANT2" ] || { echo "setup.sh: Stage-2a sha $GOT2 is not the manifest's $WANT2"; exit 1; }
+  echo "  Stage 2a placed and verified (${GOT2:0:16}); the run loads it"
+else
+  echo "  no released Stage-2a table under data/derived: the run re-estimates Stage 2a (~3 min)"
+fi
 echo "setup.sh: done. Next: open tmux (tmux new -s rc), then launch through scripts/box/preflight.sh."
