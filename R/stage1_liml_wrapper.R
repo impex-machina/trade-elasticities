@@ -15,7 +15,7 @@
 #'   (see file for the Stage 1 orchestration entry points)  — Stage 1 HLIML driver
 #'
 #' Depends on: liml_estimator.R; utils_general.R (boundary_flags on
-#'   workers); parallel (base)
+#'   workers; assert_forked_results on the forked path, patch 0150); parallel (base)
 
 
 #' Provision a PSOCK worker with the Stage 1 estimation environment.
@@ -384,6 +384,11 @@ run_stage1_liml <- function(baci_dt,
                                   mc.cores = n_cores,
                                   mc.preschedule = TRUE,
                                   mc.silent = FALSE)
+    # (patch 0150) a forked worker that died returns NULL for every cell of its
+    # chunk (a warning only); rbindlist(fill = TRUE) below would skip them and
+    # the status census would never see them. process_one_cell() always
+    # returns a list, so a NULL here can only be a lost worker: stop.
+    assert_forked_results(results, cell_keys, what = "Stage 1 cell")
   } else {
     results <- vector("list", nrow(cells))
     for (i in idx_vec) {

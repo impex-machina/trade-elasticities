@@ -18,6 +18,7 @@
 #'   optimal_tariff(gamma, sigma, trade_values)    — trade-weighted optimal tariff
 #'   stage2_convergence_census(dt)                 — optimizer vs imputed convergence codes (patch 0116)
 #'   year_window(dt, minyear, maxyear, col)        — rows inside a year window (patch 0119)
+#'   assert_forked_results(res, labels, what)      — stop on lost / errored forked-worker results (patch 0150)
 #'
 #' Depends on: none (base R + data.table semantics at call sites)
 
@@ -369,4 +370,39 @@ t_parity_keep <- function(t, mode, y0 = min(t) - 1L, block = 4L) {
            lo == hi & (hi %% 2L) == if (mode == "block-a") 0L else 1L
          },
          stop("t_parity_keep(): unknown mode ", mode))
+}
+
+#' (patch 0150) Stop on forked-worker results that were lost or errored.
+#'
+#' parallel::mclapply() and mcmapply() return NULL for every task of a forked
+#' child that died (an out-of-memory kill, a segfault) and a "try-error"
+#' object for a task whose function errored -- in both cases with a warning
+#' only, and the run goes on. Through v0.11.4 the Stage-2 driver then filed the
+#' NULLs under "no estimates" (the same filter a product with no viable cell
+#' takes) and Stage 1's rbindlist(fill = TRUE) skipped the NULL cells, so a
+#' killed worker produced a shorter table and a run that reported success.
+#' Both forked paths now call this on every batch.
+#'
+#' @param res the list mclapply() / mcmapply(SIMPLIFY = FALSE) returned.
+#' @param labels one label per task (product codes, cell keys), for the message.
+#' @param what short name of the task kind, for the message.
+#' @return invisibly TRUE; stops otherwise.
+assert_forked_results <- function(res, labels, what = "task") {
+  if (length(res) != length(labels))
+    stop(sprintf("%s: the forked workers returned %d results for %d tasks",
+                 what, length(res), length(labels)), call. = FALSE)
+  lost <- vapply(res, is.null, logical(1))
+  err  <- vapply(res, inherits, logical(1), what = "try-error")
+  if (!any(lost) && !any(err)) return(invisible(TRUE))
+  show <- function(x) paste(utils::head(labels[x], 10L), collapse = ", ")
+  first_msg <- if (any(err)) {
+    cond <- attr(res[[which(err)[1L]]], "condition")
+    if (!is.null(cond)) conditionMessage(cond) else as.character(res[[which(err)[1L]]])
+  } else ""
+  stop(sprintf(paste0("%s: %d of %d tasks came back NULL from a forked worker (the worker was killed, ",
+                      "usually out of memory%s) and %d errored (%s%s). The run is incomplete, not ",
+                      "resumable from this state: rerun with fewer cores or more memory."),
+               what, sum(lost), length(res), if (any(lost)) paste0(": ", show(lost)) else "",
+               sum(err), show(err), if (any(err)) paste0("; first message: ", first_msg) else ""),
+       call. = FALSE)
 }
