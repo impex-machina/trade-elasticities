@@ -22,6 +22,18 @@
 #   H7 trim_reason, if present, takes only the trim's reason codes;
 #   H8 gamma_v_resid, when the pass log shows two or more passes, is filled on
 #      more than half the published rows.
+# (patch 0157) When the new table carries sigma_source_stage1 -- a run under
+# --stage2-sigma-update import, the default since patch 0155 -- H4/H5/H6 read
+# the update's rules instead, from --profile (the run's _sigma_update_pass<u>.csv,
+# the last pass) and --update-log (its _sigma_update_passes.csv): a profiled cell
+# with status ok carries 1 + exp(L + b_full (ln(sigma_update - 1) - L)) (or the
+# unshrunk profile when the log's shrink_b_full is NA) and sigma_source
+# 'updated_import_shrunk' ('updated_import' unshrunk); any other profiled cell
+# the level 1 + exp(L) and 'updated_level'; a cell not profiled keeps its
+# Stage-1 sigma if its Stage-1 label is 'estimated', else the level (the
+# fallback under the flag; the clean-set median unshrunk); sigma_source_stage1
+# equals the Stage-1 reconstruction; sigma_robust is FALSE on every row whose
+# sigma_source is not 'estimated'.
 # Report: headline medians, fallback sigma and share, |d ln gamma| by sigma
 # source on shared directly estimated rows, the pass log.
 #
@@ -29,6 +41,7 @@
 #   Rscript analysis/gate_release.R --old OLD_2B.rds --new NEW_2B.rds --stage1 STAGE1.rds
 #       [--pass-log PASSES.csv] [--edge-rule fallback] [--pole-rule fallback] [--pole-se 1]
 #       [--fallback-pin X] [--max-row-change 0.02] [--out docs/results/gate_<label>.md] [--label NAME]
+#       [--profile SIGMA_UPDATE_PASS.csv --update-log SIGMA_UPDATE_PASSES.csv]   (the sigma update, patch 0157)
 # =============================================================================
 suppressPackageStartupMessages(library(data.table))
 args <- commandArgs(trailingOnly = TRUE)
@@ -38,6 +51,7 @@ log_p <- get_arg("--pass-log", NA_character_); edge_rule <- get_arg("--edge-rule
 pole_c <- as.numeric(get_arg("--pole-se", "1")); pin <- suppressWarnings(as.numeric(get_arg("--fallback-pin", NA_character_)))
 max_rc <- as.numeric(get_arg("--max-row-change", "0.02")); label <- get_arg("--label", "release")
 out_p <- get_arg("--out", sprintf("docs/results/gate_%s.md", label))
+prof_p <- get_arg("--profile", NA_character_); ulog_p <- get_arg("--update-log", NA_character_)   # patch 0157
 if (anyNA(c(old_p, new_p, s1_p))) stop("usage: Rscript analysis/gate_release.R --old OLD.rds --new NEW.rds --stage1 STAGE1.rds [options]")
 for (p in c(old_p, new_p, s1_p)) if (!file.exists(p)) stop("not found: ", p)
 .this_dir <- tryCatch(dirname(normalizePath(sub("^--file=", "", grep("^--file=", commandArgs(), value = TRUE)[1]))), error = function(e) ".")
@@ -73,16 +87,57 @@ rec <- attach_sigma_source(copy(new), sc$source)$table   # patch 0116: the retur
 s1k <- s1[, .(k = paste(importer, good, sep = "\r"), s1_sigma = sigma)]
 s1_sig <- s1k$s1_sigma[match(paste(rec$importer, rec$good, sep = "\r"), s1k$k)]
 close <- function(a, b) is.finite(a) & is.finite(b) & abs(a - b) <= 1e-9 * pmax(abs(b), 1)
-is_est <- rec$sigma_source == "estimated"
-bad4 <- sum(is_est & !close(rec$sigma, s1_sig)) + sum(!is_est & !close(rec$sigma, fb))
-if (bad4 > 0L) fail("H4", sprintf("%s rows carry a sigma the rules do not imply (estimated cells must carry their Stage-1 sigma, the rest the fallback %.6f)", format(bad4, big.mark = ","), fb))
-bad5 <- sum(!is_est & rec$sigma_robust %in% TRUE)
-if (bad5 > 0L) fail("H5", sprintf("%s fallback-sigma rows publish sigma_robust TRUE", format(bad5, big.mark = ",")))
-if ("sigma_source" %in% names(new)) { bad6 <- sum(new$sigma_source != rec$sigma_source); if (bad6 > 0L) fail("H6", sprintf("sigma_source differs from the reconstruction on %s rows", format(bad6, big.mark = ","))) }
-srcp <- rec[is.na(if ("trim_reason" %in% names(rec)) rec$trim_reason else rep(NA, nrow(rec)))]
-L <- c(L, "", "## Sigma", "", sprintf("- fallback sigma %.4f on %.1f%% of published rows (old table: %.4f on %.1f%%).", fb, 100 * mean(srcp$sigma_source != "estimated"),
-       as.numeric(names(which.max(table(oldp$sigma)))), 100 * max(table(oldp$sigma)) / nrow(oldp)),
-       sprintf("- published rows by source: %s.", paste(sprintf("%s %s", names(table(srcp$sigma_source)), format(as.integer(table(srcp$sigma_source)), big.mark = ",")), collapse = ", ")))
+update_mode <- "sigma_source_stage1" %in% names(new)   # patch 0157: a run under --stage2-sigma-update import
+if (!update_mode) {
+  is_est <- rec$sigma_source == "estimated"
+  bad4 <- sum(is_est & !close(rec$sigma, s1_sig)) + sum(!is_est & !close(rec$sigma, fb))
+  if (bad4 > 0L) fail("H4", sprintf("%s rows carry a sigma the rules do not imply (estimated cells must carry their Stage-1 sigma, the rest the fallback %.6f)", format(bad4, big.mark = ","), fb))
+  bad5 <- sum(!is_est & rec$sigma_robust %in% TRUE)
+  if (bad5 > 0L) fail("H5", sprintf("%s fallback-sigma rows publish sigma_robust TRUE", format(bad5, big.mark = ",")))
+  if ("sigma_source" %in% names(new)) { bad6 <- sum(new$sigma_source != rec$sigma_source); if (bad6 > 0L) fail("H6", sprintf("sigma_source differs from the reconstruction on %s rows", format(bad6, big.mark = ","))) }
+  srcp <- rec[is.na(if ("trim_reason" %in% names(rec)) rec$trim_reason else rep(NA, nrow(rec)))]
+  L <- c(L, "", "## Sigma", "", sprintf("- fallback sigma %.4f on %.1f%% of published rows (old table: %.4f on %.1f%%).", fb, 100 * mean(srcp$sigma_source != "estimated"),
+         as.numeric(names(which.max(table(oldp$sigma)))), 100 * max(table(oldp$sigma)) / nrow(oldp)),
+         sprintf("- published rows by source: %s.", paste(sprintf("%s %s", names(table(srcp$sigma_source)), format(as.integer(table(srcp$sigma_source)), big.mark = ",")), collapse = ", ")))
+} else {
+  # ---- the sigma update's rules (patch 0157) ----
+  if (is.na(prof_p) || !file.exists(prof_p) || is.na(ulog_p) || !file.exists(ulog_p))
+    fail("H4", "the new table carries sigma_source_stage1 (a sigma-update run) but --profile / --update-log were not given or do not exist")
+  else {
+    prof <- fread(prof_p, colClasses = list(character = c("importer", "good"))); ulog <- fread(ulog_p); ul <- ulog[which.max(update_pass)]
+    b_full <- if ("shrink_b_full" %in% names(ul)) ul$shrink_b_full else NA_real_
+    level <- if ("level_sigma" %in% names(ul)) ul$level_sigma else NA_real_
+    kp <- paste(prof$importer, prof$good, sep = "\r"); kr <- paste(rec$importer, rec$good, sep = "\r")
+    mp <- match(kr, kp); st <- prof$status[mp]; su <- prof$sigma[mp]
+    shrunk <- is.finite(b_full)
+    Lv <- if (shrunk) log(level - 1) else NA_real_
+    exp_sigma <- rep(NA_real_, nrow(rec)); exp_src <- rep(NA_character_, nrow(rec))
+    ok <- !is.na(mp) & st == "ok"
+    exp_sigma[ok] <- if (shrunk) 1 + exp(Lv + b_full * (log(su[ok] - 1) - Lv)) else su[ok]
+    exp_src[ok] <- if (shrunk) "updated_import_shrunk" else "updated_import"
+    notok <- !is.na(mp) & st != "ok"
+    s1_lab <- rec$sigma_source                       # the Stage-1 reconstruction (attach_sigma_source on the Stage-1 rules)
+    if (shrunk) { exp_sigma[notok] <- level; exp_src[notok] <- "updated_level" }
+    else { exp_sigma[notok] <- ifelse(s1_lab[notok] == "estimated", s1_sig[notok], fb); exp_src[notok] <- s1_lab[notok] }
+    np <- is.na(mp)
+    exp_sigma[np] <- ifelse(s1_lab[np] == "estimated", s1_sig[np], if (shrunk) level else fb); exp_src[np] <- s1_lab[np]
+    bad4 <- sum(!close(new$sigma, exp_sigma))
+    if (bad4 > 0L) fail("H4", sprintf("%s rows carry a sigma the sigma update's rules do not imply (%s; level %.6f, b_full %s)", format(bad4, big.mark = ","),
+                                     if (shrunk) "shrunk profile on ok cells, the level elsewhere" else "the unshrunk profile on ok cells", level, format(b_full)))
+    bad5 <- sum(exp_src != "estimated" & new$sigma_robust %in% TRUE)
+    if (bad5 > 0L) fail("H5", sprintf("%s rows without a Stage-1 sigma publish sigma_robust TRUE", format(bad5, big.mark = ",")))
+    bad6 <- sum(new$sigma_source != exp_src) + sum(new$sigma_source_stage1 != s1_lab)
+    if (bad6 > 0L) fail("H6", sprintf("sigma_source / sigma_source_stage1 differ from the reconstruction on %s rows", format(bad6, big.mark = ",")))
+    if ("sigma_update" %in% names(new)) { bad6b <- sum(ok & !close(new$sigma_update, su)); if (bad6b > 0L) fail("H6", sprintf("sigma_update differs from the profile on %s rows", format(bad6b, big.mark = ","))) }
+  }
+  srcp <- new[is.na(if ("trim_reason" %in% names(new)) new$trim_reason else rep(NA, nrow(new)))]
+  L <- c(L, "", "## Sigma (the update, patch 0152-0155)", "",
+         if (!is.na(ulog_p) && file.exists(ulog_p)) sprintf("- update pass %d: %s cells profiled, %s updated, %d at the floor, %d at the cap; level sigma %s; B %s, b_full %s.", ul$update_pass,
+                 format(ul$cells_profiled, big.mark = ","), format(ul$cells_updated, big.mark = ","), ul$at_floor, ul$at_cap, format(ul$level_sigma, digits = 5), format(ul$shrink_b_half), format(ul$shrink_b_full)) else "- no update log given.",
+         sprintf("- published rows by source: %s.", paste(sprintf("%s %s", names(table(srcp$sigma_source)), format(as.integer(table(srcp$sigma_source)), big.mark = ",")), collapse = ", ")),
+         sprintf("- published rows by Stage-1 source: %s.", paste(sprintf("%s %s", names(table(srcp$sigma_source_stage1)), format(as.integer(table(srcp$sigma_source_stage1)), big.mark = ",")), collapse = ", ")),
+         sprintf("- old table: fallback sigma %.4f on %.1f%% of published rows.", as.numeric(names(which.max(table(oldp$sigma)))), 100 * max(table(oldp$sigma)) / nrow(oldp)))
+}
 # H7 trim reasons
 if ("trim_reason" %in% names(new)) { bad7 <- setdiff(unique(na.omit(new$trim_reason)), c("sigma_lo", "gamma_lo", "gamma_hi", "na_sigma_or_gamma")); if (length(bad7)) fail("H7", paste("unknown trim_reason codes:", paste(bad7, collapse = ", "))) }
 # H8 gamma_v_resid
