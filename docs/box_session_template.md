@@ -44,7 +44,7 @@ the question beats two that cross-check it; say which before launching.
    `--out-dir` beside the outputs since patch 0111. On a checkout older than 0111 they land
    in the working directory; move them into the output folder first:
    `mv baci_hs92_v202601_elast_*_stage2_*.csv baci_hs92_v202601_elast_*_stage2_*.rds /tmp/w/out_H/ 2>/dev/null`
-6. The gate: `Rscript analysis/gate_release.R --old <released 2b> --new /tmp/w/out_H/<2b table> --stage1 /tmp/w/out_H/<stage1> --pass-log /tmp/w/out_H/<passes csv> --out /tmp/w/out_H/gate.md --label <release>` — must PASS.
+6. The gate: `Rscript analysis/gate_release.R --old <released 2b> --new /tmp/w/out_H/<2b table> --stage1 /tmp/w/out_H/<stage1> --pass-log /tmp/w/out_H/<passes csv> --out /tmp/w/out_H/gate.md (under the sigma update, the default since patch 0155, add `--profile /tmp/w/out_H/<_sigma_update_pass1.csv> --update-log /tmp/w/out_H/<_sigma_update_passes.csv>`; patch 0157) --label <release>` — must PASS.
 7. Upload: `aws s3 cp --recursive /tmp/w/out_H s3://trade-elast-baci-hs92-v202601-hs4/<run folder>/out_H/ --exclude "*raw_cache*" --only-show-errors`.
 8. Terminate from the console, then confirm locally:
    `aws ec2 describe-instances --filters "Name=instance-state-name,Values=pending,running,stopping,stopped" --query "Reservations[].Instances[].[InstanceId,InstanceType,State.Name]" --output table` — empty.
