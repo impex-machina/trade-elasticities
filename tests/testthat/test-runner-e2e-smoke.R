@@ -81,6 +81,7 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
                                 "sigma_robust", "sigma_se", "dgamma_dsigma", "gamma_se_status", "gamma_exposure",
                                 "gamma_shrink_wt", "ref_exporter", "opt_tariff", "opt_tariff_all", "convergence",
                                 "obj_value", "tier", "avg_trade", "gamma_v_resid", "trim_reason", "sigma_source",
+                                "sigma_source_stage1", "sigma_update", "sigma_stage1",   # patch 0152/0154: the sigma update is the default since patch 0155
                                 "total_trade", "opt_tariff_total"))   # patch 0139
   pub <- s2b[is.na(trim_reason)]
   # (patch 0139) the estimator writes total_trade and opt_tariff_total natively
@@ -96,9 +97,14 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   expect_gt(nrow(pub), 100L)
   # patch 0114: sigma_source reaches the saved table, on every row
   expect_false(anyNA(s2b$sigma_source))
-  expect_true(all(s2b$sigma_source %in% c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole")))
+  expect_true(all(s2b$sigma_source %in% c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole",
+                                          "updated_import", "updated_import_shrunk", "updated_level")))   # patch 0152/0154/0155
+  expect_true(all(s2b$sigma_source_stage1 %in% c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole")))
+  expect_gt(sum(s2b$sigma_source == "updated_import_shrunk"), 0L)   # the default: the shrunk update
   # every fallback row carries the one fallback sigma
-  expect_equal(data.table::uniqueN(pub[sigma_source != "estimated", sigma]), min(1L, sum(pub$sigma_source != "estimated")))
+  # under the shrunk update (patch 0154/0155) the one shared value is the level: fallback_* and updated_level rows carry it
+  lvl <- pub[startsWith(sigma_source, "fallback_") | sigma_source == "updated_level", sigma]
+  expect_equal(data.table::uniqueN(lvl), min(1L, length(lvl)))
   expect_true(all(is.na(s2b$trim_reason) | s2b$trim_reason %in% c("sigma_lo", "sigma_hi", "gamma_lo", "gamma_hi", "na_sigma_or_gamma")))
   expect_true(any(is.finite(pub$gamma_v_resid)))
   expect_true(all(pub[tier == 3L, convergence] == -1L))
@@ -167,7 +173,7 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   expect_equal(s1j$n_cells, nrow(readRDS(f$s1)))
   expect_equal(s2bj$n_cells, nrow(pub))
   # patch 0121: the fallback count is the sigma_source count, not the value spike
-  expect_equal(s2bj$sigma_provenance$n_fallback, sum(pub$sigma_source != "estimated"))
+  expect_equal(s2bj$sigma_provenance$n_fallback, sum(startsWith(pub$sigma_source, "fallback_")))   # patch 0155: an updated_* row is not a fallback
 
   # --- 3. the README build on the JSONs that run wrote ------------------------
   rd <- file.path(td, "README.md"); rec <- file.path(td, "known_limitations_record.md")   # patch 0143

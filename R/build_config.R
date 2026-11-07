@@ -103,6 +103,10 @@ build_config <- function(opts) {
     stage2_export_period_count = opts$stage2_export_period_count %||% "panel",   # patch 0086: v0.9.0 default (rows = <= v0.8.3)
     # patch 0086: exporter-specific gamma_V passes (1 = <= v0.8.3) and the sigma-edge rule
     stage2_gamma_v_passes = opts$stage2_gamma_v_passes %||% 3L,
+    stage2_sigma_update_mode = opts$stage2_sigma_update_mode %||% "off",                # patch 0152
+    stage2_sigma_update_passes = opts$stage2_sigma_update_passes %||% 1L,   # patch 0152
+    stage2_sigma_update_scope = opts$stage2_sigma_update_scope %||% "2b",   # patch 0152
+    stage2_sigma_shrink_b = opts$stage2_sigma_shrink_b %||% NA_real_,         # patch 0154
     stage2_sigma_edge = opts$stage2_sigma_edge %||% "fallback",           # patch 0087: v0.9.0 default (publish = <= v0.8.3)
     stage2_reference_rule = opts$stage2_reference_rule %||% "periods_value",   # patch 0105: absent == every release
     ridge_scale = opts$stage2_ridge_scale %||% "none",                # patch 0132: absent == every release

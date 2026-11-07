@@ -381,7 +381,7 @@ stopifnot(sigma_fallback_value > 1, sigma_fallback_value < sigma_cap_value)
 # on the synthetic end-to-end run 134 rows against 121 true fallback rows. On
 # the shipped v0.11.0 table the two counts agree (2,785,416; even clean set).
 .n_fb <- if ("sigma_source" %in% names(stage2b_dt) && !anyNA(stage2b_dt$sigma_source))
-  sum(stage2b_dt$sigma_source != "estimated") else sum(stage2b_dt$sigma == sigma_fallback_value)
+  sum(stage2b_dt$sigma_source != "estimated") - sum(startsWith(stage2b_dt$sigma_source, "updated_")) else sum(stage2b_dt$sigma == sigma_fallback_value)   # patch 0152/0155: an updated_* row (--stage2-sigma-update) is not a fallback
 stage2b_summary$sigma_provenance <- list(
   fallback_value = sigma_fallback_value,
   n_fallback     = .n_fb,

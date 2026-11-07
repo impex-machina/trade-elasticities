@@ -90,7 +90,8 @@ source(file.path(.R_dir, "dependencies.R"))
   "estimate_parallel.R",           # the cell-level + fixed_sigma estimators, load_rcpp, output_paths
   "stage1_liml_wrapper.R",         # NEW: HLIML driver, depends on liml_estimator.R
   "lambda_calibration.R",          # estimate_parallel, prepare_data, summary
-  "iteration_helpers.R"            # estimate_parallel, lambda_calibration, region_map
+  "iteration_helpers.R",           # estimate_parallel, lambda_calibration, region_map
+  "sigma_update.R"                 # patch 0152: the Stage-2b sigma update; estimate_cell_fixed_sigma, load_rcpp
 )
 
 for (f in .split_files) {

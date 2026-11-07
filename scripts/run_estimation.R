@@ -121,6 +121,11 @@ cat(sprintf("  Stage-2 SE form: %s\n", if (is.null(opts$stage2_se)) "legacy" els
 cat(sprintf("  Stage-2 fallback: %s\n", if (is.null(opts$stage2_fallback)) "best" else opts$stage2_fallback))   # patch 0077/0080
 cat(sprintf("  Stage-2b prior rows: %s\n", if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source))   # patch 0079/0080
 cat(sprintf("  Stage-2 trim: %s\n", if (is.null(opts[["stage2_trim"]])) "v2" else opts[["stage2_trim"]]))   # patch 0083; absent == v2 since v0.9.0 (patch 0116: the header said legacy)
+cat(sprintf("  Stage-2 sigma update: %s%s%s\n", opts$stage2_sigma_update_mode,   # patch 0152
+            if (identical(opts$stage2_sigma_update_mode, "import")) sprintf(" (passes: %d, scope: %s, floor 1.02, cap = --stage1-sigma-cap)", as.integer(opts$stage2_sigma_update_passes), opts$stage2_sigma_update_scope) else "",
+            if (identical(opts$stage2_sigma_update_mode, "import") && !is.null(opts$stage2_sigma_shrink_b) && is.finite(opts$stage2_sigma_shrink_b) && opts$stage2_sigma_shrink_b > 0)
+              sprintf(" | shrink: B = %.3f (half-window), b_full = %.3f", opts$stage2_sigma_shrink_b, 2 * opts$stage2_sigma_shrink_b / (1 + opts$stage2_sigma_shrink_b))
+            else if (identical(opts$stage2_sigma_update_mode, "import")) " | shrink: off" else ""))   # patch 0154/0155
 cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s | sigma pole: %s\n",   # patch 0085/0086/0099
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
             if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
@@ -746,13 +751,124 @@ if (should_run("2b", opts, paths)) {
       fwrite(rbindlist(pass_log), paste0(out_base_country, "_gamma_v_passes.csv"))
       cat(sprintf("  gamma_V pass log: %s_gamma_v_passes.csv (final table = pass %d)\n", out_base_country, gv_passes))
     }
+    # (patch 0152) --stage2-sigma-update import: after the gamma_V passes, sigma
+    # is re-solved per cell from the Eq. (10) block at the final pass's
+    # gamma-hats (R/sigma_update.R) and Stage 2b runs once more at the updated
+    # sigma and sigma_V, --stage2-sigma-update-passes times. Every cell with
+    # import rows is profiled, fallback cells included; a profile at the floor
+    # or the cap is a failed update and the cell keeps its sigma and its label;
+    # cells without import rows never enter. An updated cell has no Stage-1
+    # SE: sigma_se NA, sigma_robust FALSE, gamma_se_total NA. The Stage-2a
+    # priors stay on the Stage-1 omega (scope 2b). Known truth: arm S of
+    # docs/results/known_truth_eq11.md. Default off: nothing below runs.
+    sigma_updated_cells <- NULL; sigma_update_cols <- NULL
+    if (identical(opts$stage2_sigma_update_mode, "import")) {
+      su_passes <- as.integer(opts$stage2_sigma_update_passes %||% 1L)
+      su_b <- if (is.null(opts$stage2_sigma_shrink_b) || !is.finite(opts$stage2_sigma_shrink_b) || opts$stage2_sigma_shrink_b <= 0) NA_real_ else opts$stage2_sigma_shrink_b   # patch 0154/0155: 0 = off
+      prefix_country <- run_record_base(config_2b)
+      if (gv_passes == 1L) rotate_pass_records(prefix_country, 1L)
+      saveRDS(finalize_saved_output(country_results), paste0(out_base_country, sprintf("_fixed_sigma_pass%d.rds", gv_passes)))
+      sigma_stage1_tab <- unique(country_results[, .(importer = as.character(importer), good = as.character(good), sigma_stage1 = sigma)])
+      gv_final_tab <- data.table::copy(country_results)   # patch 0155: the gamma_V final table, for gamma_v_resid
+      su_log <- list()
+      for (u in seq_len(su_passes)) {
+        prev <- country_results
+        gam_tab <- prev[is.finite(gamma) & gamma > 0, .(importer = as.character(importer), exporter = as.character(exporter),
+                                                        good = as.character(good), gamma)]
+        t_prof <- Sys.time()
+        prof <- sigma_update_import(config_2b, dt_country, gam_tab, floor = 1.02, ceiling = config_2b$stage1_sigma_cap, ncores = ncores)   # patch 0155: parallel over goods
+        cat(sprintf("  sigma profile: %s cells in %.1f min on %d core(s)\n", format(nrow(prof), big.mark = ","), as.numeric(Sys.time() - t_prof, units = "mins"), ncores))
+        ok <- prof[status == "ok"]
+        cat(sprintf("\n--- sigma update pass %d of %d (Eq. (10) block at the gamma-hats of %s): %s cells profiled | updated %s | at the floor %s | at the cap %s | no profile %s | sigma median before %.3f after %.3f ---\n",
+                    u, su_passes, if (u == 1L) sprintf("gamma_V pass %d", gv_passes) else sprintf("update pass %d", u - 1L),
+                    format(nrow(prof), big.mark = ","), format(nrow(ok), big.mark = ","), sum(prof$status == "floor"), sum(prof$status == "ceiling"),
+                    sum(!prof$status %in% c("ok", "floor", "ceiling")), median(prof$sigma_before), median(ok$sigma)))
+        # (patch 0154) --stage2-sigma-shrink B: the updated sigma shrunk toward the
+        # full-panel level L (median of ln(sigma_update - 1) over the updated cells) by
+        # b_full = 2B / (1 + B) (Spearman-Brown on the half-window reliability B of the
+        # two-window census); cells with no updated sigma take the level, which also
+        # becomes the fallback and sigma_V default. Measured: docs/results/
+        # sigma_update_window_census.md (gain over the level 0.011, CI [0.004, 0.016]).
+        level_sigma <- NA_real_; b_full <- NA_real_
+        prof[, sigma_shrunk := NA_real_]
+        if (is.finite(su_b) && nrow(ok)) {
+          L <- median(log(ok$sigma - 1)); b_full <- 2 * su_b / (1 + su_b); level_sigma <- 1 + exp(L)
+          prof[status == "ok", sigma_shrunk := 1 + exp(L + b_full * (log(sigma - 1) - L))]
+          prof[status != "ok", sigma_shrunk := level_sigma]
+          cat(sprintf("  shrink: B = %.3f, b_full = %.3f, level L = %.4f (sigma %.3f) | updated-cell sigma median before shrink %.3f after %.3f | %d cells with no updated sigma set to the level; fallback and sigma_V default = level\n",
+                      su_b, b_full, L, level_sigma, median(ok$sigma), median(prof[status == "ok", sigma_shrunk]), sum(prof$status != "ok")))
+          config_2b$sigma_fallback <- level_sigma; config_2b$sigma_V_default <- level_sigma
+        }
+        fwrite(prof, paste0(out_base_country, sprintf("_sigma_update_pass%d.csv", u)))
+        if (nrow(ok)) {
+          upd <- if (is.finite(su_b)) prof[, .(importer = as.character(importer), good = as.character(good), sigma = sigma_shrunk,
+                                               sigma_source_new = fifelse(status == "ok", "updated_import_shrunk", "updated_level"))]
+                 else ok[, .(importer = as.character(importer), good = as.character(good), sigma, sigma_source_new = "updated_import")]
+          k_upd <- paste(upd$importer, upd$good, sep = "\r")
+          sigma_update_cols <- merge(prof[status == "ok", .(importer = as.character(importer), good = as.character(good), sigma_update = sigma)],
+                                     sigma_stage1_tab, by = c("importer", "good"), all = TRUE)
+          replace_sigma <- function(tab) {
+            if (is.null(tab)) return(upd[, .(importer, good, sigma)])
+            keep <- tab[!paste(as.character(importer), as.character(good), sep = "\r") %in% k_upd, .(importer = as.character(importer), good = as.character(good), sigma)]
+            rbind(keep, upd[, .(importer, good, sigma)])
+          }
+          config_2b$sigma_lookup <- replace_sigma(config_2b$sigma_lookup)
+          config_2b$sigma_V_lookup <- replace_sigma(config_2b$sigma_V_lookup)
+          drop_cells <- function(tab) if (is.null(tab)) NULL else tab[!paste(as.character(importer), as.character(good), sep = "\r") %in% k_upd]
+          config_2b$sigma_se_lookup <- drop_cells(config_2b$sigma_se_lookup)
+          config_2b$sigma_adjust_lookup <- drop_cells(config_2b$sigma_adjust_lookup)
+          sigma_updated_cells <- if (is.null(sigma_updated_cells)) upd[, .(importer, good, sigma_source_new)] else
+            unique(rbind(sigma_updated_cells[!paste(importer, good, sep = "\r") %in% k_upd], upd[, .(importer, good, sigma_source_new)]))   # NULL on the first pass
+        }
+        country_results <- estimate_all_fixed_sigma(config_2b, ncores = ncores, prepared_dt = dt_country)
+        step <- gamma_v_step(prev, country_results)
+        su_log[[length(su_log) + 1L]] <- data.table(update_pass = u, cells_profiled = nrow(prof), cells_updated = nrow(ok),
+                                                     at_floor = sum(prof$status == "floor"), at_cap = sum(prof$status == "ceiling"),
+                                                     sigma_median_before = median(prof$sigma_before), sigma_median_after = median(ok$sigma),
+                                                     shrink_b_half = su_b, shrink_b_full = b_full, level_sigma = level_sigma,   # patch 0154
+                                                     sigma_median_shrunk = if (is.finite(su_b)) median(prof[status == "ok", sigma_shrunk]) else NA_real_,
+                                                     tier1_rows = step[["n"]], abs_dlng_p50 = step[["p50"]], abs_dlng_p90 = step[["p90"]], abs_dlng_max = step[["max"]])
+        rotate_pass_records(prefix_country, gv_passes + u)
+        if (u < su_passes) saveRDS(finalize_saved_output(country_results), paste0(out_base_country, sprintf("_fixed_sigma_sigmaupd%d.rds", u)))
+      }
+      # (patch 0155) gamma_v_resid is the gamma_V iteration's residual (pass K vs K-1); the update-pass
+      # table is a fresh estimation, so carry it over by key from the gamma_V final table
+      if ("gamma_v_resid" %in% names(gv_final_tab)) {
+        kk <- paste(as.character(country_results$importer), as.character(country_results$exporter), as.character(country_results$good), sep = "\r")
+        mm <- match(kk, paste(as.character(gv_final_tab$importer), as.character(gv_final_tab$exporter), as.character(gv_final_tab$good), sep = "\r"))
+        data.table::setDT(country_results); data.table::set(country_results, j = "gamma_v_resid", value = gv_final_tab$gamma_v_resid[mm])
+      }
+      fwrite(rbindlist(su_log), paste0(out_base_country, "_sigma_update_passes.csv"))
+      cat(sprintf("  sigma update log: %s_sigma_update_passes.csv (final table = update pass %d; the gamma_V final table is _fixed_sigma_pass%d.rds)\n",
+                  out_base_country, su_passes, gv_passes))
+    }
     # (patch 0103) sigma_source: where each row's sigma comes from
     data.table::setDT(country_results)   # patch 0114: restore the over-allocation the passes may have lost
-    ssr <- attach_sigma_source(country_results, sigma_source_lookup)
+    sigma_source_final <- sigma_source_lookup
+    if (!is.null(sigma_updated_cells) && nrow(sigma_updated_cells)) {   # patch 0152: updated cells, Stage-1 label kept beside them
+      k_upd <- paste(sigma_updated_cells$importer, sigma_updated_cells$good, sep = "\r")
+      sigma_source_final <- data.table::copy(sigma_source_lookup)[, `:=`(importer = as.character(importer), good = as.character(good))]
+      missing <- sigma_updated_cells[!k_upd %in% paste(sigma_source_final$importer, sigma_source_final$good, sep = "\r")]
+      if (nrow(missing)) sigma_source_final <- rbind(sigma_source_final, missing[, .(importer, good, sigma_source = "fallback_no_estimate")], fill = TRUE)
+      sigma_source_final[paste(importer, good, sep = "\r") %in% k_upd,
+                         sigma_source := sigma_updated_cells$sigma_source_new[match(paste(importer, good, sep = "\r"), k_upd)]]   # patch 0154: the label of the last update pass
+      ss1 <- attach_sigma_source(country_results, sigma_source_lookup, col = "sigma_source_stage1")
+      country_results <- ss1$table
+      if (!is.null(sigma_update_cols)) {   # patch 0154: sigma_update (unshrunk profile) and sigma_stage1 (the sigma before the update) beside sigma
+        kk <- paste(as.character(country_results$importer), as.character(country_results$good), sep = "\r")
+        mm <- match(kk, paste(sigma_update_cols$importer, sigma_update_cols$good, sep = "\r"))
+        data.table::set(country_results, j = "sigma_update", value = sigma_update_cols$sigma_update[mm])
+        data.table::set(country_results, j = "sigma_stage1", value = sigma_update_cols$sigma_stage1[mm])
+      }
+    }
+    ssr <- attach_sigma_source(country_results, sigma_source_final)
     country_results <- ssr$table; ssc <- ssr$census   # patch 0114: the labelled table, assigned back
-    cat(sprintf("  sigma_source (published rows): estimated %s | fallback_no_estimate %s | fallback_sigma_edge %s | fallback_sigma_pole %s\n",
+    cat(sprintf("  sigma_source (published rows): estimated %s | fallback_no_estimate %s | fallback_sigma_edge %s | fallback_sigma_pole %s%s\n",
                 format(ssc$estimated, big.mark = ","), format(ssc$fallback_no_estimate, big.mark = ","),
-                format(ssc$fallback_sigma_edge, big.mark = ","), format(ssc$fallback_sigma_pole, big.mark = ",")))
+                format(ssc$fallback_sigma_edge, big.mark = ","), format(ssc$fallback_sigma_pole, big.mark = ","),
+                if (!is.null(sigma_updated_cells) && nrow(sigma_updated_cells))
+                  sprintf(" | updated_import %s | updated_import_shrunk %s | updated_level %s", format(ssc$updated_import, big.mark = ","),
+                          format(ssc$updated_import_shrunk, big.mark = ","), format(ssc$updated_level, big.mark = ",")) else ""))
     saveRDS(finalize_saved_output(country_results), country_file)
   }
 } else {

@@ -435,7 +435,8 @@ het_grad_fixed_sigma <- function(d, sigma, imp_Y, imp_X, exp_Y, exp_X, exp_jmap,
 estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
                                                    all_dt, cfg,
                                                    exporter_dests = NULL,
-                                                   exp_lookup = NULL) {
+                                                   exp_lookup = NULL,
+                                                   return_moments = FALSE) {
 
   dt <- imp_dt[importer == focal_importer]
   n_exp <- uniqueN(dt$exporter)
@@ -677,6 +678,17 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
     if (nrow(match_row) > 0L) gam_init <- match_row$gamma[1]
   }
 
+  # (patch 0152) the sigma-update profile (R/sigma_update.R) needs the cell's
+  # moments, weights and settings without the optimisation: return them here
+  # and stop. Default FALSE: the path below is unchanged.
+  if (isTRUE(return_moments)) {
+    return(list(imp_Y = imp_Y_vec, imp_X = imp_X_mat, wt_imp = wt_imp_vec, exp_mom = exp_mom,
+                sigma = sigma_val, sigma_is_fallback = sigma_is_fallback,
+                ref_exporter = ref_exporter, exporter_order = exporter_order, J = J, n_tier1 = N_tier1,
+                ln_gamma_prior = ln_gamma_prior, paper_exact_eq11 = pe11, ridge_all_coords = ridge_all,
+                prior_form = prior_code, import_constant = imp_const, prior_eps = prior_eps,
+                importer = as.character(focal_importer), good = as.character(g_code)))
+  }
   d_start <- rep(gam_init, J + 1)  # gamma_k + J gamma_j
   lower_bounds <- rep(1e-6, J + 1)
 

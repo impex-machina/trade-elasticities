@@ -260,7 +260,7 @@ kt_metrics <- function(out_dir, truth) {
        within_good_tariff_r = sc(wt$ow, wt$ow_t), within_good_tariff_sd_ratio = sdr(wt$ow, wt$ow_t),
        shrink_wt_median = suppressWarnings(median(est$gamma_shrink_wt, na.rm = TRUE)),
        converged_share = mean(est$convergence == 0L),
-       fallback_sigma_share = if ("sigma_source" %in% names(pub)) mean(pub$sigma_source != "estimated") else NA_real_,
+       fallback_sigma_share = if ("sigma_source" %in% names(pub)) mean(startsWith(pub$sigma_source, "fallback_")) else NA_real_,   # patch 0155: updated_* rows are not fallbacks
        gamma_median = median(m$gamma), gamma_true_median = median(m$gamma_true))
 }
 

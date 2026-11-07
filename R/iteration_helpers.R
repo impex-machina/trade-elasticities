@@ -120,12 +120,20 @@ stage2_sigma_clean <- function(sigma_estimates, edge_rule = "fallback", pole_rul
 #' @param dt the table (modified by reference).
 #' @param source the `source` element of stage2_sigma_clean().
 #' @return invisibly, the row census by source over the published rows.
-attach_sigma_source <- function(dt, source) {
+attach_sigma_source <- function(dt, source, col = "sigma_source") {
   k_dt <- paste(as.character(dt$importer), as.character(dt$good), sep = "\r")
   k_src <- paste(source$importer, source$good, sep = "\r")
   m <- match(k_dt, k_src)
   v <- source$sigma_source[m]
   v[is.na(v)] <- "fallback_no_estimate"
+  # (patch 0152) col: the column to write -- "sigma_source" (default), or
+  # "sigma_source_stage1" for the Stage-1 label kept beside an updated sigma.
+  if (!identical(col, "sigma_source")) {
+    data.table::set(dt, j = col, value = v)
+    if (!col %in% names(dt)) { dt <- data.table::copy(dt); data.table::set(dt, j = col, value = v) }
+    pub <- is_published_row(dt)
+    return(list(table = dt, census = as.list(table(factor(v[pub], levels = .sigma_source_levels)))))
+  }
   # (patch 0114) := adds the column by reference only when the table's
   # over-allocation is intact. A table that lost it (readRDS without setDT,
   # copies made along the gamma_V passes) gets the column on a shallow copy
@@ -138,8 +146,13 @@ attach_sigma_source <- function(dt, source) {
   if (!"sigma_source" %in% names(dt)) { dt <- data.table::copy(dt); dt[, sigma_source := v] }
   pub <- is_published_row(dt)
   list(table = dt,
-       census = as.list(table(factor(v[pub], levels = c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole")))))
+       census = as.list(table(factor(v[pub], levels = .sigma_source_levels))))
 }
+# (patch 0152) "updated_import": sigma re-solved from the Eq. (10) block under
+# --stage2-sigma-update import; the Stage-1 label of such a cell is kept in
+# sigma_source_stage1.
+.sigma_source_levels <- c("estimated", "fallback_no_estimate", "fallback_sigma_edge", "fallback_sigma_pole", "updated_import",
+                          "updated_import_shrunk", "updated_level")   # patch 0154: shrunk toward the level / set to the level
 
 
 #' The sigma-pole rule (patch 0099, experiment flag; default "none").

@@ -169,6 +169,8 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_reference_rule",                                  # patch 0105
             "stage2_export_total",                                    # patch 0107
             "stage2_export_moment",                                   # patch 0110
+            "stage2_sigma_update_mode", "stage2_sigma_update_passes", "stage2_sigma_update_scope",   # patch 0152
+            "stage2_sigma_shrink_b",                                  # patch 0154
             "ridge_scale", "ridge_tau2",                              # patch 0134 (0132's flags)
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
@@ -397,9 +399,18 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
       idx_e <- min(b * batch_size, n_products)
       batch_products <- products[idx_s:idx_e]
 
-      batch_res <- mclapply(batch_products, function(g)
-        estimate_product_fixed_sigma(g, dt_by_product[[g]], cfg),
-        mc.cores = ncores)
+      # (patch 0150) estimate_product_fixed_sigma() returns NULL for a product
+      # with no estimates -- and so does every task of a forked worker that
+      # died, which mclapply reports with a warning only. Mark the legitimate
+      # empties on the worker, so a NULL in the batch can only mean a lost
+      # worker, and stop on it (assert_forked_results(), R/utils_general.R)
+      # instead of filing the products under "no estimates".
+      batch_res <- mclapply(batch_products, function(g) {
+        r <- estimate_product_fixed_sigma(g, dt_by_product[[g]], cfg)
+        if (is.null(r)) structure(list(product = g), class = "te_no_estimates") else r
+      }, mc.cores = ncores)
+      assert_forked_results(batch_res, batch_products, what = "Stage 2 product batch")
+      batch_res <- lapply(batch_res, function(r) if (inherits(r, "te_no_estimates")) NULL else r)
       results_list <- c(results_list, batch_res)
 
       saveRDS(list(results = results_list, next_batch = b + 1L,
