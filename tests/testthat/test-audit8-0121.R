@@ -36,7 +36,12 @@ test_that("synthetic BACI generator: deterministic, BACI layout, truth returned"
 test_that("README tier thresholds are build_config()'s", {
   cfg <- .a21_lines("R", "build_config.R")
   expect_true(any(grepl("tier1_min_periods = 3L", cfg, fixed = TRUE)))
-  expect_true(any(grepl("tier1_min_dests   = 2L", cfg, fixed = TRUE)))
+  # (patch 0160b) the Tier-1 destination threshold is a flag since patch 0159 (--stage2-tier1-min-dests, default 2);
+  # the shipped value is read from build_config()'s default rather than a source literal
+  .src_dir <- file.path(.a21_root(), "R")
+  .e <- new.env(); sys.source(file.path(.src_dir, "parse_cli.R"), envir = .e); sys.source(file.path(.src_dir, "build_config.R"), envir = .e)
+  .o <- .e$parse_cli(args = c("--data", tempdir(), "--out-dir", tempdir()))   # the defaults, as the runner sees them
+  expect_equal(.e$build_config(.o)$tier1_min_dests, 2L)
   expect_true(any(grepl("tier2_min_periods = 3L", cfg, fixed = TRUE)))
   tpl <- paste(.a21_lines("README.template.md"), collapse = "\n")
   expect_match(tpl, "at least 3 differenced years shared with the reference exporter in this market and at least 2 other destinations for the good", fixed = TRUE)
