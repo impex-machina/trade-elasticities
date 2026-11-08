@@ -148,7 +148,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > the level, B and b_full) is published beside the table. Release gate PASS under the
 > update's rules (`docs/results/gate_v0120.md`). Patch 0150 fixed a silent failure mode on
 > the box: a killed forked worker had shortened the tables with only a warning; both forked
-> paths now stop. Data revision: `<fill>`. **v0.11.4 remains available
+> paths now stop. Data revision: `73cf5702564820d35260a87974aed2ceed9c4f45`. **v0.11.4 remains available
 > pinned at revision `3397d5e60f1ea8a9c62b0e2268581945bc9a042b`.**
 >
 > **v0.11.4 (2026-10-26).** No re-estimation; every table is unchanged. The two Stage-2b summary
