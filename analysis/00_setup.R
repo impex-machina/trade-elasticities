@@ -390,6 +390,29 @@ stage2b_summary$sigma_provenance <- list(
 )
 rm(.sig_spikes, sigma_cap_value, sigma_fallback_value, .n_fb)
 
+# (patch 0158) the sigma update (patches 0152-0155; the default since v0.12.0):
+# the published-row census by sigma_source, and the update's parameters from
+# the run's _sigma_update_passes.csv when the release carries it beside the
+# table under data/derived/stage2b/ (NA otherwise; the README helpers print
+# "n/a" for a table that predates the update).
+.su_src <- if ("sigma_source" %in% names(stage2b_dt)) stage2b_dt$sigma_source else rep("estimated", nrow(stage2b_dt))
+.su_log <- file.path(DERIVED_S2B, "baci_hs92_v202601_elast_country_hs4_sigma_update_passes.csv")
+.su <- if (file.exists(.su_log)) { u <- data.table::fread(.su_log); as.list(u[which.max(u$update_pass), ]) } else list()
+.g <- function(k) { v <- .su[[k]]; if (is.null(v) || length(v) != 1L || !is.finite(suppressWarnings(as.numeric(v)))) NA_real_ else as.numeric(v) }
+stage2b_summary$sigma_update <- list(
+  present        = any(startsWith(.su_src, "updated_")),
+  n_shrunk       = sum(.su_src == "updated_import_shrunk"),
+  n_unshrunk     = sum(.su_src == "updated_import"),
+  n_level        = sum(.su_src == "updated_level"),
+  n_stage1       = sum(.su_src == "estimated"),
+  n_fallback     = sum(startsWith(.su_src, "fallback_")),
+  denominator    = nrow(stage2b_dt),
+  cells_profiled = .g("cells_profiled"), cells_updated = .g("cells_updated"),
+  at_floor = .g("at_floor"), at_cap = .g("at_cap"), level_sigma = .g("level_sigma"),
+  shrink_b_half = .g("shrink_b_half"), shrink_b_full = .g("shrink_b_full")
+)
+rm(.su_src, .su_log, .su, .g)
+
 # (b) published-gamma floor. Stage 2b floors gamma at 0 for both the J
 # exporters and the reference exporter (estimate_cell_fixed_sigma.R:
 # gamma_j_hat <- pmax(d_hat[2:(J+1)], 0); gamma_k_hat <- max(d_hat[1], 0)),

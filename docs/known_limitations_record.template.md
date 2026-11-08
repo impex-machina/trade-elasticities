@@ -75,15 +75,18 @@ Stated forthrightly:
   near-zero optimal tariff — so a γ or tariff sitting at that boundary is an
   identification artifact, not an interior estimate.
 - **§9. Standard errors: conditional on σ, with a robustness screen.** `gamma_se`
-  is computed with σ held fixed at its Stage 1 value (a global-median fallback
-  wherever Stage 1 did not identify σ), so it is conditional on σ. Only
+  is computed with σ held fixed at its published value — since v0.12.0 the Stage-2
+  update shrunk toward the level, through v0.11.4 the Stage 1 σ with a global-median
+  fallback wherever Stage 1 did not identify σ — so it is conditional on σ. Only
   {{format_pct(req(r$stage2b$se_status, "ok"), req(r$stage2b$se_status, "total"))}} of rows carry a clean cell-specific SE: {{format_pct(req(r$stage2b$se_status, "tier3_prior"), req(r$stage2b$se_status, "total"))}} are rows
   assigned the good-level prior outright, with no SE (Tier 3, and the reference row of a cell
   whose other exporters are all Tier 3) and the remaining
   {{format_pct(req(r$stage2b$se_status, "other"), req(r$stage2b$se_status, "total"))}} are rows at an extreme where no SE is computed (`boundary`, γ < 0.01;
   `plateau`, γ > 5), non-converged fits, or variances that could not be formed.{{convergence_clause(CONV)}} The pipeline
   additionally propagates the Stage 1 σ uncertainty by the delta method into
-  `gamma_se_total` and flags the result with a cell-level `sigma_robust` screen:
+  `gamma_se_total` where a Stage-1 SE exists (since v0.12.0 only on the rows that
+  keep a Stage-1 σ: the update's profile carries no SE) and flags the result with a
+  cell-level `sigma_robust` screen:
   σ̂ unclamped and with a finite SE, clear of the σ = 1 pole, and no γ SE in the
   cell inflated beyond threshold. {{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "total"))}} of rows pass ({{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "n_estimated"))}} of the rows outside Tier 3); {{format_pct(req(r$stage2b$sigma_robust, "not_robust"), req(r$stage2b$sigma_robust, "total"))}} are flagged `FALSE` and {{format_pct(req(r$stage2b$sigma_robust, "tier3_na"), req(r$stage2b$sigma_robust, "total"))}} are Tier-3 imputed cells (`NA`) with no per-cell σ. The screen is governed almost entirely by σ̂'s distance from the σ = 1 pole, not by the inflation cutoff, and the pass rate is stable across a wide grid of both thresholds (`analysis/sensitivity_sweep.R` reproduces it). Where `sigma_robust` is `FALSE` or `NA`, treat `gamma_se` as a conditional, lower-bound measure of uncertainty; where `TRUE`, `gamma_se_total` is the σ-aware SE — and in either case the SE is frequently as large as the estimate itself.{{step2_vce_clause(r$stage1$step2_vce)}}{{bootstrap_clause(r$bootstrap_se)}} In the Pillar-3 Monte Carlo — a regression-level harness on the shipped variance formula (sandwich with the ridge in λ/γ² units) {{pillar3_constant_clause(r$pillar3)}} — the SE has a median ratio to the empirical sampling SD of {{format_num(req(r$pillar3$pen_sandwich_summary, "prod_med_ratio"))}} in a regime whose median `gamma_shrink_wt` is {{format_num(req(r$pillar3$pen_sandwich_summary, "prod_shrink_wt_median"))}} (the shipped table's is {{format_num(req(SHRINK$data$q1$shrink_wt, "p50"))}}{{stale_note(SHRINK, "; ", "")}}) and {{format_num(req(r$pillar3$pen_sandwich_summary, "med_ratio_min"))}}–{{format_num(req(r$pillar3$pen_sandwich_summary, "med_ratio_max"))}} across all {{req(r$pillar3$pen_sandwich_summary, "n_regimes")}} regimes (`docs/methodology/se_calibration_mc_summary.csv`).
 - **§10. σ is sensitive to the estimator, not only the sample.** On the Tier 4

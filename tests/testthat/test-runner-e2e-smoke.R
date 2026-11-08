@@ -127,6 +127,7 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   for (s in c("stage1", "stage2a", "stage2b", "validation")) dir.create(file.path(dv, s), recursive = TRUE)
   file.copy(f$s1, file.path(dv, "stage1")); file.copy(f$s2a, file.path(dv, "stage2a"))
   file.copy(c(f$s2b, f$s2b_sum, f$s2b_txt), file.path(dv, "stage2b"))
+  file.copy(file.path(dirname(f$s2b), "baci_hs92_v202601_elast_country_hs4_sigma_update_passes.csv"), file.path(dv, "stage2b"))   # patch 0158: the update's pass log travels with the release
   meth <- file.path(root, "docs", "methodology")
   file.copy(file.path(meth, c("liml_validation_tier1a.csv", "liml_validation_tier1b.csv",
                               "se_calibration_mc_summary.csv", "bootstrap_se_summary.csv")), file.path(dv, "validation"))
@@ -174,6 +175,10 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   expect_equal(s2bj$n_cells, nrow(pub))
   # patch 0121: the fallback count is the sigma_source count, not the value spike
   expect_equal(s2bj$sigma_provenance$n_fallback, sum(startsWith(pub$sigma_source, "fallback_")))   # patch 0155: an updated_* row is not a fallback
+  expect_true(isTRUE(s2bj$sigma_update$present))                                                    # patch 0158: the update's block of the JSON
+  expect_equal(s2bj$sigma_update$n_shrunk, sum(pub$sigma_source == "updated_import_shrunk"))
+  expect_equal(s2bj$sigma_update$shrink_b_full, 2 * 0.146 / 1.146, tolerance = 1e-9)
+  expect_true(is.finite(s2bj$sigma_update$level_sigma) && s2bj$sigma_update$cells_profiled > 0)
 
   # --- 3. the README build on the JSONs that run wrote ------------------------
   rd <- file.path(td, "README.md"); rec <- file.path(td, "known_limitations_record.md")   # patch 0143

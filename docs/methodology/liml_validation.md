@@ -1,4 +1,4 @@
-# LIML estimator validation -- October 13, 2026
+# LIML estimator validation -- November 07, 2026
 
 **Companion artifact** to `R/liml_estimator.R` and `validation/validate_liml.R`.
 

@@ -111,6 +111,46 @@ does not do better (patch 0129, `docs/results/routing_ab.md`): less biased but n
 known truth, and worse at predicting the other period's σ on real data; the route stays,
 and switching would have moved the fallback σ only from 2.473 to 2.486.
 
+> **v0.12.0 (2026-11-08).** One Stage-2b re-estimation on the v0.11.4 Stage-1 and
+> Stage-2a tables, both loaded unchanged (patches 0150–0158). The published σ is now the
+> Stage-2 update: after the three γ_V passes — which reproduce v0.11.4's table exactly
+> (6,801,742 published rows, γ 0.804; kept as `_fixed_sigma_pass3.rds` in the run folder) —
+> σ is re-solved per (importer, product) cell from the import block (Eq. (10)) of the
+> Stage-2 objective at the estimated γ, shrunk toward the full-panel level by the
+> reliability ratio measured on two independent 15-year windows of the 2% product
+> subsample (B = 0.146, Spearman–Brown b_full = 0.255; level σ 2.678), and Stage 2b runs
+> once more at that σ (`--stage2-sigma-update import --stage2-sigma-shrink 0.146`, the
+> defaults). Why: at known truth Stage 1 overstates σ − 1 by about 12% at the within-cell
+> γ dispersion the panel shows, the import block identifies σ and the export block does
+> not even at the truth (`docs/results/known_truth_eq11.md`); on the two windows the
+> Stage-1 cell σ has no cross-period reproducibility (median |Δ ln(σ − 1)| 0.965, r 0.04),
+> the update halves the error (0.481, r 0.11) but still loses to one number (0.378), and the
+> shrunk update is the first cell σ that beats one number out of sample (0.365 vs 0.376;
+> bootstrap interval on the gain [0.004, 0.016]; `docs/results/sigma_update_window_census.md`);
+> the odd/even parity A/B on the 2% subsample read no loss on the within-cell γ (r_within
+> 0.357 → 0.380, goods-bootstrap interval on the difference [0.007, 0.040];
+> `docs/results/stage2_reliability_ship.md`). The update profiled 211,313 cells, updated
+> 199,857, left 11,395 at the σ cap and 61 at the floor (these carry the level). Numbers:
+> published rows 6,801,742 → 6,829,595 (the σ-low tail trim shrinks from 42,853 to 12,123
+> rows); σ median 2.473 → 2.664 (IQR 2.53–2.81, the shrunk spread around the level); the
+> fallback share 41.0% → 0.8% (56,071 rows, the cells with no import rows to profile; the
+> fallback value is the level); γ median 0.804 → 0.822, `opt_tariff` 0.852 → 0.898; on the
+> 4.8 million shared directly estimated rows γ moved by a median 3.6% (p90 48%); Tier 3
+> 26.4% unchanged; non-converged cells 1,775 → 646 (0.72% → 0.18% of directly estimated
+> rows). `sigma_source` reads `updated_import_shrunk` on 97.0% of rows, `updated_level` on
+> 2.2%, a `fallback_*` label on 0.8% and `estimated` on 4,646 rows; three columns are
+> added — `sigma_update` (the unshrunk profile σ), `sigma_stage1` (the σ the cell carried
+> into the update, i.e. the v0.11.4 column) and `sigma_source_stage1` — for 28. Because an
+> updated σ has no Stage-1 SE, `sigma_se` is `NA` and `sigma_robust` `FALSE` on every
+> updated row and `gamma_se_total` is populated only on the 4,646 rows that keep a Stage-1 σ
+> (`sigma_robust` TRUE 24.2% → 0.0%); `gamma_se` is the SE to read, conditional on σ. The
+> run's `_sigma_update_passes.csv` (cells profiled / updated / at the floor / at the cap,
+> the level, B and b_full) is published beside the table. Release gate PASS under the
+> update's rules (`docs/results/gate_v0120.md`). Patch 0150 fixed a silent failure mode on
+> the box: a killed forked worker had shortened the tables with only a warning; both forked
+> paths now stop. Data revision: `<fill>`. **v0.11.4 remains available
+> pinned at revision `3397d5e60f1ea8a9c62b0e2268581945bc9a042b`.**
+>
 > **v0.11.4 (2026-10-26).** No re-estimation; every table is unchanged. The two Stage-2b summary
 > files (`stage2b/..._summary.rds` and `..._summary.txt`) are rebuilt from the shipped table
 > (patches 0147–0148, `scripts/rebuild_stage2b_summary.R`). Their per-importer table, within-pair

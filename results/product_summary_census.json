@@ -1,79 +1,79 @@
 {
   "meta": {
-    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
-    "table": "data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv",
+    "stage2b": "data\\derived\\stage2b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "table": "data\\derived\\product\\baci_hs92_v202601_elast_hs4_product_summary.csv",
     "products": 1240,
-    "git_rev": "095821c",
-    "timestamp": "2026-10-16 10:40:22 EDT",
+    "git_rev": "2eae5c4",
+    "timestamp": "2026-11-08 01:47:56 EST",
     "minutes": 0.3
   },
   "reading": "publish",
   "distribution": {
     "gamma_median": {
-      "p10": 0.405100774747223,
-      "p25": 0.530516893249079,
-      "p50": 0.732130265637,
-      "p75": 1.03791931248641,
-      "p90": 1.35911691551132
+      "p10": 0.409904599031277,
+      "p25": 0.537563859455701,
+      "p50": 0.745218587626612,
+      "p75": 1.04531340135824,
+      "p90": 1.35985687964091
     },
     "opt_tariff_median": {
-      "p10": 0.391953306702407,
-      "p25": 0.509508666229416,
-      "p50": 0.709293452830659,
-      "p75": 0.98895922673122,
-      "p90": 1.29465985946783
+      "p10": 0.416218963955258,
+      "p25": 0.539565053518867,
+      "p50": 0.744943076137597,
+      "p75": 1.04613011370219,
+      "p90": 1.36059256112671
     },
     "sigma_median": {
-      "p10": 2.472799162053,
-      "p25": 2.472799162053,
-      "p50": 2.472799162053,
-      "p75": 2.472799162053,
-      "p90": 2.472799162053
+      "p10": 2.60493197843071,
+      "p25": 2.66609038370982,
+      "p50": 2.67790522109575,
+      "p75": 2.68775858669338,
+      "p90": 2.75873294608498
     },
     "share_cells_own_sigma": {
-      "p10": 0.321428571428571,
-      "p25": 0.401913875598086,
-      "p50": 0.476849867101089,
-      "p75": 0.548426244910742,
-      "p90": 0.61100723583232
+      "p10": 0,
+      "p25": 0,
+      "p50": 0,
+      "p75": 0.00613496932515337,
+      "p90": 0.01360853432282
     }
   },
   "odd_even": {
-    "paths": ["C:\\Users\\maxxj\\te_grid\\v0110_cfg_odd\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds", "C:\\Users\\maxxj\\te_grid\\v0110_cfg_even\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds"],
+    "paths": ["..\\te_ship\\ship_odd\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds", "..\\te_ship\\ship_even\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds"],
     "gamma_median": {
       "products": 25,
-      "spearman": 0.993076923076923,
-      "lo": 0.960572091225358,
+      "spearman": 0.999230769230769,
+      "lo": 0.992223267591378,
       "hi": 1,
-      "gap_median": 0.00208607065554523,
-      "gap_p90": 0.0196661254449996
+      "gap_median": 0.00164989197415011,
+      "gap_p90": 0.00706450004076881
     },
     "opt_tariff_median": {
       "products": 25,
-      "spearman": 0.968461538461539,
-      "lo": 0.880304251881978,
-      "hi": 0.992293512761747,
-      "gap_median": 0.0432058539864312,
-      "gap_p90": 0.0821907046070784
+      "spearman": 0.973076923076923,
+      "lo": 0.883715882082056,
+      "hi": 0.993845294711053,
+      "gap_median": 0.0295565982613094,
+      "gap_p90": 0.110372395123317
     }
   },
   "early_late": {
-    "paths": ["C:\\Users\\maxxj\\te_grid\\v0110_period_a\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds", "C:\\Users\\maxxj\\te_grid\\v0110_period_b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds"],
+    "paths": ["..\\te_su_window2\\early\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds", "..\\te_su_window2\\late\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds"],
     "gamma_median": {
       "products": 25,
-      "spearman": 0.99,
-      "lo": 0.948835223169146,
-      "hi": 0.999224813710208,
-      "gap_median": 0.00838715232233488,
-      "gap_p90": 0.0448003463676047
+      "spearman": 0.633846153846154,
+      "lo": 0.282335897725784,
+      "hi": 0.809614909380322,
+      "gap_median": 0.231722091972033,
+      "gap_p90": 0.671403418095405
     },
     "opt_tariff_median": {
       "products": 25,
-      "spearman": 0.977692307692308,
-      "lo": 0.916263775808556,
-      "hi": 0.995350639287098,
-      "gap_median": 0.0365333120540848,
-      "gap_p90": 0.105472398871347
+      "spearman": 0.731538461538462,
+      "lo": 0.445648904160406,
+      "hi": 0.877923492802767,
+      "gap_median": 0.168985315859858,
+      "gap_p90": 0.47521817064044
     }
   }
 }

@@ -280,6 +280,19 @@ provenance_tail <- function(s1) {
   sprintf("; the remaining %s (%s cells) return no estimate (thin or short panels, too few exporters, a singular first step, or no admissible point on any route)",
           format_pct(req(rs, "pre_discard"), n), format_int(req(rs, "pre_discard")))
 }
+# (patch 0158) the sigma update (v0.12.0): shares of published rows by
+# sigma_source and the update's parameters, from stage2b_summary.json's
+# sigma_update block; "n/a" when the block is absent or a field is NA (a table
+# that predates the update, or a release without the passes log beside it).
+su_field <- function(s2b, key) {
+  blk <- s2b[["sigma_update"]]; if (is.null(blk)) return(NA_real_)
+  v <- blk[[key]]; if (is.null(v) || length(v) != 1L) return(NA_real_)
+  v <- suppressWarnings(as.numeric(v)); if (is.na(v) || !is.finite(v)) NA_real_ else v
+}
+su_num <- function(s2b, key, digits = 3L) { v <- su_field(s2b, key); if (is.na(v)) "n/a" else format_num(v, digits) }
+su_int <- function(s2b, key) { v <- su_field(s2b, key); if (is.na(v)) "n/a" else format_int(v) }
+su_pct <- function(s2b, key) { v <- su_field(s2b, key); d <- su_field(s2b, "denominator"); if (is.na(v) || is.na(d) || d == 0) "n/a" else format_pct(v, d) }
+
 # A8: the headline sigma. On a table where the fallback sigma covers the row
 # median, the "median" is the fallback itself; say so.
 headline_sigma_note <- function(s2b) {
@@ -496,6 +509,7 @@ product_table_section <- function(ps, sigma_fallback, pw = NULL) {
   # separately on 1995-2009 and 2010-2024.
   if (is.null(ps)) return("")
   oe <- req(ps, "odd_even"); el <- ps$early_late
+  if (!is.null(el) && !length(el)) el <- NULL   # (patch 0158) a census run without --early/--late writes an empty object, not null
   sp <- function(x, k) format_num(as.numeric(req(req(x, k), "spearman")), 2L)
   # (patch 0131) the shared-prior halves' level gap (0.2%) is no longer quoted
   # here: it measured how little the Stage-2b data move a product's median given
@@ -828,6 +842,7 @@ render_env$pillar3_constant_clause <- pillar3_constant_clause   # patch 0113
 render_env$provenance_lead <- provenance_lead                   # patch 0116
 render_env$provenance_tail <- provenance_tail                   # patch 0116
 render_env$headline_sigma_note <- headline_sigma_note           # patch 0116
+render_env$su_num <- su_num; render_env$su_int <- su_int; render_env$su_pct <- su_pct   # patch 0158: the sigma update
 render_env$convergence_clause <- convergence_clause             # patch 0116
 render_env$pillar2_coverage_clause <- pillar2_coverage_clause   # patch 0116
 render_env$CONV <- pick_census_opt("stage2b_convergence_census")   # patch 0116: NULL until committed

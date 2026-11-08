@@ -76,10 +76,10 @@ test_that("the summary text says the within-cell spread is lambda-dependent", {
   expect_match(txt, "not\n  identified exporter heterogeneity", fixed = TRUE)
 })
 
-test_that("the card's top entry is v0.11.4, with the compare run's numbers and v0.11.3 pinned", {
+test_that("the card carries the v0.11.4 entry, with the compare run's numbers and v0.11.3 pinned", {
   card <- readLines(file.path(.rv_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8")
   heads <- grep("^> \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+ \\(", card, value = TRUE)
-  expect_match(heads[1], "^> \\*\\*v0\\.11\\.4 \\(2026-10-2[67]\\)\\.\\*\\*")
+  expect_true(any(grepl("^> \\*\\*v0\\.11\\.4 \\(2026-10-2[67]\\)\\.\\*\\*", heads)))   # (patch 0158) no longer the top entry: v0.12.0 sits above it
   i0 <- grep("^> \\*\\*v0\\.11\\.4 ", card); i1 <- grep("^> \\*\\*v0\\.11\\.3 ", card)
   entry <- paste(sub("^> ?", "", card[i0:(i1 - 1L)]), collapse = " ")
   for (s in c("1,819,483", "4,982,259", "0.120 (was 0.022; Soderbery 0.125)", "0.492 (was 0.363; Soderbery 0.625)",

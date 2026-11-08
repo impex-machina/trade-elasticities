@@ -21,14 +21,20 @@ test_that("README: the independent level gap, the shared-prior gap dropped", {
   ps <- jsonlite::fromJSON(file.path(.a31_root(), "results", "product_summary_census.json"), simplifyVector = FALSE)
   pw <- jsonlite::fromJSON(file.path(.a31_root(), "results", "product_window_census.json"), simplifyVector = FALSE)
   txt <- env$product_table_section(ps, 2.4728, pw)
-  expect_match(txt, "a product's median \u03b3 differs by a median of 25.5% (94.9% at the 90th percentile) and its median `opt_tariff` by 16.0% (56.4%)", fixed = TRUE)
+  # (patch 0158) the gap sentence is checked against the census the README is built from, not against the
+  # v0.11.1 numbers (25.5% / 94.9% / 16.0% / 56.4%): the window census is re-run for each release that moves the table
+  pc <- function(v) sprintf("%.1f%%", 100 * (exp(as.numeric(v)) - 1))
+  gr <- pw$reproducibility
+  gap_sentence <- sprintf("a product's median \u03b3 differs by a median of %s (%s at the 90th percentile) and its median `opt_tariff` by %s (%s)",
+                          pc(gr$gamma_median$gap_median), pc(gr$gamma_median$gap_p90), pc(gr$opt_tariff_median$gap_median), pc(gr$opt_tariff_median$gap_p90))
+  expect_match(txt, gap_sentence, fixed = TRUE)
   expect_match(txt, "its ranking of products is better supported than its levels", fixed = TRUE)
   expect_false(grepl("moves by a median 0.2%", txt, fixed = TRUE))
   expect_match(txt, "share the full-panel Stage 1 (the odd/even halves also its Stage-2a priors)", fixed = TRUE)
   pw_nogap <- pw; pw_nogap$reproducibility$gamma_median$gap_median <- NULL
   expect_false(grepl("differs by a median of", env$product_table_section(ps, 2.4728, pw_nogap), fixed = TRUE))
   readme <- generated_docs_text(.a31_root())   # patch 0143: README.md + the long-form record
-  expect_match(readme, "differs by a median of 25.5%", fixed = TRUE)
+  expect_match(readme, sprintf("differs by a median of %s", pc(gr$gamma_median$gap_median)), fixed = TRUE)
 })
 
 test_that("card: the v0.11.1 correction carries the independent result", {
