@@ -132,6 +132,7 @@ cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: 
             if (is.null(opts$stage2_sigma_edge)) "fallback" else opts$stage2_sigma_edge,
             if (is.null(opts$stage2_sigma_pole_rule) || identical(opts$stage2_sigma_pole_rule, "none")) "none"
             else sprintf("%s (c = %s SE)", opts$stage2_sigma_pole_rule, if (is.null(opts$stage2_sigma_pole_se)) 1 else opts$stage2_sigma_pole_se)))
+cat(sprintf("  Stage-2 Tier-1 min destinations: %s\n", if (!is.null(opts$stage2_tier1_min_dests) && opts$stage2_tier1_min_dests >= .Machine$integer.max) "Inf (every exporter but the reference import-only; arm D)" else if (is.null(opts$stage2_tier1_min_dests)) "2" else as.character(opts$stage2_tier1_min_dests)))   # patch 0159 (the header prints before the library, so no %||% here)
 cat(sprintf("  Stage-2 prior: %s (eps %s) | maxit: %s | ref export moment: %s | import constant: %s | product sample: %s | t-parity: %s\n\n",
             if (is.null(opts[["stage2_prior"]])) "log" else opts[["stage2_prior"]], if (is.null(opts$stage2_prior_eps)) 0.01 else opts$stage2_prior_eps,
             if (is.null(opts$stage2_maxit)) 5000L else opts$stage2_maxit,

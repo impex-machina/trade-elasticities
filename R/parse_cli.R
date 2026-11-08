@@ -294,6 +294,8 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Update passes under --stage2-sigma-update import: each pass profiles sigma at the previous pass's gamma-hats and runs Stage 2b once more (patch 0152). Default: %default"),
     optparse::make_option(c("--stage2-sigma-shrink"), type = "double", default = 0.146, metavar = "B", dest = "stage2_sigma_shrink_b",
       help = "Shrink the updated sigma toward the full-panel level before the final Stage-2b run (patch 0154; the default since patch 0155; 0 turns the shrinkage off; ignored when --stage2-sigma-update is off). B is the half-window reliability ratio of the updated sigma from analysis/sigma_update_window_census.R (the two 2%% window runs of the release: 0.146 on BACI V202601, seed 20260926, docs/results/sigma_update_window_census.md); the runner applies Spearman-Brown, b_full = 2B / (1 + B), and publishes sigma = 1 + exp(L + b_full * (ln(sigma_update - 1) - L)) with L the median of ln(sigma_update - 1) over the updated cells; cells with no updated sigma (profile at the cap or the floor, no import rows) take the level 1 + exp(L), which also becomes the fallback. Rows carry sigma_source 'updated_import_shrunk' / 'updated_level', sigma_update (unshrunk) and sigma_stage1. Default: off (NA)"),
+    optparse::make_option(c("--stage2-tier1-min-dests"), type = "character", default = "2", metavar = "N", dest = "min_dests_spec",
+      help = "Minimum number of other destinations an exporter needs to be Tier 1 (its own export row enters Eq. (11); below it the exporter is import-only, Tier 2). 2 is the shipped rule; 'Inf' makes every exporter but the reference import-only -- the hybrid arm D of docs/results/known_truth_eq11.md (patch 0159). Default: %default"),
     optparse::make_option(c("--stage2-sigma-update-scope"), type = "character", default = "2b", metavar = "SCOPE",
       help = "Reach of the sigma update: '2b' (Stage 2b only; the Stage-2a priors stay on the Stage-1 omega; the version measured at known truth). '2a2b' (regional sigma, Stage 2a and the priors re-run on the updated sigma) is reserved and not available in this release (patch 0152). Default: %default"),
     optparse::make_option(c("--stage2-sigma-edge"), type = "character", default = "fallback", metavar = "RULE",
@@ -358,6 +360,11 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
   )
 
   validate_cli_opts(opts, parser)
+
+  # (patch 0159) --stage2-tier1-min-dests: the spec string becomes the integer the config carries ('Inf' = every
+  # exporter but the reference import-only); validated above
+  .t1 <- if (is.null(opts[["min_dests_spec"]])) "2" else as.character(opts[["min_dests_spec"]])
+  opts$stage2_tier1_min_dests <- if (tolower(.t1) %in% c("inf", "infinite")) .Machine$integer.max else as.integer(.t1)
 
   opts
 }
@@ -456,6 +463,8 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (is.na(.su_passes) || .su_passes < 1L) fail(sprintf("--stage2-sigma-update-passes must be an integer >= 1, got: '%s'", .su_passes))
   .su_b <- if (is.null(opts$stage2_sigma_shrink_b)) NA_real_ else opts$stage2_sigma_shrink_b
   if (!is.na(.su_b) && (!is.finite(.su_b) || .su_b < 0 || .su_b >= 1)) fail(sprintf("--stage2-sigma-shrink must be in [0, 1) (0 = off), got: '%s'", .su_b))   # patch 0154/0155
+  .t1 <- if (is.null(opts[["min_dests_spec"]])) "2" else as.character(opts[["min_dests_spec"]])   # patch 0159
+  if (!tolower(.t1) %in% c("inf", "infinite")) { .t1n <- suppressWarnings(as.integer(.t1)); if (is.na(.t1n) || .t1n < 1L) fail(sprintf("--stage2-tier1-min-dests must be an integer >= 1 or 'Inf', got: '%s'", .t1)) }
   if (!identical(.su_scope, "2b")) fail(sprintf("--stage2-sigma-update-scope: only '2b' is available in this release ('2a2b' is reserved; docs/results/known_truth_eq11.md section 8), got: '%s'", .su_scope))
   if (!opts$stage2_sigma_edge %in% c("publish", "fallback")) fail(sprintf("--stage2-sigma-edge must be 'publish' or 'fallback', got: '%s'", opts$stage2_sigma_edge))   # patch 0086
   if (!opts$stage2_export_moment %in% c("share", "value")) fail(sprintf("--stage2-export-moment must be 'share' or 'value', got: '%s'", opts$stage2_export_moment))   # patch 0110

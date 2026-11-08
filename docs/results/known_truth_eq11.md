@@ -174,6 +174,32 @@ delta +0.023, goods-bootstrap 95% interval [0.007, 0.040], share of draws with d
 
 One Stage-2b run on the box (r7a.16xlarge, 62 cores; Stage 1 and 2a loaded) under the defaults since patch 0155: the three gamma_V passes (about 36 min each) reproduced v0.11.4's final table exactly -- 6,801,742 published rows, gamma 0.804 -- before the update touched it; the sigma profile took 20.6 min for 211,313 cells (199,857 updated, 11,395 at the cap, 61 at the floor; level sigma 2.678; B 0.146, b_full 0.255); the fourth pass 33 min. Published: 6,829,595 rows (+0.41%; the sigma-low trim 42,853 -> 12,123 rows), sigma median 2.664 (IQR 2.53-2.81), gamma median 0.822, opt_tariff median 0.898; sigma_source updated_import_shrunk 97.0%, updated_level 2.2%, fallback_* 0.8%, estimated 4,646 rows; sigma_robust 0%; non-converged cells 1,775 -> 646. On the 4.8 million shared directly estimated rows gamma moved by a median 3.6% (p90 48%). Release gate PASS under the update's rules (`docs/results/gate_v0120.md`; `analysis/gate_release.R --profile --update-log`, patch 0157). Records: `docs/hf_dataset_card.md` (the v0.12.0 entry), the README's sigma rows, `data/derived/stage2b/..._sigma_update_passes.csv` published beside the table.
 
-## 12. Open, and next
+## 12. D on BACI (patch 0159): closed
 
-Open: the unexplained half of E[q^J eps^J] (section 3); an export-side constant arm; the Tier mix on BACI; whether B should be read per good. Next: D (the hybrid Eq. (11)) on the 2% subsample, Tier-1 and thin rows read separately; the `2a2b` scope of the update, measured with an arm S2 at known truth before it is exposed; a bootstrap SE for the shrunk sigma, which would let `gamma_se_total` return.
+`--stage2-tier1-min-dests Inf` (every exporter but the reference import-only; the hybrid arm D) on the 2% subsample, odd/even parity halves against the shipped configuration's, read on two populations defined by the shipped halves alone (`analysis/reliability_tier_split.R`; `analysis/stage2_reliability.R --boot-goods 2000 --boot-seed 20261015 --base ship`; records `docs/results/stage2_reliability_D_tier1.md` and `_other.md`). Rule, fixed before the numbers: D advances if r_within on the keys that are Tier 1 in both shipped halves rises by >= 0.03 with the goods-bootstrap interval above zero AND on the other estimated keys falls by no more than 0.03.
+
+| population | keys | cells | ship r_within | D r_within | delta (95% goods bootstrap) |
+|---|---|---|---|---|---|
+| Tier 1 in both shipped halves | 82,165 | 3,710 | 0.358 [0.334, 0.378] | 0.332 [0.310, 0.352] | -0.025 [-0.038, -0.011]; 99.9% of draws <= 0 |
+| other (Tier 0 / 2, or Tier 1 in one half) | 4,970 | 685 | 0.043 | -0.076 | -0.119 [-0.194, -0.034] |
+
+**Reading: D fails both halves of the rule and is closed.** The grid's Tier-1 gain (+0.032 in eight of nine worlds, section 7) does not carry to BACI: there the exporter's own export row carries reproducible information about its gamma that the synthetic worlds lack -- a biased moment at known truth (section 3) but a stable one across odd and even years -- and the shipped estimator's wider within-cell spread with it (sd 0.44) is more reliable than D's tighter one without it (0.37; D's raw r is higher, 0.64 against 0.60, its within-cell r lower). The flag stays for experiments; the Eq. (11) line of work is closed at the pipeline level, and the open question that remains is section 3's: what the unexplained half of E[q^J eps^J] is.
+
+## 13. The `2a2b` scope and a standard error for the profile sigma (patch 0160)
+
+**Arm Q (the `2a2b` scope).** The update as in S, then Stage 2a re-estimated at the region medians of the updated cell sigma, the good-level priors and the regional gamma_V medians rebuilt from that Stage 2a, and Stage 2b at the updated sigma with those priors. Rule: Q advances over S if better by >= 0.01 on at least one of sigma error, all-rows within-cell r, Tier-1 r and tariff error over the nine worlds, worse by more than 0.01 on none. Sandbox world: Q equals S to three decimals on every reading (sigma median |lr| 0.118 / 0.118, all-rows r 0.053 / 0.053, Tier-1 r 0.088 / 0.088, tariff 0.525 / 0.526); the re-run Stage 2a moves the median good-level prior from 0.657 to 0.656, because the Stage-2a gammas are nearly invariant to sigma under their ridge. The nine-world grid (`known_truth_eq11_worlds.R --arms Q`) is the formal reading; the sandbox says the scope has nothing to add and the `2b` scope that shipped is the whole of it.
+
+**A sandwich standard error for the profile sigma** (`sigma_profile_import()$se_ln`: scores from single-row objective calls at the minimiser over the curvature by a second difference; the import block is separable with the import constant off). Rule: ships if its 95% intervals cover the true sigma on 90-98% of cells at known truth and its median ratio to an exporter-bootstrap SE lies within 0.8-1.25. `validation/known_truth_sigma_se.R` on the sandbox world (180 cells; bootstrap on 30 cells, B = 40):
+
+| reading | value |
+|---|---|
+| median se_ln (sandwich) | 0.058 |
+| median \|ln(sigma_update - 1) - ln(sigma_true - 1)\| | 0.118 |
+| coverage of the truth, 95% interval | 45.6% (90% interval 41.7%); z median +1.42 |
+| sandwich / exporter-bootstrap ratio | median 0.69 (p25 0.44, p75 0.87); bootstrap sd 0.075 |
+
+**Reading: fails both halves of the rule, for two separate reasons.** The median z of +1.42 is the update's residual heterogeneity bias (section 2: +0.085 in ln(sigma - 1) at within_sd 0.7), which no standard error covers; and the sandwich understates even the sampling part by a third against the bootstrap (a one-parameter asymptotic over J ~ 10 rows). The sampling part could be had cheaply -- the block is separable, so an exact exporter bootstrap follows from per-row objective values on the grid at about twice the profile's cost -- but on this world the error against the truth (0.118) exceeds any sampling SE of the estimator (0.075): the uncertainty of the published sigma is dominated by a bias the data cannot estimate. The table therefore stays as v0.12.0 publishes it -- `sigma_se` NA, `sigma_robust` FALSE and `gamma_se_total` NA on updated rows -- and the per-cell `se_ln` is kept in the run's `_sigma_update_pass1.csv` as a diagnostic only. A labelled sampling-only column is possible; not recommended, because it would be read as the whole uncertainty.
+
+## 14. Open, and next
+
+Open: the unexplained half of E[q^J eps^J] (section 3); an export-side constant arm; whether B should be read per good; the residual heterogeneity bias of the update (+0.085 at within_sd 0.7), which is the dominant uncertainty of the published sigma and would need a different estimator, not a standard error. The Eq. (11) line of work (sections 1-13) is closed at the pipeline level.

@@ -171,6 +171,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_export_moment",                                   # patch 0110
             "stage2_sigma_update_mode", "stage2_sigma_update_passes", "stage2_sigma_update_scope",   # patch 0152
             "stage2_sigma_shrink_b",                                  # patch 0154
+            "tier1_min_dests",                                        # patch 0159
             "ridge_scale", "ridge_tau2",                              # patch 0134 (0132's flags)
             "tail_trim_pct", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",

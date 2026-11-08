@@ -45,7 +45,25 @@ sigma_profile_import <- function(m, gamma_vec, floor = 1.02, ceiling = 50, n_gri
                   error = function(e) list(minimum = grid[i], objective = q[i]))
   if (!is.finite(pol$objective) || pol$objective > q[i]) pol <- list(minimum = grid[i], objective = q[i])
   status <- if (i == 1L) "floor" else if (i == n_grid) "ceiling" else "ok"
-  list(sigma = pol$minimum, status = status, objective = pol$objective, objective_at_input = obj(m$sigma))
+  out <- list(sigma = pol$minimum, status = status, objective = pol$objective, objective_at_input = obj(m$sigma), se_ln = NA_real_, n_score = NA_integer_)
+  # (patch 0160) a sandwich standard error for the profile minimiser. With the import constant off the import block is
+  # a sum over the cell's J rows, Q(s) = sum_j q_j(s), so the minimiser solves sum_j q_j'(s) = 0 and
+  # Var(s_hat) = sum_j q_j'(s_hat)^2 / Q''(s_hat)^2 (one-parameter M-estimator; scores by finite difference on single-row
+  # objective calls, curvature by a central second difference). Reported on the ln(sigma - 1) scale, conditional on the
+  # gammas the profile was run at (as gamma_se is conditional on sigma). NA at the floor / cap, with fewer than 3 rows, or
+  # when the curvature is not positive.
+  if (status == "ok" && m$J >= 3L) {
+    s_hat <- pol$minimum; h <- 1e-3 * max(s_hat - 1, 1e-2)
+    row_obj <- function(j, s) het_obj_fixed_sigma(d = gamma_vec, sigma = s, imp_Y = m$imp_Y[j], imp_X = m$imp_X[j, , drop = FALSE],
+                                                  exp_Y = numeric(0), exp_X = matrix(numeric(0), nrow = 0, ncol = 9), exp_jmap = integer(0),
+                                                  exp_sig_V = numeric(0), exp_gam_V = numeric(0), wt_imp = m$wt_imp[j], wt_exp = numeric(0),
+                                                  ln_gamma_prior = m$ln_gamma_prior, shrinkage_lambda = 0, paper_exact_eq11 = m$paper_exact_eq11,
+                                                  ridge_all_coords = m$ridge_all_coords, prior_form = m$prior_form, import_constant = FALSE, prior_eps = m$prior_eps)
+    g <- vapply(seq_len(m$J), function(j) (row_obj(j, s_hat + h) - row_obj(j, s_hat - h)) / (2 * h), numeric(1))
+    q0 <- obj(s_hat); curv <- (obj(s_hat + h) - 2 * q0 + obj(s_hat - h)) / h^2
+    if (all(is.finite(g)) && is.finite(curv) && curv > 0) { se_sigma <- sqrt(sum(g^2)) / curv; out$se_ln <- se_sigma / (s_hat - 1); out$n_score <- m$J }
+  }
+  out
 }
 
 #' One good of the profile (the unit of parallel work). Never returns NULL:
@@ -54,7 +72,8 @@ sigma_profile_import <- function(m, gamma_vec, floor = 1.02, ceiling = 50, n_gri
 .sigma_update_one_good <- function(g, dt_g, gt_g, cfg, floor, ceiling) {
   empty <- data.table::data.table(importer = character(), good = character(), sigma_before = numeric(),
                                   sigma_before_is_fallback = logical(), sigma = numeric(), status = character(),
-                                  objective = numeric(), objective_at_input = numeric(), J = integer(), n_tier1 = integer())
+                                  objective = numeric(), objective_at_input = numeric(), J = integer(), n_tier1 = integer(),
+                                  se_ln = numeric())
   if (!nrow(dt_g)) return(empty)
   exporter_dests <- compute_exporter_dest_counts(dt_g)
   exp_lookup <- compute_exporter_lookup(dt_g)
@@ -77,7 +96,8 @@ sigma_profile_import <- function(m, gamma_vec, floor = 1.02, ceiling = 50, n_gri
     out[[length(out) + 1L]] <- data.table::data.table(importer = m$importer, good = m$good,
                                                       sigma_before = m$sigma, sigma_before_is_fallback = isTRUE(m$sigma_is_fallback),
                                                       sigma = pr$sigma, status = pr$status, objective = pr$objective,
-                                                      objective_at_input = pr$objective_at_input, J = m$J, n_tier1 = m$n_tier1)
+                                                      objective_at_input = pr$objective_at_input, J = m$J, n_tier1 = m$n_tier1,
+                                                      se_ln = pr$se_ln)   # patch 0160: sandwich SE of ln(sigma - 1), NA where not computable
   }
   if (!length(out)) empty else data.table::rbindlist(out)
 }

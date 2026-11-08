@@ -141,7 +141,7 @@ build_config <- function(opts) {
 
     # --- Tier thresholds (methodological) ---
     tier1_min_periods = 3L,
-    tier1_min_dests   = 2L,
+    tier1_min_dests   = if (is.null(opts$stage2_tier1_min_dests)) 2L else as.integer(opts$stage2_tier1_min_dests),   # patch 0159: --stage2-tier1-min-dests (2 shipped; Inf = arm D)
     tier2_min_periods = 3L,
 
     # --- Post-estimation trimming (methodological) ---

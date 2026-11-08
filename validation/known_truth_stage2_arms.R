@@ -17,6 +17,9 @@
 #   H  hybrid as D with the import constant forced on: the cell estimator
 #      concentrates fn. 14's constant out only when M >= 2, so B and D run
 #      without it as a side effect; H isolates that
+#   Q  as S, then Stage 2a re-estimated at the region medians of the updated
+#      sigma and Stage 2b run with the priors and regional gamma_V medians that
+#      Stage 2a gives -- the update's `2a2b` scope (patch 0160)
 #   T  as S, then shrunk toward the full-panel level by b_full = 2B/(1+B)
 #      (patch 0154, B = KT_SHRINK_B, default 0.44 = the synthetic two-window
 #      census); cells with no updated sigma take the level, as the flag does
@@ -129,6 +132,42 @@ arm_cfg <- function(arm) {
     drop_cells <- function(tab) if (is.null(tab)) NULL else tab[!paste(as.character(importer), as.character(good), sep = "\r") %in% k_upd]
     cfg$sigma_se_lookup <- drop_cells(config_2b$sigma_se_lookup); cfg$sigma_adjust_lookup <- drop_cells(config_2b$sigma_adjust_lookup)
     cat(sprintf("  arm S: sigma median before %.3f (clean set) after %.3f (updated cells)\n", median(config_2b$sigma_lookup$sigma), median(upd$sigma)))
+  }
+  if (arm %in% c("Q")) {
+    # arm Q (patch 0160): the update's `2a2b` scope -- the sigma re-solved per cell as in S, THEN Stage 2a re-estimated
+    # at the region medians of the updated sigma (the runner's rule for Stage 2a's sigma, applied to the updated table),
+    # new good-level priors and regional gamma_V medians from that Stage 2a, and Stage 2b once at the updated sigma with
+    # those priors. S is this with the priors left on the Stage-1 omega (scope 2b).
+    upd <- .harness_sigma_update(config_2b, paths$country_file)
+    k_upd <- paste(upd$importer, upd$good, sep = "\r")
+    replace_sigma <- function(tab) rbind(tab[!paste(as.character(importer), as.character(good), sep = "\r") %in% k_upd,
+                                             .(importer = as.character(importer), good = as.character(good), sigma)], upd)
+    cfg$sigma_lookup <- replace_sigma(config_2b$sigma_lookup); cfg$sigma_V_lookup <- replace_sigma(config_2b$sigma_V_lookup)
+    drop_cells <- function(tab) if (is.null(tab)) NULL else tab[!paste(as.character(importer), as.character(good), sep = "\r") %in% k_upd]
+    cfg$sigma_se_lookup <- drop_cells(config_2b$sigma_se_lookup); cfg$sigma_adjust_lookup <- drop_cells(config_2b$sigma_adjust_lookup)
+    rmap_q <- build_region_map()
+    upd_r <- data.table::copy(upd)[, region := assign_regions(as.integer(importer), rmap_q)]
+    regional_sigma_q <- upd_r[, .(sigma = median(sigma, na.rm = TRUE)), by = .(importer = region, good)]
+    cfg_2a <- config_regional
+    cfg_2a$shrinkage_lambda <- 0.05; cfg_2a$ridge_scale <- "none"; cfg_2a$shrinkage_priors <- feenstra_priors
+    cfg_2a$sigma_lookup <- regional_sigma_q; cfg_2a$sigma_V_lookup <- regional_sigma_q
+    lvl_q <- median(upd$sigma)
+    cfg_2a$sigma_fallback <- lvl_q; cfg_2a$sigma_V_default <- lvl_q; cfg_2a$sigma_start <- lvl_q
+    cfg_2a$gamma_V_default <- config_2b$gamma_V_default; cfg_2a$gamma_start <- config_2b$gamma_V_default; cfg_2a$gamma_V_lookup <- NULL
+    t2a <- Sys.time()
+    reg_q <- estimate_all_fixed_sigma(cfg_2a, ncores = 1L, prepared_dt = dt_regional)
+    hand_q <- stage2a_handoff_rows(reg_q, if (is.null(opts$stage2a_handoff_rows)) "published" else opts$stage2a_handoff_rows)
+    clean_q <- hand_q[!is.na(sigma) & !is.na(gamma) & gamma > 0]
+    pri_q <- stage2b_priors_from_regional(clean_q, rows = if (is.null(opts$stage2b_prior_source)) "estimated" else opts$stage2b_prior_source)
+    cfg$shrinkage_priors <- pri_q$country_priors
+    cfg$gamma_V_default <- exp(median(pri_q$country_priors$ln_gamma_prior)); cfg$gamma_start <- cfg$gamma_V_default
+    cty_q <- unique(as.integer(dt_country$importer))
+    c2r_q <- data.table::data.table(cty_code = cty_q, region = assign_regions(cty_q, rmap_q))
+    gvc_q <- merge(c2r_q, pri_q$gam_V_regional, by = "region", allow.cartesian = TRUE)
+    cfg$gamma_V_lookup <- gvc_q[, .(importer = as.character(cty_code), good, gamma)]
+    cat(sprintf("  arm Q: Stage 2a re-run at the updated sigma in %.0f s (%d regional rows; %d good priors, median prior gamma %.3f vs %.3f on the Stage-1 omega)\n",
+                as.numeric(Sys.time() - t2a, units = "secs"), nrow(reg_q), nrow(pri_q$country_priors), exp(median(pri_q$country_priors$ln_gamma_prior)),
+                exp(median(config_2b$shrinkage_priors$ln_gamma_prior))))
   }
   if (arm %in% c("E", "G")) {
     cfg$sigma_lookup <- tr_sig[, .(importer, good, sigma = sigma_true)]; cfg$sigma_fallback <- median(tr_sig$sigma_true)
