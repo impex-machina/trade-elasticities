@@ -122,7 +122,11 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > once more at that σ (`--stage2-sigma-update import --stage2-sigma-shrink 0.146`, the
 > defaults). Why: at known truth Stage 1 overstates σ − 1 by about 12% at the within-cell
 > γ dispersion the panel shows, the import block identifies σ and the export block does
-> not even at the truth (`docs/results/known_truth_eq11.md`); on the two windows the
+> not even at the truth (`docs/results/known_truth_eq11.md`) — *addendum 2026-11-09: the
+> update reduces the error around that bias but not the bias; at the estimated γ it still
+> overstates σ − 1 by about 9%, at the true γ by about 2%, and neither loosening the ridge
+> for the profile nor iterating the update moves it (§14 of the note), so the published
+> σ − 1 is likely overstated by 5–9% on average* —; on the two windows the
 > Stage-1 cell σ has no cross-period reproducibility (median |Δ ln(σ − 1)| 0.965, r 0.04),
 > the update halves the error (0.481, r 0.11) but still loses to one number (0.378), and the
 > shrunk update is the first cell σ that beats one number out of sample (0.365 vs 0.376;
@@ -148,7 +152,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > the level, B and b_full) is published beside the table. Release gate PASS under the
 > update's rules (`docs/results/gate_v0120.md`). Patch 0150 fixed a silent failure mode on
 > the box: a killed forked worker had shortened the tables with only a warning; both forked
-> paths now stop. Data revision: `73cf5702564820d35260a87974aed2ceed9c4f45`. **v0.11.4 remains available
+> paths now stop. Data revision: `<fill>`. **v0.11.4 remains available
 > pinned at revision `3397d5e60f1ea8a9c62b0e2268581945bc9a042b`.**
 >
 > **v0.11.4 (2026-10-26).** No re-estimation; every table is unchanged. The two Stage-2b summary

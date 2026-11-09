@@ -103,7 +103,7 @@ pool <- rbindlist(lapply(files, function(f) {
 }))
 setcolorder(pool, c("world", "seed", "structure", "arm"))
 fwrite(pool, file.path(out_root, "arm_readings_by_world.csv")); saveRDS(pool, file.path(out_root, "arm_readings_by_world.rds"))
-metrics <- intersect(c("sigma_med_abs_lr", "R1_within_r", "within_r_tier1", "R2_tariff_r", "row_med_abs_le", "cell_med_abs_le", "tariff_med_abs_le"), names(pool))
+metrics <- intersect(c("sigma_med_abs_lr", "sigma_med_lr", "R1_within_r", "within_r_tier1", "R2_tariff_r", "row_med_abs_le", "cell_med_abs_le", "tariff_med_abs_le"), names(pool))
 cat(sprintf("\n=== per world (%d worlds) ===\n", uniqueN(pool$world)))
 print(pool[order(structure, seed, arm), c("world", "arm", metrics), with = FALSE])
 cat("\n=== pooled: median over worlds, by structure and arm ===\n")

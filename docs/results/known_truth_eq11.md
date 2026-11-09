@@ -218,6 +218,25 @@ The Stage-2a re-run moves the median good-level prior from 0.609 to 0.610. **Rea
 
 **Reading: fails both halves of the rule, for two separate reasons.** The median z of +1.42 is the update's residual heterogeneity bias (section 2: +0.085 in ln(sigma - 1) at within_sd 0.7), which no standard error covers; and the sandwich understates even the sampling part by a third against the bootstrap (a one-parameter asymptotic over J ~ 10 rows). The sampling part could be had cheaply -- the block is separable, so an exact exporter bootstrap follows from per-row objective values on the grid at about twice the profile's cost -- but on this world the error against the truth (0.118) exceeds any sampling SE of the estimator (0.075): the uncertainty of the published sigma is dominated by a bias the data cannot estimate. The table therefore stays as v0.12.0 publishes it -- `sigma_se` NA, `sigma_robust` FALSE and `gamma_se_total` NA on updated rows -- and the per-cell `se_ln` is kept in the run's `_sigma_update_pass1.csv` as a diagnostic only. A labelled sampling-only column is possible; not recommended, because it would be read as the whole uncertainty.
 
-## 14. Open, and next
+## 14. The residual bias of the update: two experiments (patch 0162)
 
-Open: the unexplained half of E[q^J eps^J] (section 3); an export-side constant arm; whether B should be read per good; the residual heterogeneity bias of the update (+0.085 at within_sd 0.7), which is the dominant uncertainty of the published sigma and would need a different estimator, not a standard error. The Eq. (11) variants (sections 1-12) are closed at the pipeline level; the `2a2b` scope (section 13) is measured, inert on BACI, and queued as the default for the next re-estimation rather than a release of its own.
+Section 2's profiles locate it. On the heterogeneous sandbox world (within_sd 0.7, 180 cells) the import-block profile reads a median ln((sigma_hat - 1) / (sigma - 1)) of +0.123 for the Stage-1 sigma as used, **+0.084 at the ridge-shrunk gamma-hats the pipeline profiles at, and +0.024 at the true gammas** (median |lr| 0.189 / 0.118 / 0.110; by cell size the true-gamma bias is +0.106 at J <= 6 and +0.014 at J 10-12). Most of what the update leaves is therefore the gamma-hats' shrinkage toward the prior, which under-represents the heterogeneity the bias comes from, not the moment. Two attempts to reach less-shrunk gammas, both rules fixed before their numbers (a candidate advances if it lowers the median bias by >= 0.03 without raising the median |lr| by more than 0.01):
+
+**Arms U and V** -- the profile run at gamma-hats estimated with the ridge loosened to lambda 0.01 (U) or removed (V), the final Stage 2b at the shipped lambda:
+
+| arm | median \|lr\| | median lr (bias) | all-rows r | Tier-1 r | tariff |
+|---|---|---|---|---|---|
+| A shipped | 0.188 | +0.128 | 0.074 | 0.102 | 0.522 |
+| S (profile at gamma-hat, lambda 0.1) | 0.118 | +0.084 | 0.053 | 0.088 | 0.523 |
+| U (lambda 0.01) | 0.120 | +0.085 | 0.059 | 0.094 | 0.523 |
+| V (lambda 0) | 0.192 | +0.166 | 0.065 | 0.099 | 0.519 |
+
+At lambda 0.01 the gamma-hats barely move (median 0.676 against 0.666) and nothing changes; at lambda 0 they are wild (median 1.455) and the profile inherits the noise. The true gammas are unbiased for the profile but unreachable along the ridge path.
+
+**The block-coordinate iteration** (`--stage2-sigma-update-passes 3 --stage2-sigma-shrink 0`, Stage 1 and 2a loaded): the bias after passes 1, 2, 3 is +0.084, +0.084, +0.084 (|lr| 0.118, 0.119, 0.119; the gamma step between passes 4e-4, 2e-6, 1e-8). The fixed point is the one-pass update.
+
+**Reading: neither moves it. The residual bias is structural for this estimator** -- a bias-variance consequence of the ridge, not a tuning -- and the honest end state is the caveat now in the README's sigma row and the card: the published sigma - 1 is likely overstated by 5-9% on average, which the shrinkage toward the level cannot remove because the level shares it. A different estimator would be needed (heterogeneity-aware moments, or a bias correction calibrated at known truth against a dispersion the data would have to reveal), and nothing on the current table is a candidate.
+
+## 15. Open, and next
+
+Open: the residual bias of the published sigma (section 14) -- a research question, not a patch; the unexplained half of E[q^J eps^J] (section 3); an export-side constant arm; whether B should be read per good. The Eq. (11) variants (sections 1-12) are closed at the pipeline level; the `2a2b` scope (section 13) is measured, inert on BACI, and queued as the default for the next re-estimation rather than a release of its own.

@@ -20,6 +20,10 @@
 #   Q  as S, then Stage 2a re-estimated at the region medians of the updated
 #      sigma and Stage 2b run with the priors and regional gamma_V medians that
 #      Stage 2a gives -- the update's `2a2b` scope (patch 0160)
+#   U  as S, but the sigma profile is run at gamma-hats estimated with the
+#      ridge loosened to lambda 0.01 (one extra Stage-2b pass; the final pass
+#      keeps the shipped lambda) -- patch 0162
+#   V  as U with the ridge off (lambda 0)
 #   T  as S, then shrunk toward the full-panel level by b_full = 2B/(1+B)
 #      (patch 0154, B = KT_SHRINK_B, default 0.44 = the synthetic two-window
 #      census); cells with no updated sigma take the level, as the flag does
@@ -121,6 +125,27 @@ arm_cfg <- function(arm) {
   if (arm %in% c("H")) { cfg$tier1_min_dests <- .Machine$integer.max; cfg$stage2_ref_export_moment <- "on" }
   if (arm %in% c("B")) { cfg$tier1_min_dests <- .Machine$integer.max; cfg$stage2_ref_export_moment <- "off" }
   if (arm %in% c("D")) { cfg$tier1_min_dests <- .Machine$integer.max; cfg$stage2_ref_export_moment <- "on" }
+  if (arm %in% c("U", "V")) {
+    # arms U / V (patch 0162): the sigma profile at gammas estimated with the ridge loosened -- lambda 0.01 (U) or 0 (V) --
+    # at the profile step only; the final Stage 2b keeps the shipped lambda. Motivation: section 2's profiles put the
+    # import block's bias at +0.084 at the ridge-shrunk gamma-hats and +0.024 at the true gammas, so most of what the
+    # update leaves is the gamma-hats' shrinkage, not the moment.
+    cfg_low <- config_2b; cfg_low$shrinkage_lambda <- if (arm == "U") 0.01 else 0
+    cfg_low$checkpoint_file <- NULL; cfg_low$out_prefix <- NULL
+    t_low <- Sys.time()
+    low <- estimate_all_fixed_sigma(cfg_low, ncores = 1L, prepared_dt = dt_country)
+    f_low <- file.path(tempdir(), sprintf("kt_low_%s.rds", arm)); saveRDS(low, f_low)
+    cat(sprintf("  arm %s: Stage 2b at lambda %s for the profile's gamma-hats in %.0f s (%d rows; gamma median %.3f vs %.3f shipped)\n", arm, format(cfg_low$shrinkage_lambda),
+                as.numeric(Sys.time() - t_low, units = "secs"), nrow(low), median(low$gamma[is.finite(low$gamma)]), median(readRDS(paths$country_file)$gamma, na.rm = TRUE)))
+    upd <- .harness_sigma_update(config_2b, f_low)
+    k_upd <- paste(upd$importer, upd$good, sep = "\r")
+    replace_sigma <- function(tab) rbind(tab[!paste(as.character(importer), as.character(good), sep = "\r") %in% k_upd,
+                                             .(importer = as.character(importer), good = as.character(good), sigma)], upd)
+    cfg$sigma_lookup <- replace_sigma(config_2b$sigma_lookup); cfg$sigma_V_lookup <- replace_sigma(config_2b$sigma_V_lookup)
+    drop_cells <- function(tab) if (is.null(tab)) NULL else tab[!paste(as.character(importer), as.character(good), sep = "\r") %in% k_upd]
+    cfg$sigma_se_lookup <- drop_cells(config_2b$sigma_se_lookup); cfg$sigma_adjust_lookup <- drop_cells(config_2b$sigma_adjust_lookup)
+    cat(sprintf("  arm %s: sigma median before %.3f (clean set) after %.3f (updated cells)\n", arm, median(config_2b$sigma_lookup$sigma), median(upd$sigma)))
+  }
   if (arm %in% c("S", "T")) {
     upd <- if (arm == "S") .harness_sigma_update(config_2b, paths$country_file) else {
       sh <- .harness_sigma_shrunk(config_2b, paths$country_file, as.numeric(Sys.getenv("KT_SHRINK_B", "0.44")))
@@ -202,6 +227,7 @@ read_arm <- function(arm) {
   sig_cell <- unique(r[, .(importer, good, sigma, sigma_true)])
   data.table::data.table(arm = arm, rows = nrow(r), cells = nrow(cell),
                          sigma_med_abs_lr = round(median(abs(log((sig_cell$sigma - 1) / (sig_cell$sigma_true - 1)))), 3),
+                         sigma_med_lr = round(median(log((sig_cell$sigma - 1) / (sig_cell$sigma_true - 1))), 3),   # patch 0162: the signed bias
                          R1_within_r = round(cor(r[ncell >= 3, dlg], r[ncell >= 3, dlt]), 3),
                          R2_tariff_r = round(cor(log(cell$tau_hat), log(cell$tau_true), use = "complete.obs"), 3),
                          row_med_abs_le = round(median(abs(r$le)), 3), row_share_lt_0.2 = round(mean(abs(r$le) < 0.2), 3),

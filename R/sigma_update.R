@@ -4,10 +4,13 @@
 #' 2b relaxes exactly that restriction conditional on the restricted sigma. At
 #' known truth the Stage-1 sigma is biased upward in proportion to the
 #' within-cell gamma heterogeneity, and re-solving sigma per cell from the
-#' Eq. (10) block of the Stage-2 objective at the Stage-2b gamma-hats removes
-#' most of that bias and a third of the dispersion -- with the export block
-#' (Eq. (11)) left out, because that block does not identify sigma even at the
-#' truth (docs/results/known_truth_eq11.md, sections 2 and 7, arm S).
+#' Eq. (10) block of the Stage-2 objective at the Stage-2b gamma-hats removes a
+#' third of the error but little of the bias (+0.097 -> +0.085 in median
+#' ln((sigma_hat - 1) / (sigma - 1)) at within_sd 0.7; the same profile at the
+#' TRUE gammas reads +0.024, so what remains is the ridge-shrunk gamma-hats, not
+#' the moment; neither loosening the ridge nor iterating moves it) -- with the
+#' export block (Eq. (11)) left out, because that block does not identify sigma
+#' even at the truth (docs/results/known_truth_eq11.md, sections 2, 7 and 14).
 #'
 #' sigma_profile_import() profiles the import-block objective over sigma for
 #' one cell at fixed gammas: a 240-point log grid from `floor` to `ceiling`,
