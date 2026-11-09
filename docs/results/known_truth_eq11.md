@@ -198,6 +198,15 @@ Per world, Q equals S within 0.004 in seven worlds and is better in the two `goo
 
 **Reading: Q advances under the rule (+0.011 on Tier-1 r pooled, worse nowhere) -- as weak dominance rather than a uniform gain: equal in seven worlds, materially better in the two whose structure BACI may well share.** It is also the consistent block-coordinate step (section D of the flag's design). The `2a2b` scope therefore goes back to open as a candidate: `--stage2-sigma-update-scope 2a2b` implemented in the pipeline (Stage 2a re-run at the updated sigma between the profile and the final pass; minutes, not hours, on the box), measured on the 2% subsample by the parity A/B against the shipped configuration with the usual rule (no loss on r_within; a gain is not required), and only then a release.
 
+**The `2a2b` scope on BACI (patch 0161).** Implemented as `--stage2-sigma-update-scope 2a2b` (between the profile and the final pass, Stage 2a re-estimated at the region medians of the updated sigma, the priors and regional gamma_V medians rebuilt; the Stage-1-sigma Stage 2a keeps its table and its records rotate to `_pass<u>`; the re-run is saved beside it). Measured as it would ship: odd/even parity halves on the 2% subsample against the shipped configuration's (`docs/results/stage2_reliability_Q.md`; `--boot-goods 2000 --boot-seed 20261015 --base ship`), rule no loss on r_within (>= -0.03).
+
+| config | keys | cells | r_within | rho_rank | r_raw | delta vs ship (95% goods bootstrap) |
+|---|---|---|---|---|---|---|
+| ship | 85,400 | 3,990 | 0.380 [0.358, 0.400] | 0.367 | 0.591 | -- |
+| 2a2b | 85,400 | 3,990 | 0.379 [0.357, 0.399] | 0.367 | 0.590 | -0.0006 [-0.0016, +0.0001]; 94% of draws <= 0 |
+
+The Stage-2a re-run moves the median good-level prior from 0.609 to 0.610. **Reading: no loss and no change -- the scope passes its rule and alters nothing.** BACI's sigma carries no importer-level structure of the kind that made the two `good_importer` worlds move, so on these data the `2b` and `2a2b` scopes are the same estimator to the third decimal. **Decision (MC, 2026-11-08): no release of its own.** The flag stays available and off; it becomes the default at the next release that re-runs Stage 2b anyway, where the Stage-2a re-run costs about three minutes on the box and buys the consistency the design argued for (section D of the flag's design: the priors conditioned on the sigma Stage 2b conditions on).
+
 **A sandwich standard error for the profile sigma** (`sigma_profile_import()$se_ln`: scores from single-row objective calls at the minimiser over the curvature by a second difference; the import block is separable with the import constant off). Rule: ships if its 95% intervals cover the true sigma on 90-98% of cells at known truth and its median ratio to an exporter-bootstrap SE lies within 0.8-1.25. `validation/known_truth_sigma_se.R` on the sandbox world (180 cells; bootstrap on 30 cells, B = 40):
 
 | reading | value |
@@ -211,4 +220,4 @@ Per world, Q equals S within 0.004 in seven worlds and is better in the two `goo
 
 ## 14. Open, and next
 
-Open: the `2a2b` scope of the update as a candidate (section 13: implement, then the 2% parity A/B against the shipped configuration); the unexplained half of E[q^J eps^J] (section 3); an export-side constant arm; whether B should be read per good; the residual heterogeneity bias of the update (+0.085 at within_sd 0.7), which is the dominant uncertainty of the published sigma and would need a different estimator, not a standard error. The Eq. (11) variants (sections 1-12) are closed at the pipeline level.
+Open: the unexplained half of E[q^J eps^J] (section 3); an export-side constant arm; whether B should be read per good; the residual heterogeneity bias of the update (+0.085 at within_sd 0.7), which is the dominant uncertainty of the published sigma and would need a different estimator, not a standard error. The Eq. (11) variants (sections 1-12) are closed at the pipeline level; the `2a2b` scope (section 13) is measured, inert on BACI, and queued as the default for the next re-estimation rather than a release of its own.

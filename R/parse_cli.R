@@ -297,7 +297,7 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
     optparse::make_option(c("--stage2-tier1-min-dests"), type = "character", default = "2", metavar = "N", dest = "min_dests_spec",
       help = "Minimum number of other destinations an exporter needs to be Tier 1 (its own export row enters Eq. (11); below it the exporter is import-only, Tier 2). 2 is the shipped rule; 'Inf' makes every exporter but the reference import-only -- the hybrid arm D of docs/results/known_truth_eq11.md (patch 0159). Default: %default"),
     optparse::make_option(c("--stage2-sigma-update-scope"), type = "character", default = "2b", metavar = "SCOPE",
-      help = "Reach of the sigma update: '2b' (Stage 2b only; the Stage-2a priors stay on the Stage-1 omega; the version measured at known truth). '2a2b' (regional sigma, Stage 2a and the priors re-run on the updated sigma) is reserved and not available in this release (patch 0152). Default: %default"),
+      help = "Reach of the sigma update: '2b' (Stage 2b only; the Stage-2a priors stay on the Stage-1 omega; shipped since v0.12.0) or '2a2b' (patch 0161: between the profile and the final pass, Stage 2a is re-estimated at the region medians of the updated sigma and the good-level priors and regional gamma_V medians are rebuilt from it; the Stage-1-sigma Stage 2a keeps its outputs, its records rotate to _pass<u>, the re-run is saved as _regional_hs4_fixed_sigma_sigmaupd<u>.rds; arm Q of docs/results/known_truth_eq11.md section 13). Default: %default"),
     optparse::make_option(c("--stage2-sigma-edge"), type = "character", default = "fallback", metavar = "RULE",
       help = "Stage-1 cells whose published sigma is a box edge (sigma_capped): 'fallback' (v0.9.0 default, patch 0087: treat as no estimate -- fallback sigma, sigma_robust FALSE, no sigma_V, out of the priors) or 'publish' (keep sigma = cap in Stage 2; every release through v0.8.3). Default: %default"),
     optparse::make_option(c("--stage2-export-total"), type = "character", default = "quantity", metavar = "TOTAL",
@@ -465,7 +465,7 @@ validate_cli_opts <- function(opts, parser = NULL) {
   if (!is.na(.su_b) && (!is.finite(.su_b) || .su_b < 0 || .su_b >= 1)) fail(sprintf("--stage2-sigma-shrink must be in [0, 1) (0 = off), got: '%s'", .su_b))   # patch 0154/0155
   .t1 <- if (is.null(opts[["min_dests_spec"]])) "2" else as.character(opts[["min_dests_spec"]])   # patch 0159
   if (!tolower(.t1) %in% c("inf", "infinite")) { .t1n <- suppressWarnings(as.integer(.t1)); if (is.na(.t1n) || .t1n < 1L) fail(sprintf("--stage2-tier1-min-dests must be an integer >= 1 or 'Inf', got: '%s'", .t1)) }
-  if (!identical(.su_scope, "2b")) fail(sprintf("--stage2-sigma-update-scope: only '2b' is available in this release ('2a2b' is reserved; docs/results/known_truth_eq11.md section 8), got: '%s'", .su_scope))
+  if (!.su_scope %in% c("2b", "2a2b")) fail(sprintf("--stage2-sigma-update-scope must be '2b' or '2a2b', got: '%s'", .su_scope))   # patch 0161
   if (!opts$stage2_sigma_edge %in% c("publish", "fallback")) fail(sprintf("--stage2-sigma-edge must be 'publish' or 'fallback', got: '%s'", opts$stage2_sigma_edge))   # patch 0086
   if (!opts$stage2_export_moment %in% c("share", "value")) fail(sprintf("--stage2-export-moment must be 'share' or 'value', got: '%s'", opts$stage2_export_moment))   # patch 0110
   if (!opts$stage2a_handoff_rows %in% c("all", "published")) fail(sprintf("--stage2a-handoff-rows must be 'all' or 'published', got: '%s'", opts$stage2a_handoff_rows))   # patch 0110

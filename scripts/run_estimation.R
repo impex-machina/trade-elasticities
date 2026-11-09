@@ -821,12 +821,49 @@ if (should_run("2b", opts, paths)) {
           sigma_updated_cells <- if (is.null(sigma_updated_cells)) upd[, .(importer, good, sigma_source_new)] else
             unique(rbind(sigma_updated_cells[!paste(importer, good, sep = "\r") %in% k_upd], upd[, .(importer, good, sigma_source_new)]))   # NULL on the first pass
         }
+        # (patch 0161) scope 2a2b: between the profile and the final pass, Stage 2a is re-estimated at the
+        # region medians of the updated sigma (the runner's rule for Stage 2a's sigma, applied to the updated
+        # table) and the good-level priors and regional gamma_V medians are rebuilt from it, so the priors
+        # Stage 2b shrinks toward condition on the same sigma it does. The Stage-1-sigma Stage 2a keeps its
+        # table; its trim / fallback records rotate to _pass<u>; the re-run is saved beside it. Known truth:
+        # arm Q, docs/results/known_truth_eq11.md section 13 (equal to the 2b scope where sigma has no importer
+        # structure, better where it has).
+        su_scope <- opts$stage2_sigma_update_scope %||% "2b"
+        prior_med_before <- exp(median(config_2b$shrinkage_priors$ln_gamma_prior)); prior_med_after <- NA_real_; n_reg_u <- NA_integer_
+        if (identical(su_scope, "2a2b") && nrow(ok)) {
+          t2a <- Sys.time()
+          rmap_u <- build_region_map()
+          upd_r <- data.table::copy(upd)[, region := assign_regions(as.integer(importer), rmap_u)]
+          regional_sigma_u <- upd_r[, .(sigma = median(sigma, na.rm = TRUE)), by = .(importer = region, good)]
+          level_u <- if (is.finite(su_b)) level_sigma else median(upd$sigma)
+          cfg_2a <- config_regional
+          cfg_2a$shrinkage_lambda <- 0.05; cfg_2a$ridge_scale <- "none"; cfg_2a$shrinkage_priors <- feenstra_priors
+          cfg_2a$sigma_lookup <- regional_sigma_u; cfg_2a$sigma_V_lookup <- regional_sigma_u
+          cfg_2a$sigma_fallback <- level_u; cfg_2a$sigma_V_default <- level_u; cfg_2a$sigma_start <- level_u
+          cfg_2a$gamma_V_default <- stage2a_gamma_v_default(sigma_clean, feenstra_gamma_clean, config$stage2a_gamma_v_default)
+          cfg_2a$gamma_start <- cfg_2a$gamma_V_default; cfg_2a$gamma_V_lookup <- NULL
+          rotate_pass_records(run_record_base(cfg_2a), u)
+          regional_results_u <- estimate_all_fixed_sigma(cfg_2a, ncores = ncores, prepared_dt = dt_regional)
+          saveRDS(finalize_saved_output(regional_results_u), paste0(out_base_regional, sprintf("_fixed_sigma_sigmaupd%d.rds", u)))
+          hand_u <- stage2a_handoff_rows(regional_results_u, opts$stage2a_handoff_rows)
+          clean_u <- hand_u[!is.na(sigma) & !is.na(gamma) & gamma > 0]
+          pri_u <- stage2b_priors_from_regional(clean_u, rows = prior_rows_rule)
+          config_2b$shrinkage_priors <- pri_u$country_priors
+          config_2b$gamma_V_default <- exp(median(pri_u$country_priors$ln_gamma_prior)); config_2b$gamma_start <- config_2b$gamma_V_default
+          gam_V_country_u <- merge(cty_to_region, pri_u$gam_V_regional, by = "region", allow.cartesian = TRUE)
+          config_2b$gamma_V_lookup <- gam_V_country_u[, .(importer = as.character(cty_code), good, gamma)]
+          prior_med_after <- exp(median(pri_u$country_priors$ln_gamma_prior)); n_reg_u <- nrow(regional_results_u)
+          cat(sprintf("  scope 2a2b: Stage 2a re-estimated at the updated sigma in %.1f min (%s regional rows; %s good priors; median prior gamma %.3f -> %.3f); priors and regional gamma_V medians rebuilt; saved %s_fixed_sigma_sigmaupd%d.rds\n",
+                      as.numeric(Sys.time() - t2a, units = "mins"), format(n_reg_u, big.mark = ","), format(nrow(pri_u$country_priors), big.mark = ","),
+                      prior_med_before, prior_med_after, out_base_regional, u))
+        }
         country_results <- estimate_all_fixed_sigma(config_2b, ncores = ncores, prepared_dt = dt_country)
         step <- gamma_v_step(prev, country_results)
         su_log[[length(su_log) + 1L]] <- data.table(update_pass = u, cells_profiled = nrow(prof), cells_updated = nrow(ok),
                                                      at_floor = sum(prof$status == "floor"), at_cap = sum(prof$status == "ceiling"),
                                                      sigma_median_before = median(prof$sigma_before), sigma_median_after = median(ok$sigma),
                                                      shrink_b_half = su_b, shrink_b_full = b_full, level_sigma = level_sigma,   # patch 0154
+                                                     scope = su_scope, prior_median_before = prior_med_before, prior_median_after = prior_med_after, stage2a_rows = n_reg_u,   # patch 0161
                                                      sigma_median_shrunk = if (is.finite(su_b)) median(prof[status == "ok", sigma_shrunk]) else NA_real_,
                                                      tier1_rows = step[["n"]], abs_dlng_p50 = step[["p50"]], abs_dlng_p90 = step[["p90"]], abs_dlng_max = step[["max"]])
         rotate_pass_records(prefix_country, gv_passes + u)
