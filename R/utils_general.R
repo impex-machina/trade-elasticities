@@ -19,6 +19,8 @@
 #'   stage2_convergence_census(dt)                 — optimizer vs imputed convergence codes (patch 0116)
 #'   year_window(dt, minyear, maxyear, col)        — rows inside a year window (patch 0119)
 #'   assert_forked_results(res, labels, what)      — stop on lost / errored forked-worker results (patch 0150)
+#'   sigma_is_cell_specific(sigma_source)          — does a sigma_source label mean the cell's own sigma? (patch 0163)
+#'   paired_gain_cluster_boot(d_a, d_b, cluster)   — paired bootstrap of a median-error gain, resampling clusters (patch 0163)
 #'
 #' Depends on: none (base R + data.table semantics at call sites)
 
@@ -405,4 +407,67 @@ assert_forked_results <- function(res, labels, what = "task") {
                what, sum(lost), length(res), if (any(lost)) paste0(": ", show(lost)) else "",
                sum(err), show(err), if (any(err)) paste0("; first message: ", first_msg) else ""),
        call. = FALSE)
+}
+
+
+#' Does a sigma_source label mean the row's sigma is the cell's own value? (patch 0163)
+#'
+#' Through v0.11.4 the one such label was "estimated" (the cell's Stage-1 sigma)
+#' and every other label carried the single global fallback. Since v0.12.0
+#' (--stage2-sigma-update import) a cell's own sigma is the Stage-2 update --
+#' "updated_import" (unshrunk) or "updated_import_shrunk" -- "estimated" stays
+#' on the few cells that could not be profiled and keep their Stage-1 sigma,
+#' and "updated_level" and the "fallback_*" labels carry the level / fallback,
+#' one value for every such cell. Three readers tested
+#' `sigma_source == "estimated"` for "has its own sigma" and so read a v0.12.0
+#' table as 99.9% fallback: the product table's share_cells_own_sigma (0 for
+#' nearly every product in the v0.12.0 file), the pillar-1 console line and the
+#' fallback-hierarchy census. They read this predicate (or, for the census,
+#' the Stage-1 label column) instead.
+#'
+#' @param sigma_source character vector of sigma_source labels.
+#' @return logical vector, FALSE for NA.
+sigma_is_cell_specific <- function(sigma_source) {
+  sigma_source %in% c("estimated", "updated_import", "updated_import_shrunk")
+}
+
+
+#' Paired bootstrap of a gain in median absolute error, resampling clusters (patch 0163).
+#'
+#' `d_a` and `d_b` are the absolute errors of two predictors on the same
+#' observations; the gain is median(d_a) - median(d_b), positive when b is the
+#' closer one. A draw resamples CLUSTERS with replacement and takes every
+#' observation of a drawn cluster, as often as the cluster is drawn, so
+#' observations that are not independent of one another stay together. With
+#' one cluster per observation it is the ordinary paired bootstrap.
+#'
+#' Why: analysis/sigma_update_window_census.R read the shrinkage gain's
+#' interval from a bootstrap over "cell-directions" -- each cell entered
+#' twice, once per prediction direction (early -> late and late -> early, the
+#' same two numbers read both ways), and the cells of one good were drawn
+#' independently although the subsample holds 25 goods. The repo's other A/B
+#' readings resample goods (analysis/stage2_reliability.R --boot-goods). The
+#' census now reports this interval, clustered by good, beside the old one.
+#'
+#' @param d_a,d_b absolute errors, same length and order.
+#' @param cluster cluster label of each observation (e.g. the good).
+#' @param B draws; @param seed RNG seed; @param probs the interval's quantiles.
+#' @return list(gain, lo, hi, share_le_0, clusters, draws); lo / hi / share NA
+#'   with fewer than two clusters.
+paired_gain_cluster_boot <- function(d_a, d_b, cluster, B = 2000L, seed = 1L, probs = c(0.025, 0.975)) {
+  if (length(d_a) != length(d_b) || length(cluster) != length(d_a))
+    stop("paired_gain_cluster_boot(): d_a, d_b and cluster must have the same length", call. = FALSE)
+  ok <- is.finite(d_a) & is.finite(d_b) & !is.na(cluster)
+  d_a <- d_a[ok]; d_b <- d_b[ok]; cluster <- as.character(cluster[ok])
+  if (!length(d_a)) stop("paired_gain_cluster_boot(): no finite observations", call. = FALSE)
+  gain <- stats::median(d_a) - stats::median(d_b)
+  idx <- split(seq_along(cluster), cluster); G <- length(idx)
+  if (G < 2L) return(list(gain = gain, lo = NA_real_, hi = NA_real_, share_le_0 = NA_real_, clusters = G, draws = 0L))
+  set.seed(as.integer(seed))
+  bs <- vapply(seq_len(as.integer(B)), function(i) {
+    j <- unlist(idx[sample.int(G, G, replace = TRUE)], use.names = FALSE)
+    stats::median(d_a[j]) - stats::median(d_b[j])
+  }, numeric(1))
+  q <- stats::quantile(bs, probs, names = FALSE)
+  list(gain = gain, lo = q[1], hi = q[2], share_le_0 = mean(bs <= 0), clusters = G, draws = as.integer(B))
 }

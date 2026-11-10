@@ -1,0 +1,59 @@
+{
+  "full": [],
+  "split": [
+    {
+      "config": "ship",
+      "n_keys": 85409,
+      "n_cells": 3990,
+      "r_within": 0.37987218,
+      "rho_rank": 0.36717106,
+      "r_raw": 0.59087493,
+      "sd_within_a": 0.46499333,
+      "sd_within_b": 0.46794197
+    },
+    {
+      "config": "Q",
+      "n_keys": 85408,
+      "n_cells": 3990,
+      "r_within": 0.3792362,
+      "rho_rank": 0.36701574,
+      "r_raw": 0.58995232,
+      "sd_within_a": 0.46569069,
+      "sd_within_b": 0.46877494
+    }
+  ],
+  "boot": {
+    "B": 2000,
+    "seed": 20261015,
+    "base": "ship",
+    "n_goods": 25,
+    "table": [
+      {
+        "config": "ship",
+        "n_goods": 25,
+        "r_within": 0.37987218,
+        "r_lo": 0.35794111,
+        "r_hi": 0.3995259,
+        "base": null,
+        "delta": null,
+        "delta_lo": null,
+        "delta_hi": null,
+        "share_delta_le_0": null
+      },
+      {
+        "config": "Q",
+        "n_goods": 25,
+        "r_within": 0.3792362,
+        "r_lo": 0.35719917,
+        "r_hi": 0.39903593,
+        "base": "ship",
+        "delta": -0.00063598,
+        "delta_lo": -0.00155834,
+        "delta_hi": 0.00013261,
+        "share_delta_le_0": 0.938
+      }
+    ]
+  },
+  "generated": "2026-11-08 18:17:34 EST",
+  "runs": "..\\te_ship\\runs_Q.csv"
+}

@@ -531,6 +531,17 @@ joint estimator).
 
 ## Downstream filtering policy
 
+> **(patch 0163) This section predates v0.4.0 and is kept as history; do not
+> apply it to a published table.** Its row counts (8.13M rows) and the
+> `sigma_provenance` column describe the May 2026 tables, and tier 4 does not do
+> what it says: `gamma_exposure` counts the moment rows that involve a row's γ —
+> 1 or 2 for every non-reference exporter, the cell's import rows plus its own
+> export row for the reference exporter — so `gamma_exposure >= 5` keeps only the
+> reference-exporter rows of cells with at least four other estimated exporters and
+> drops every other row. The README's column table is the reference for filters
+> on the published table (`trim_reason`, `tier`, `gamma_se_status`,
+> `gamma_shrink_wt`).
+
 With `gamma_se` and `gamma_se_status` available, four filtering tiers
 work well:
 

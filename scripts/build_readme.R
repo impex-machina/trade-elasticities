@@ -293,6 +293,83 @@ su_num <- function(s2b, key, digits = 3L) { v <- su_field(s2b, key); if (is.na(v
 su_int <- function(s2b, key) { v <- su_field(s2b, key); if (is.na(v)) "n/a" else format_int(v) }
 su_pct <- function(s2b, key) { v <- su_field(s2b, key); d <- su_field(s2b, "denominator"); if (is.na(v) || is.na(d) || d == 0) "n/a" else format_pct(v, d) }
 
+# (patch 0163) Table rows that GitHub would truncate. GitHub-flavoured Markdown
+# splits a table row on every unescaped "|" -- code spans included -- and DROPS
+# the cells beyond the header's count. v0.12.0's `sigma` row held
+# "(median |d ln(sigma - 1)| 0.97, r 0.04)" with the bars unescaped: the cell
+# ended at "(median" on the repository page and the 1,381 characters after it
+# -- among them "read the published sigma - 1 as likely overstated by 5-9%" --
+# were not shown (cmark-gfm renders it so). Returns the 1-based numbers of the
+# table rows whose cell count differs from their header's; render_one() stops
+# the build on any.
+md_table_cell_mismatches <- function(lines) {
+  bar <- "(?<!\\\\)\\|"                                       # a "|" not preceded by a backslash
+  n_cells <- function(row) {
+    row <- sub(paste0(bar, "\\s*$"), "", sub("^\\s*\\|", "", row), perl = TRUE)
+    lengths(regmatches(row, gregexpr(bar, row, perl = TRUE))) + 1L
+  }
+  is_row <- startsWith(lines, "|")
+  is_delim <- grepl("^\\|\\s*:?-+:?\\s*(\\|\\s*:?-+:?\\s*)*\\|?\\s*$", lines)
+  bad <- integer(0); i <- 1L; n <- length(lines)
+  while (i < n) {
+    if (is_row[i] && is_delim[i + 1L]) {
+      k <- n_cells(lines[i]); j <- i + 2L
+      while (j <= n && is_row[j]) { if (n_cells(lines[j]) != k) bad <- c(bad, j); j <- j + 1L }
+      i <- j
+    } else i <- i + 1L
+  }
+  bad
+}
+
+# (patch 0163) What the table can say about the sigma-propagated standard error.
+# gamma_se_total is written only on a cell whose sigma_robust flag is TRUE
+# (estimate_importer_product_fixed_sigma()), so the count of TRUE rows bounds the
+# rows that carry it. Through patch 0162 the README, the record and the card said
+# that since v0.12.0 the column is "populated only among the rows that keep a
+# Stage-1 sigma" (4,646 rows): those rows belong to cells with no fitted exporter
+# -- the only cells the update's profile cannot reach -- and are imputed rows with
+# no standard error at all; sigma_robust is TRUE on no row of the v0.12.0 table
+# and gamma_se_total is NA throughout. The wording is now read from the count.
+su_present <- function(s2b) !is.na(su_field(s2b, "n_shrunk")) || !is.na(su_field(s2b, "n_unshrunk"))
+n_robust <- function(s2b) { rb <- s2b[["sigma_robust"]]; v <- if (is.null(rb)) NULL else rb[["robust"]]; if (is.null(v)) NA_real_ else suppressWarnings(as.numeric(v)) }
+# the gamma_se_total row of the column table: what follows "... (the profile carries no Stage-1-style SE to propagate)"
+se_total_row_tail <- function(s2b) {
+  n <- n_robust(s2b)
+  if (is.na(n)) return("")
+  if (n == 0) return(sprintf(" \u2014 and on every other row as well: the column is filled only where `sigma_robust` is `TRUE`, which no row of this release is (the %s of rows that keep a Stage-1 \u03c3 belong to cells with no fitted exporter and carry no standard error of any kind), so it is `NA` throughout", su_pct(s2b, "n_stage1")))
+  sprintf(", which leaves it possible only on the %s rows where `sigma_robust` is `TRUE`", format_int(n))
+}
+# the sigma_robust row: whether the column can be filtered on
+robust_filter_sentence <- function(s2b) {
+  n <- n_robust(s2b)
+  if (!is.na(n) && n == 0 && su_present(s2b))
+    return("No row of this release is `TRUE`, so the column cannot serve as a filter here; through v0.11.4 filtering on it kept the cells whose \u03b3 SE is stable once \u03c3 is treated as estimated rather than known (see Known limitations).")
+  "Filter on this to keep only cells whose \u03b3 SE is stable once \u03c3 is treated as estimated rather than known (see Known limitations)."
+}
+# the standard-error bullet (README) and section 9 (record): where gamma_se_total exists since the update
+se_total_scope <- function(s2b, form = c("bullet", "record")) {
+  form <- match.arg(form); n <- n_robust(s2b)
+  none <- !is.na(n) && n == 0
+  if (form == "bullet")
+    return(if (none) "since v0.12.0 on no row: the update's profile has no SE, and the rows that keep a Stage-1 \u03c3 are imputed rows without one"
+           else sprintf("since v0.12.0 at most on the %s of rows that keep a Stage-1 \u03c3, since the update's profile has no SE", su_pct(s2b, "n_stage1")))
+  if (none) "since v0.12.0 on no row: the update's profile carries no SE, and the rows that\n  keep a Stage-1 \u03c3 are imputed rows without one"
+  else "since v0.12.0 at most on the rows that\n  keep a Stage-1 \u03c3: the update's profile carries no SE"
+}
+# (patch 0163) Which cells carry the one level / fallback sigma. Through patch 0162 the Stage-1
+# bullet said a cell whose Stage-1 sigma is a box edge or within one SE of the pole "takes the
+# global fallback" and gave the fallback share of rows: the v0.11.4 mechanism. Since v0.12.0 every
+# cell with import rows is profiled whatever its Stage-1 status, and the level is carried by the
+# cells whose profile sat at the cap or floor and by the cells with no import rows.
+level_sigma_sentence <- function(s2b) {
+  sp <- req(s2b, "sigma_provenance"); fb <- format_num(req(sp, "fallback_value"))
+  if (!su_present(s2b))
+    return(sprintf("A cell whose \u03c3 is a box edge, or within one standard error of the pole, takes the global fallback \u03c3 (%s) like a cell with no estimate: %s of Stage-2b rows carry it (`sigma_source`).",
+                   fb, format_pct(req(sp, "n_fallback"), req(sp, "denominator"))))
+  sprintf("Through v0.11.4 a cell whose Stage-1 \u03c3 was a box edge, or within one standard error of the pole, took the global fallback \u03c3 like a cell with no estimate. Since v0.12.0 every cell with import rows is profiled whatever its Stage-1 status (kept in `sigma_source_stage1`), and one level \u03c3 (%s) goes to the cells whose profile sat at the cap or floor and to the cells with no import rows to profile: %s and %s of Stage-2b rows carry it (`sigma_source`).",
+          fb, su_pct(s2b, "n_level"), format_pct(req(sp, "n_fallback"), req(sp, "denominator")))
+}
+
 # A8: the headline sigma. On a table where the fallback sigma covers the row
 # median, the "median" is the fallback itself; say so.
 headline_sigma_note <- function(s2b) {
@@ -342,7 +419,7 @@ pole_accuracy_clause <- function(pa) {
 fallback_hierarchy_clause <- function(p) {
   if (is.null(p)) return("")
   cc <- req(p$data, "census"); lo <- req(cc, "loo")
-  sprintf(" One global value is kept because the product does not predict \u03c3: across the cells with an estimate the good explains %s of the variance of ln(\u03c3 \u2212 1), and a fallback built from good and region \u00d7 good medians predicts held-out estimates no better than the global median (median error %s against %s%s; `docs/results/%s.md`).",
+  sprintf(" One level is kept because the product does not predict \u03c3: across the cells with a Stage-1 estimate the good explains %s of the variance of ln(\u03c3 \u2212 1), and a fallback built from good and region \u00d7 good medians predicts held-out estimates no better than the global median (median error %s against %s%s; `docs/results/%s.md`).",
           format_prop_pct(req(cc, "r2_good")), format_num(req(lo, "err_ladder")), format_num(req(lo, "err_global")),
           stale_note(p, "; ", ""), p$key)
 }
@@ -498,7 +575,7 @@ known_truth_structured_bullet <- function(kts) {
 # results/product_summary_census.json) and the Stage-1 routing check at known
 # truth (validation/known_truth_routing.R; results/known_truth_routing.json).
 # NULL-tolerant; the level-gap sentence appears once the census carries it.
-product_table_section <- function(ps, sigma_fallback, pw = NULL) {
+product_table_section <- function(ps, sigma_fallback, pw = NULL, update_present = FALSE) {
   # (patch 0130) The odd/even and period halves of patch 0127's census re-ran
   # Stage 2b only, with the full-panel Stage 1 and Stage-2a priors: they show
   # that a product's median barely depends on which half of the Stage-2b data
@@ -530,6 +607,25 @@ product_table_section <- function(ps, sigma_fallback, pw = NULL) {
                                      pc(gg), pc(g9), pc(og), pc(o9)))
     }
   }
+  # (patch 0163) sigma across products, read from the census. Through v0.11.4 more than half of a
+  # product's cells carried the fallback, so the product median WAS the global value; since v0.12.0
+  # the cell sigmas are shrunk updates spread around the level and a product's median is near it,
+  # not on it. share_cells_own_sigma: the v0.12.0 file was built with the pre-update definition
+  # (cells labelled "estimated") and is ~0 for every product; say which definition the file carries.
+  dsm <- ps$distribution$sigma_median; own <- ps$distribution$share_cells_own_sigma
+  num1 <- function(v) suppressWarnings(as.numeric(v))
+  spread <- !is.null(dsm) && !is.null(dsm$p10) && !is.null(dsm$p90) &&
+    (abs(num1(dsm$p10) - sigma_fallback) > 5e-4 || abs(num1(dsm$p90) - sigma_fallback) > 5e-4)
+  sigma_sentence <- if (spread)
+    sprintf("A product's median \u03c3 stays close to the level (%s): %s at the 10th percentile of products and %s at the 90th.",
+            format_num(sigma_fallback, 3L), format_num(num1(dsm$p10), 3L), format_num(num1(dsm$p90), 3L))
+  else sprintf("\u03c3 is the global value (%s) for nearly every product.", format_num(sigma_fallback, 3L))
+  own_note <- if (is.null(own) || is.null(own$p50)) ""
+  else if (isTRUE(update_present) && num1(own$p50) < 0.5)
+    sprintf(" In this file `share_cells_own_sigma` (median %s) still counts only the cells that keep a Stage-1 \u03c3, the definition from before the \u03c3 update; since patch 0163 `analysis/product_summary.R` counts the cells whose \u03c3 is their own value rather than the level, and the column changes when the table is rebuilt.",
+            format_num(num1(own$p50), 3L))
+  else sprintf(" `share_cells_own_sigma` is the share of the product's cells whose \u03c3 is their own value (the Stage-2 update or a Stage-1 estimate) rather than the level (median %s across products).",
+               format_num(num1(own$p50), 3L))
   sprintf(paste0("\n\n### The product-level table (since v0.11.1)\n\n",
                  "`data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv` has one row per HS4 product (%s), built from the table above by ",
                  "`analysis/product_summary.R`: `gamma_median` (the median \u03b3 over directly estimated rows), `opt_tariff_median` (the median over the ",
@@ -541,10 +637,10 @@ product_table_section <- function(ps, sigma_fallback, pw = NULL) {
                  "\u03b3 and %s for `opt_tariff` between odd and even years%s%s -- but those halves share the full-panel Stage 1 (the odd/even halves also its ",
                  "Stage-2a priors), from which a product's median is mostly built, so they do not show that product differences reproduce in independent data ",
                  "(`docs/results/product_summary_census.md`; a hash check in `docs/results/product_window_census.md`).%s ",
-                 "\u03c3 is the global value (%s) for nearly every product. Read `good` as character; the table carries no interval columns, because ",
+                 "%s%s Read `good` as character; the table carries no interval columns, because ",
                  "resampling importers leaves the product prior -- a product's main source of uncertainty -- untouched."),
           format_int(as.integer(req(req(ps, "meta"), "products"))), as.integer(req(req(oe, "gamma_median"), "products")),
-          sp(oe, "gamma_median"), sp(oe, "opt_tariff_median"), across, gap, indep, format_num(sigma_fallback, 3L))
+          sp(oe, "gamma_median"), sp(oe, "opt_tariff_median"), across, gap, indep, sigma_sentence, own_note)
 }
 routing_bullet <- function(kr, ab = NULL) {
   if (is.null(kr)) return("")
@@ -843,6 +939,8 @@ render_env$provenance_lead <- provenance_lead                   # patch 0116
 render_env$provenance_tail <- provenance_tail                   # patch 0116
 render_env$headline_sigma_note <- headline_sigma_note           # patch 0116
 render_env$su_num <- su_num; render_env$su_int <- su_int; render_env$su_pct <- su_pct   # patch 0158: the sigma update
+render_env$su_present <- su_present; render_env$se_total_row_tail <- se_total_row_tail; render_env$robust_filter_sentence <- robust_filter_sentence   # patch 0163
+render_env$se_total_scope <- se_total_scope; render_env$level_sigma_sentence <- level_sigma_sentence                                               # patch 0163
 render_env$convergence_clause <- convergence_clause             # patch 0116
 render_env$pillar2_coverage_clause <- pillar2_coverage_clause   # patch 0116
 render_env$CONV <- pick_census_opt("stage2b_convergence_census")   # patch 0116: NULL until committed
@@ -900,6 +998,16 @@ render_one <- function(text, out_path, what) {
     writeLines(as.character(rendered), con = file(broken_path, encoding = "UTF-8"))
     message(sprintf("       Wrote broken output to %s for inspection.", broken_path))
     quit(status = 2L)
+  }
+  # (patch 0163) a table row with more cells than its header loses the excess on
+  # GitHub: stop rather than publish a row that renders cut off.
+  r_lines <- strsplit(as.character(rendered), "\n", fixed = TRUE)[[1L]]
+  bad_rows <- md_table_cell_mismatches(r_lines)
+  if (length(bad_rows)) {
+    message(sprintf("FATAL: rendered %s has %d table row(s) whose cell count differs from the header's (an unescaped '|' inside a cell: write it \\|): line(s) %s.",
+                    what, length(bad_rows), paste(bad_rows, collapse = ", ")))
+    message("       First such row starts: ", substr(r_lines[bad_rows[1L]], 1L, 80L))
+    quit(status = 3L)
   }
   # --- Write the output --------------------------------------------------
   # Explicit UTF-8 connection. writeLines with a connection avoids the default

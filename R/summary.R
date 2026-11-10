@@ -12,6 +12,7 @@
 #'   variance_decomposition(results)                          — variance decomposition
 #'   write_summary_text(summary, filepath)                    — write summary as text
 #'   write_estimation_summary(results, cfg, out_prefix, ...)  — write full summary outputs
+#'   stage2_summary_cfg(cfg, stage_cfg)                       — the config a Stage-2 summary reports (patch 0163)
 #'
 #' Depends on: none
 
@@ -137,6 +138,33 @@ variance_decomposition <- function(results) {
     n_obs     = nrow(dt),
     n_groups  = nrow(group_means)
   )
+}
+
+
+#' The config a Stage-2 summary reports (patch 0163).
+#'
+#' build_summary() prints four values from the config it is handed:
+#' sigma_V_default, gamma_V_default, sigma_start, gamma_start. The runner builds
+#' them per stage (config_2a, config_2b: the fallback / level sigma and the
+#' median good-level prior) but handed write_estimation_summary() the BASE
+#' config, whose values are build_config()'s placeholders -- Soderbery's Table 2
+#' medians, 2.88 and 0.69 -- so every summary file through v0.12.0 reports
+#' "sigma_V=2.880, gamma_V=0.690" and those starting values, none of which a
+#' Stage-2 pass used. This returns the base config with the four fields taken
+#' from the stage's own config, or NA ("not recorded" in the text) when the
+#' table was loaded from a file and the values of the run that produced it are
+#' not known.
+#'
+#' @param cfg the base config (build_config()).
+#' @param stage_cfg the config the stage ran with (config_2a / config_2b), or
+#'   NULL when the stage's table was loaded rather than estimated.
+#' @return cfg with the four provenance fields replaced.
+stage2_summary_cfg <- function(cfg, stage_cfg = NULL) {
+  for (k in c("sigma_V_default", "gamma_V_default", "sigma_start", "gamma_start")) {
+    v <- if (is.null(stage_cfg)) NULL else stage_cfg[[k]]
+    cfg[[k]] <- if (is.null(v) || length(v) != 1L || !is.finite(v)) NA_real_ else as.numeric(v)
+  }
+  cfg
 }
 
 
@@ -364,8 +392,15 @@ write_summary_text <- function(summary, filepath) {
   a("  Min year:             %d", prov$minyear)
   a("  Max year:             %s", if (is.null(prov$maxyear) || is.na(prov$maxyear))
                                     "all available" else as.character(prov$maxyear))
-  a("  Structural defaults:  sigma_V=%.3f, gamma_V=%.3f", prov$sigma_V_default, prov$gamma_V_default)
-  a("  Starting values:      sigma=%.3f, gamma=%.3f", prov$sigma_start, prov$gamma_start)
+  # (patch 0163) the values the stage used (stage2_summary_cfg()); "not recorded"
+  # where the table was loaded from a file and its run's values are not known.
+  # sigma_start is kept in the provenance list but not printed: sigma is fixed in
+  # Stages 2a / 2b, so no sigma starting value enters them.
+  f3 <- function(x) if (is.null(x) || length(x) != 1L || is.na(x)) "not recorded" else sprintf("%.3f", x)
+  a("  Structural defaults:  sigma_V=%s, gamma_V=%s (export rows whose reference destination has no lookup value)",
+    f3(prov$sigma_V_default), f3(prov$gamma_V_default))
+  a("  Starting value:       gamma=%s%s", f3(prov$gamma_start),
+    if (identical(prov$scope, "country")) " (the region x good median of Stage 2a where one exists)" else "")
   a("  Min exporters:        %d", prov$min_exporters)
   a("  Min destinations:     %d", prov$min_destinations)
   a("  Min periods:          %d", prov$min_periods)

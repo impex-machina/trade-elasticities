@@ -90,8 +90,8 @@ Stated forthrightly:
   0.8% are rows at an extreme where no SE is computed (`boundary`, γ < 0.01;
   `plateau`, γ > 5), non-converged fits, or variances that could not be formed. The cell optimizer did not converge on 0.7% of directly estimated rows (1,775 of 210,098 fitted cells; a failed L-BFGS-B line search on 93.3% of those rows and an iteration cap on 6.7% — L-BFGS-B's, or the Nelder–Mead restart's where its point was published; census of the v0.11.3 table, not yet re-run on the shipped table): those cells publish the better of the L-BFGS-B point and the Nelder–Mead restart, with `gamma_se_status` `non_converged` and no SE (`docs/results/stage2b_convergence_census_v0113.md`). The pipeline
   additionally propagates the Stage 1 σ uncertainty by the delta method into
-  `gamma_se_total` where a Stage-1 SE exists (since v0.12.0 only on the rows that
-  keep a Stage-1 σ: the update's profile carries no SE) and flags the result with a
+  `gamma_se_total` where a Stage-1 SE exists (since v0.12.0 on no row: the update's profile carries no SE, and the rows that
+  keep a Stage-1 σ are imputed rows without one) and flags the result with a
   cell-level `sigma_robust` screen:
   σ̂ unclamped and with a finite SE, clear of the σ = 1 pole, and no γ SE in the
   cell inflated beyond threshold. 0.0% of rows pass (0.0% of the rows outside Tier 3); 73.3% are flagged `FALSE` and 26.7% are Tier-3 imputed cells (`NA`) with no per-cell σ. The screen is governed almost entirely by σ̂'s distance from the σ = 1 pole, not by the inflation cutoff, and the pass rate is stable across a wide grid of both thresholds (`analysis/sensitivity_sweep.R` reproduces it). Where `sigma_robust` is `FALSE` or `NA`, treat `gamma_se` as a conditional, lower-bound measure of uncertainty; where `TRUE`, `gamma_se_total` is the σ-aware SE — and in either case the SE is frequently as large as the estimate itself. Stage-1 `sigma_se` on the 45,305 Step-2 (Fuller LIML fallback) cells uses the k-class sandwich from v0.7.3; through v0.7.2 an OLS meat overstated it several-fold. Median relative SE (`sigma_se`/`sigma`): 0.30 on Step-2 cells, 0.26 on interior HLIML cells, 0.32 on boundary cells. An exporter-cluster bootstrap (750 cells × 399 replicates, branch-tagged; `validation/bootstrap_se_cells.csv`; medians over the 654 cells with at least four exporters and a defined weak-instrument F) puts the robust (MAD) dispersion of the replicates that stay on a cell's own branch at 0.89× the analytic SE for interior HLIML cells, 1.54× for boundary cells and 1.69× for Step-2 cells, with 60%, 55% and 36% of replicates staying on the published branch; the unconditional SD-based ratios are 10.15×, 11.95× and 11.56×, the difference being branch switching and heavy tails. Step-2 cells with strong instruments (Kleibergen-Paap F ≥ 7) sit at 6.33× within their own branch: their σ depends on which exporters the cell contains, so read Step-2 `sigma_se` as a composition-conditional lower bound and consult the per-cell bootstrap dispersion alongside it. In the Pillar-3 Monte Carlo — a regression-level harness on the shipped variance formula (sandwich with the ridge in λ/γ² units) with the import-side constant concentrated out as the shipped estimator does — the SE has a median ratio to the empirical sampling SD of 1.059 in a regime whose median `gamma_shrink_wt` is 0.897 (the shipped table's is 0.924; census of the v0.11.3 table, not yet re-run on the shipped table) and 0.978–1.059 across all 5 regimes (`docs/methodology/se_calibration_mc_summary.csv`).
@@ -115,7 +115,21 @@ Stated forthrightly:
   rests on the difference between import shares and export shares alone,
   which Soderbery's fn. 11 argues is enough in principle. HS4 unit values are weight-based composites
   (value divided by tonnes, summed over the constituent HS6 lines) and so
-  move with product mix, not only price. These data-construction choices
+  move with product mix, not only price. BACI's values are FOB, so its unit
+  values are shipped prices, while the demand equation (Eq. (5)) is written in
+  delivered prices: a bilateral change in tariffs or freight moves the delivered
+  price at a given shipped price and so sits in the demand residual. That is
+  harmless where such changes are independent of exporters' supply shocks —
+  the estimator's assumption — and a source of bias where trade policy responds
+  to them (an antidumping duty after a foreign price fall). The sample differs
+  by stage, too (patch 0163): Stage 1 estimates σ on the untrimmed panel, a
+  decision taken because the |Δ ln p| ≥ 2 rule raised the median σ from 2.50 to
+  3.78 there with no plateau across thresholds
+  (`docs/methodology/sample_rule_decision.md`), while since v0.12.0 the
+  published σ is re-solved from the import block of the Stage-2 panel, which
+  carries that rule. The two σ columns of the table therefore rest on different
+  samples (`sigma` trimmed, `sigma_stage1` untrimmed), and how the updated σ
+  moves with the threshold has not been measured. These data-construction choices
   reshape the cross-exporter second moments that identify σ and ω, and
   contribute to differences from Soderbery independently of the estimator
   and period.

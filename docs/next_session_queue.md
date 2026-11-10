@@ -7,7 +7,7 @@ planned, flip each default in one patch before it, re-measure the
 configuration **as it will ship** on the 2% subsample (the 2026-10-12
 lesson), and remove the entry here.
 
-No change is queued. Patch 0113 flipped the two that were -- `--stage2a-handoff-rows published`
+One change is queued (below): `--stage2-sigma-update-scope 2a2b`. Patch 0113 flipped the two that were queued before it -- `--stage2a-handoff-rows published`
 (correctness) and `--stage2-export-moment value` (Eq. (8) on export values) -- for the v0.11.0
 session (`docs/methodology/stage2_country.md`, "The v0.11.0 session").
 

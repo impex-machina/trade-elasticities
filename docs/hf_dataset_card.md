@@ -54,7 +54,40 @@ curve (3.00 / 3.64 / 4.54; 2.46 → 3.73 on the full universe at 2.0). The rule 
 identifying price variance rather than a distinct outlier population, so no threshold is
 privileged and none is shipped; the trimmed estimates are a robustness result
 (`docs/methodology/sample_rule_decision.md`). Comparisons with σ estimated under another
-cleaning rule must say which rule.
+cleaning rule must say which rule. *Addendum 2026-11-09 (patch 0163): since v0.12.0 this note
+describes the Stage-1 table and the `sigma_stage1` column only. The published `sigma` is the
+Stage-2 update, re-solved from the import block of the Stage-2 panel, and that panel carries
+the |Δ ln p| ≥ 2 rule; how the updated σ moves with the threshold has not been measured.*
+
+**Corrections (2026-11-09, patch 0163; no estimate changes).** (1) The v0.12.0 entry says
+`gamma_se_total` is populated on the 4,646 rows that keep a Stage-1 σ. It is populated on
+no row: the column is written only where `sigma_robust` is `TRUE`, which no row of v0.12.0
+is, and those 4,646 rows belong to cells with no fitted exporter — imputed rows, with no
+standard error of any kind. `sigma_se` and `dgamma_dsigma` are `NA` on every updated row.
+(2) In the v0.12.0 product table `share_cells_own_sigma` still counts the cells labelled
+`estimated` — since v0.12.0 the few cells that keep a Stage-1 σ — and is 0 for most products
+(median 0, 90th percentile 0.014), although 97.0% of rows carry a σ of their own cell;
+`analysis/product_summary.R` counts the cells whose σ is their own value since patch 0163,
+and the file is corrected at the next data release. (3) The v0.12.0 Stage-2b summary files
+(`…_summary.txt` / `.rds`) print `sigma_V=2.880, gamma_V=0.690` and starting values
+2.880 / 0.690 in their CONFIGURATION block. Those are the library's placeholders, not values
+a Stage-2 pass used: the final pass's σ_V default was the level σ (2.678) and its γ_V default
+and γ starting value the median good-level prior (`prior_median_before` in
+`…_sigma_update_passes.csv`). The runner writes each stage's own values since patch 0163.
+(4) `gamma_exposure` is the number of moment rows that involve the row's γ — 1 or 2 for a
+non-reference exporter — not the number of exporters in the cell, as the README's column
+table said. (5) Since v0.12.0 the README's `sigma` row held two unescaped `|` inside its
+table cell, so GitHub's rendering ended the cell there and did not show the rest of the row,
+including the statement that σ − 1 is likely overstated by 5–9%; the row renders in full
+since patch 0163. (6) The interval quoted for the shrinkage gain ([0.004, 0.016]) comes from
+a bootstrap over cell-directions, which draws the two directions of a cell and the cells of a
+product as independent observations; `analysis/sigma_update_window_census.R` computes a
+product-clustered interval since patch 0163, not yet run, and until it is the gain's sign
+should be read as less certain than the quoted interval suggests. (7) Since v0.12.0
+`gamma_v_resid` is carried over from the γ_V-final table (pass 3 against pass 2, at the σ
+before the update); the published γ comes from one more pass at the updated σ with the same
+γ_V inputs as pass 3, so the column does not measure the published γ's own distance from a
+fixed point.
 
 **Corrections (2026-10-15, patches 0116–0118; no estimate changes).** (1) The
 v0.10.0 and v0.11.0 entries give optimizer non-convergence as 0.42%: that was the

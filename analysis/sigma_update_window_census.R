@@ -31,6 +31,19 @@
 # than the level predictor's (b = 0) on the same cells AND lower than the
 # shrunk Stage-1 sigma's on the cells with a Stage-1 estimate in both windows.
 #
+# Robustness of the shrinkage gain (patch 0163). Through patch 0162 the gain's
+# interval came from a bootstrap over "cell-directions": the two prediction
+# directions of one cell (early -> late, late -> early: the same two numbers
+# read both ways) were drawn as independent observations, and so were the
+# cells of one good, although the 2% subsample holds 25 goods. That interval
+# ([0.0037, 0.0158] on the v0.12.0 census) understates the uncertainty. The
+# census now also resamples GOODS, keeping both directions of every cell of a
+# drawn good together (paired_gain_cluster_boot(), R/utils_general.R) -- the
+# unit analysis/stage2_reliability.R resamples for the gamma A/Bs -- reports
+# both intervals, and words its "robust" line on the goods interval. The
+# shrinkage RULE above has no significance criterion and is not changed: this
+# block only says how sure the sign of the gain is.
+#
 # Usage (from the repo root; the two --out-dir's of the window runs):
 #   Rscript analysis/sigma_update_window_census.R --early <out-dir-1995-2009> --late <out-dir-2010-2024> [--md docs/results/sigma_update_window_census.md]
 # Each window run: scripts/run_estimation.R --data <BACI> --out-dir <dir> --product-sample 0.02 --product-seed <s>
@@ -38,6 +51,7 @@
 # ===========================================================================
 
 suppressPackageStartupMessages({ library(data.table); library(optparse) })
+source(file.path("R", "utils_general.R"))   # patch 0163: paired_gain_cluster_boot()
 
 opt <- parse_args(OptionParser(option_list = list(
   make_option("--early", type = "character", help = "--out-dir of the early-window run"),
@@ -175,8 +189,12 @@ cat(sprintf("\n=== robustness of the shrinkage gain (updated sigma, %d cells x 2
 cat(sprintf("  gain over the level predictor in median |diff|: %.4f | paired bootstrap 95%% CI [%.4f, %.4f] | share of cell-directions where the shrunk sigma is closer: %.3f\n",
             gain, quantile(boot, 0.025), quantile(boot, 0.975), win))
 cat(sprintf("  over 10 fold seeds: b %.3f-%.3f | gain %.4f-%.4f (negative in %d of 10)\n", min(sens[, "b"]), max(sens[, "b"]), min(sens[, "gain"]), max(sens[, "gain"]), sum(sens[, "gain"] < 0)))
-robust <- quantile(boot, 0.025) > 0 && all(sens[, "gain"] > 0)
-cat("  Reading: the gain", if (robust) "is robust (bootstrap CI above zero, positive under every fold seed)" else "is NOT robust (bootstrap CI includes zero, or negative under some fold seed)", "\n")
+# (patch 0163) the same gain with GOODS resampled: both directions of every cell of a drawn good stay together
+gb <- paired_gain_cluster_boot(pr$d_lev, pr$d_shr, cluster = rep(cu$good, 2L), B = 2000L, seed = 20261015L)
+cat(sprintf("  goods bootstrap (%d goods, %d draws; both directions of a cell kept together): 95%% CI [%.4f, %.4f], %.1f%% of draws <= 0\n",
+            gb$clusters, gb$draws, gb$lo, gb$hi, 100 * gb$share_le_0))
+robust <- isTRUE(gb$lo > 0) && all(sens[, "gain"] > 0)
+cat("  Reading: the gain", if (robust) "is robust (goods-bootstrap CI above zero, positive under every fold seed)" else "is NOT robust (goods-bootstrap CI includes zero, or negative under some fold seed)", "\n")
 
 if (nzchar(opt$md)) {
   f <- function(x) sprintf("%.3f", x)
@@ -193,8 +211,8 @@ if (nzchar(opt$md)) {
              sprintf("| %s | %s | %d | %s | %s | %s |", sh_all$predictor, sh_all$mode, sh_all$n, f(sh_all$b), f(sh_all$med_abs), ifelse(is.na(sh_all$r), "--", f(sh_all$r))),
              if (!is.null(sh_s)) sprintf("| %s | %s | %d | %s | %s | %s |", sh_s$predictor, sh_s$mode, sh_s$n, f(sh_s$b), f(sh_s$med_abs), ifelse(is.na(sh_s$r), "--", f(sh_s$r))) else character(),
              "", paste0("**Reading (shrinkage rule):** ", verdict_sh), "",
-             sprintf("Robustness of the shrinkage gain (updated sigma, all common cells): gain over the level predictor %.4f in median |diff|, paired bootstrap 95%% CI [%.4f, %.4f], shrunk sigma closer in %.1f%% of cell-directions; over 10 fold seeds b %.3f-%.3f, gain %.4f-%.4f (negative in %d of 10). **%s.**",
-                     gain, quantile(boot, 0.025), quantile(boot, 0.975), 100 * win, min(sens[, "b"]), max(sens[, "b"]), min(sens[, "gain"]), max(sens[, "gain"]), sum(sens[, "gain"] < 0),
+             sprintf("Robustness of the shrinkage gain (updated sigma, all common cells): gain over the level predictor %.4f in median |diff|; goods bootstrap (%d goods, both directions of a cell kept together) 95%% CI [%.4f, %.4f], %.1f%% of draws <= 0; the bootstrap over cell-directions used through patch 0162, which treats the two directions of a cell and the cells of a good as independent, [%.4f, %.4f]; shrunk sigma closer in %.1f%% of cell-directions; over 10 fold seeds b %.3f-%.3f, gain %.4f-%.4f (negative in %d of 10). **%s** (read on the goods interval since patch 0163).",
+                     gain, gb$clusters, gb$lo, gb$hi, 100 * gb$share_le_0, quantile(boot, 0.025), quantile(boot, 0.975), 100 * win, min(sens[, "b"]), max(sens[, "b"]), min(sens[, "gain"]), max(sens[, "gain"]), sum(sens[, "gain"] < 0),
                      if (robust) "Robust" else "Not robust"))
   writeLines(lines, opt$md); cat("Written:", opt$md, "\n")
 }

@@ -84,8 +84,7 @@ Stated forthrightly:
   {{format_pct(req(r$stage2b$se_status, "other"), req(r$stage2b$se_status, "total"))}} are rows at an extreme where no SE is computed (`boundary`, γ < 0.01;
   `plateau`, γ > 5), non-converged fits, or variances that could not be formed.{{convergence_clause(CONV)}} The pipeline
   additionally propagates the Stage 1 σ uncertainty by the delta method into
-  `gamma_se_total` where a Stage-1 SE exists (since v0.12.0 only on the rows that
-  keep a Stage-1 σ: the update's profile carries no SE) and flags the result with a
+  `gamma_se_total` where a Stage-1 SE exists ({{se_total_scope(r$stage2b, "record")}}) and flags the result with a
   cell-level `sigma_robust` screen:
   σ̂ unclamped and with a finite SE, clear of the σ = 1 pole, and no γ SE in the
   cell inflated beyond threshold. {{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "total"))}} of rows pass ({{format_pct(req(r$stage2b$sigma_robust, "robust"), req(r$stage2b$sigma_robust, "n_estimated"))}} of the rows outside Tier 3); {{format_pct(req(r$stage2b$sigma_robust, "not_robust"), req(r$stage2b$sigma_robust, "total"))}} are flagged `FALSE` and {{format_pct(req(r$stage2b$sigma_robust, "tier3_na"), req(r$stage2b$sigma_robust, "total"))}} are Tier-3 imputed cells (`NA`) with no per-cell σ. The screen is governed almost entirely by σ̂'s distance from the σ = 1 pole, not by the inflation cutoff, and the pass rate is stable across a wide grid of both thresholds (`analysis/sensitivity_sweep.R` reproduces it). Where `sigma_robust` is `FALSE` or `NA`, treat `gamma_se` as a conditional, lower-bound measure of uncertainty; where `TRUE`, `gamma_se_total` is the σ-aware SE — and in either case the SE is frequently as large as the estimate itself.{{step2_vce_clause(r$stage1$step2_vce)}}{{bootstrap_clause(r$bootstrap_se)}} In the Pillar-3 Monte Carlo — a regression-level harness on the shipped variance formula (sandwich with the ridge in λ/γ² units) {{pillar3_constant_clause(r$pillar3)}} — the SE has a median ratio to the empirical sampling SD of {{format_num(req(r$pillar3$pen_sandwich_summary, "prod_med_ratio"))}} in a regime whose median `gamma_shrink_wt` is {{format_num(req(r$pillar3$pen_sandwich_summary, "prod_shrink_wt_median"))}} (the shipped table's is {{format_num(req(SHRINK$data$q1$shrink_wt, "p50"))}}{{stale_note(SHRINK, "; ", "")}}) and {{format_num(req(r$pillar3$pen_sandwich_summary, "med_ratio_min"))}}–{{format_num(req(r$pillar3$pen_sandwich_summary, "med_ratio_max"))}} across all {{req(r$pillar3$pen_sandwich_summary, "n_regimes")}} regimes (`docs/methodology/se_calibration_mc_summary.csv`).
@@ -109,7 +108,21 @@ Stated forthrightly:
   rests on the difference between import shares and export shares alone,
   which Soderbery's fn. 11 argues is enough in principle. HS4 unit values are weight-based composites
   (value divided by tonnes, summed over the constituent HS6 lines) and so
-  move with product mix, not only price. These data-construction choices
+  move with product mix, not only price. BACI's values are FOB, so its unit
+  values are shipped prices, while the demand equation (Eq. (5)) is written in
+  delivered prices: a bilateral change in tariffs or freight moves the delivered
+  price at a given shipped price and so sits in the demand residual. That is
+  harmless where such changes are independent of exporters' supply shocks —
+  the estimator's assumption — and a source of bias where trade policy responds
+  to them (an antidumping duty after a foreign price fall). The sample differs
+  by stage, too (patch 0163): Stage 1 estimates σ on the untrimmed panel, a
+  decision taken because the |Δ ln p| ≥ 2 rule raised the median σ from 2.50 to
+  3.78 there with no plateau across thresholds
+  (`docs/methodology/sample_rule_decision.md`), while since v0.12.0 the
+  published σ is re-solved from the import block of the Stage-2 panel, which
+  carries that rule. The two σ columns of the table therefore rest on different
+  samples (`sigma` trimmed, `sigma_stage1` untrimmed), and how the updated σ
+  moves with the threshold has not been measured. These data-construction choices
   reshape the cross-exporter second moments that identify σ and ω, and
   contribute to differences from Soderbery independently of the estimator
   and period.

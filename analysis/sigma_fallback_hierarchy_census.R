@@ -20,6 +20,11 @@
 #   3. The ladder's value for every fallback cell of the published table:
 #      how far it moves from the global value, by sigma_source and level, in
 #      cells and in rows.
+# (patch 0163) Since v0.12.0 the published sigma of a profiled cell is the
+# Stage-2 update and these cells no longer carry the fallback; part 3 then
+# describes the cells without a usable STAGE-1 sigma (sigma_source_stage1),
+# i.e. what a hierarchical Stage-1 fallback would have handed the update as its
+# starting sigma, not a published value.
 # Caveat for 2: fallback cells are not a random sample of cells -- pole cells
 # have low estimates by construction -- so the leave-one-out error describes
 # the estimated population; validation/pole_rule_accuracy.R's P3 policy is
@@ -42,6 +47,10 @@ loo_median <- function(v) {
   res <- if (m %% 2L == 1L) at((m + 1L) %/% 2L, pos) else (at(m %/% 2L, pos) + at(m %/% 2L + 1L, pos)) / 2
   out <- numeric(n); out[o] <- res; out
 }
+
+#' The column of a Stage-2b table that holds each cell's Stage-1 sigma label (patch 0163):
+#' sigma_source_stage1 where the table carries it (v0.12.0+, the sigma update), else sigma_source.
+sigma_stage1_label_column <- function(s2b) if ("sigma_source_stage1" %in% names(s2b)) "sigma_source_stage1" else "sigma_source"
 
 #' The census. s1: the shipped Stage-1 table; s2b: the Stage-2b table.
 sigma_hierarchy_census <- function(s1, s2b, k = 3L, pole_c = 1) {
@@ -72,8 +81,14 @@ sigma_hierarchy_census <- function(s1, s2b, k = 3L, pole_c = 1) {
   med_g  <- cl[, .(sig_g = median(sigma), n_g = .N), by = good]
   pub <- if ("trim_reason" %in% names(s2b)) s2b[is.na(trim_reason)] else s2b
   if (!"sigma_source" %in% names(pub)) stop("the Stage-2b table has no sigma_source column (v0.10.1+)")
-  fbc <- unique(pub[sigma_source != "estimated", .(importer, good, sigma_source)], by = c("importer", "good"))
-  rows <- pub[sigma_source != "estimated", .N, by = .(importer, good)]
+  # (patch 0163) the cell's STAGE-1 label. Since v0.12.0 sigma_source reads "updated_*" on every
+  # profiled cell and the Stage-1 status is kept in sigma_source_stage1; `sigma_source != "estimated"`
+  # would file 99.9% of a v0.12.0 table under "fallback cells". On a table through v0.11.4 (no
+  # sigma_source_stage1 column) sigma_source is the Stage-1 label and the result is unchanged.
+  src <- pub[[sigma_stage1_label_column(pub)]]
+  fb_rows <- !is.na(src) & src != "estimated"
+  fbc <- unique(data.table(importer = pub$importer[fb_rows], good = pub$good[fb_rows], sigma_source = src[fb_rows]), by = c("importer", "good"))
+  rows <- data.table(importer = pub$importer[fb_rows], good = pub$good[fb_rows])[, .N, by = .(importer, good)]
   fbc <- rows[fbc, on = c("importer", "good")]
   fbc[, region := assign_regions(as.integer(importer))]
   fbc <- med_rg[fbc, on = c("region", "good")]; fbc <- med_g[fbc, on = "good"]
@@ -112,7 +127,8 @@ if (sys.nframe() == 0L) {
   .root <- normalizePath(file.path(.this_dir, ".."), mustWork = FALSE)
   for (f in c("utils_general.R", "region_map.R", "iteration_helpers.R")) source(file.path(.root, "R", f))
   sha <- function(p) { con <- file(p, "rb"); on.exit(close(con)); tolower(unclass(as.character(openssl::sha256(con)))) }
-  res <- sigma_hierarchy_census(readRDS(s1_path), readRDS(s2b_path), k = k)
+  s2b_tab <- readRDS(s2b_path); src_col <- sigma_stage1_label_column(s2b_tab)   # patch 0163
+  res <- sigma_hierarchy_census(readRDS(s1_path), s2b_tab, k = k); rm(s2b_tab)
   out <- list(meta = list(stage1 = s1_path, stage1_sha256 = sha(s1_path), stage2b = s2b_path, stage2b_sha256 = sha(s2b_path),
                           label = label, min_cells = k,
                           git_rev = tryCatch(system2("git", c("rev-parse", "--short", "HEAD"), stdout = TRUE, stderr = NULL)[1], error = function(e) NA_character_),
@@ -130,7 +146,8 @@ if (sys.nframe() == 0L) {
           sprintf("- Good-level medians (goods with >= %d clean cells): p10 %s, p25 %s, median %s, p75 %s, p90 %s.", k, f3(gq$p10), f3(gq$p25), f3(gq$p50), f3(gq$p75), f3(gq$p90)),
           sprintf("- Leave-one-out on the estimated cells, median |ln((sigma_pred - 1)/(sigma - 1))|: global %s, good %s, ladder %s (%.0f%% lower than global).",
                   f3(lo$err_global), f3(lo$err_good), f3(lo$err_ladder), 100 * (1 - lo$err_ladder / lo$err_global)),
-          sprintf("- Fallback cells in the published table: %s (%s rows). The ladder resolves them at %s.", fi(fb$cells), fi(fb$rows),
+          sprintf("- Cells without a usable Stage-1 sigma in the published table (read from `%s`): %s (%s rows). The ladder resolves them at %s.",
+                  src_col, fi(fb$cells), fi(fb$rows),
                   paste(sprintf("%s %s", names(fb$level_cells), fi(unlist(fb$level_cells))), collapse = ", ")),
           sprintf("- Their ladder sigma: p10 %s, p25 %s, median %s, p75 %s, p90 %s; it moves (sigma - 1) by more than 25%% from the global value on %s cells (%s rows).",
                   f3(fb$ladder_quantiles$p10), f3(fb$ladder_quantiles$p25), f3(fb$ladder_quantiles$p50), f3(fb$ladder_quantiles$p75), f3(fb$ladder_quantiles$p90),

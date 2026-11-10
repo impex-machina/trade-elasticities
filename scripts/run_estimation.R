@@ -462,6 +462,18 @@ if (opts[["stage"]] == "1") {
 #  STAGE 2a: REGIONAL GAMMA (fixed sigma)
 # ===========================================================================
 
+# (patch 0163) What each stage's summary file reports as its structural defaults
+# and starting value. Through patch 0162 both summaries were written from the
+# base `config`, i.e. build_config()'s placeholders (sigma_V 2.88, gamma_V 0.69:
+# Soderbery's Table 2 medians), which no Stage-2 pass uses -- the published
+# v0.12.0 summary says so beside a run whose sigma_V default was the level
+# sigma and whose gamma_V default was the median good-level prior. Each stage
+# that is ESTIMATED in this run replaces its entry with the config it ran
+# under (stage2_summary_cfg(), R/summary.R); a stage whose table is loaded from
+# a file reports "not recorded".
+summary_cfg_regional <- stage2_summary_cfg(config, NULL)
+summary_cfg_country  <- stage2_summary_cfg(config, NULL)
+
 if (should_run("2a", opts, paths)) {
   regional_file <- paths$regional_file
 
@@ -515,6 +527,7 @@ if (should_run("2a", opts, paths)) {
 
     regional_results <- estimate_all_fixed_sigma(
       config_2a, ncores = ncores, prepared_dt = dt_regional)
+    summary_cfg_regional <- stage2_summary_cfg(config, config_2a)   # patch 0163: the values this Stage 2a used
 
     # Plateau fallback.
     # B6 FIX (v0.3.0): three repairs to the replacement step —
@@ -593,7 +606,7 @@ if (nrow(regional_handoff) < nrow(regional_results))
               format(nrow(regional_handoff), big.mark = ","),
               format(nrow(regional_results) - nrow(regional_handoff), big.mark = ",")))
 regional_clean <- regional_handoff[!is.na(sigma) & !is.na(gamma) & gamma > 0]
-write_estimation_summary(regional_results, config, out_base_regional,
+write_estimation_summary(regional_results, summary_cfg_regional, out_base_regional,   # patch 0163
                          step1_results = NULL, scope = "regional")
 fwrite(regional_results, paste0(out_base_regional, "_fixed_sigma.csv"))
 cat(sprintf("  CSV: %s_fixed_sigma.csv\n\n", out_base_regional))
@@ -908,6 +921,10 @@ if (should_run("2b", opts, paths)) {
                   sprintf(" | updated_import %s | updated_import_shrunk %s | updated_level %s", format(ssc$updated_import, big.mark = ","),
                           format(ssc$updated_import_shrunk, big.mark = ","), format(ssc$updated_level, big.mark = ",")) else ""))
     saveRDS(finalize_saved_output(country_results), country_file)
+    # (patch 0163) the config the FINAL Stage-2b pass ran under: after the sigma
+    # update its sigma_V default is the level sigma and, under scope 2a2b, its
+    # gamma_V default and gamma start are the rebuilt priors' median.
+    summary_cfg_country <- stage2_summary_cfg(config, config_2b)
   }
 } else {
   # No Stage 2b run requested (e.g. --stage 2a) — done after Stage 2a.
@@ -921,7 +938,7 @@ if (should_run("2b", opts, paths)) {
 # ===========================================================================
 
 cat("\nSaving country summary...\n")
-write_estimation_summary(country_results, config, out_base_country,
+write_estimation_summary(country_results, summary_cfg_country, out_base_country,   # patch 0163
                          step1_results = NULL, scope = "country")
 fwrite(country_results, paste0(out_base_country, "_fixed_sigma.csv"))
 cat(sprintf("  CSV: %s_fixed_sigma.csv\n", out_base_country))

@@ -74,9 +74,18 @@ save_table(summ, "01_pillar1_empirical_overview")
 sig_pub <- median(s2$sigma, na.rm = TRUE)
 fb_note <- ""
 if ("sigma_source" %in% names(s2)) {
-  fb <- !(s2$sigma_source %in% "estimated")
-  if (any(fb)) fb_note <- sprintf(" [the fallback sigma %.4f is on %.1f%% of rows; median over rows with a cell-specific sigma %.3f]",
-                                  s2$sigma[which(fb)[1]], 100 * mean(fb), median(s2$sigma[!fb], na.rm = TRUE))
+  # (patch 0163) the rows whose sigma is the one level / fallback value, by label
+  # (sigma_is_cell_specific(), R/utils_general.R). Through patch 0162 this read
+  # `sigma_source != "estimated"`: on a v0.12.0 table, where a cell's own sigma is
+  # labelled "updated_import_shrunk", that is 99.9% of rows, and the line reported
+  # the first such row's sigma -- some cell's update -- as "the fallback sigma".
+  own <- sigma_is_cell_specific(s2$sigma_source)
+  if (any(!own)) {
+    lv <- sort(unique(signif(s2$sigma[!own], 10)))
+    fb_note <- sprintf(" [%.1f%% of rows carry the level / fallback sigma (%s); median over rows with a cell-specific sigma %s]",
+                       100 * mean(!own), paste(sprintf("%.4f", utils::head(lv, 3L)), collapse = " / "),
+                       if (any(own)) sprintf("%.3f", median(s2$sigma[own], na.rm = TRUE)) else "n/a")
+  }
 }
 message(sprintf(paste0("01_pillar1_empirical_overview.R: published sigma median (Stage-2b rows, the README's headline) = %.3f%s; ",
                        "Stage-1 sigma median over cells with an estimate = %.3f; gamma median = %.3f (directly estimated rows %.3f)"),

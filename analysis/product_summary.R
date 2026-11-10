@@ -15,7 +15,8 @@
 #   opt_tariff_median                   median over cells of the cell's opt_tariff
 #   opt_tariff_total_median             (since v0.11.3) the same for opt_tariff_total
 #   sigma_median                        median over cells of the published sigma
-#   share_cells_own_sigma               cells whose sigma is their own estimate
+#   share_cells_own_sigma               cells whose sigma is their own value rather than the one
+#                                       level / fallback (sigma_is_cell_specific(), patch 0163)
 # (patch 0128) No interval columns. Patch 0127 bootstrapped the product median
 # over importers; on the shipped table those intervals were about +-0.5% wide
 # (median ln(hi / lo) 0.011) because every importer's gamma for a product sits
@@ -32,6 +33,16 @@
 # sigma differs little across products: one global value (the fallback, 2.47)
 # predicts a cell's other-period sigma better than the cell's own estimate
 # (docs/results/sigma_eb_period_census_v0110.md).
+# (patch 0163) share_cells_own_sigma tested `sigma_source == "estimated"`. Since
+# v0.12.0 that label is left on the few cells that keep a Stage-1 sigma (cells
+# with no fitted exporter), while a cell's own sigma is the shrunk Stage-2
+# update ("updated_import_shrunk"): the v0.12.0 product table therefore carries
+# a share of 0 for nearly every product (median 0, p90 0.014) although 97% of
+# rows have a cell-specific sigma. The column now counts the cells whose label
+# says the sigma is the cell's own -- the update or a Stage-1 estimate -- and
+# not the level ("updated_level") or the fallback ("fallback_*"); on a table
+# through v0.11.4 the two definitions coincide. The published v0.12.0 file
+# keeps the old values until the table is rebuilt and re-released.
 #
 # Before the table is published, its reproducibility is measured on the 2%
 # product subsample runs of the shipped configuration (patch 0119): the
@@ -64,7 +75,7 @@ product_summary <- function(s2b) {
   has_src <- "sigma_source" %in% names(x)
   has_tot <- "opt_tariff_total" %in% names(x)                              # patch 0139
   cells <- x[, .(opt_tariff = opt_tariff[1L], opt_tariff_total = if (has_tot) opt_tariff_total[1L] else NA_real_, sigma = sigma[1L],
-                 own_sigma = if (has_src) sigma_source[1L] == "estimated" else NA), by = .(good, importer)]
+                 own_sigma = if (has_src) sigma_is_cell_specific(sigma_source[1L]) else NA), by = .(good, importer)]   # patch 0163
   out <- x[, .(n_cells = data.table::uniqueN(importer), n_rows = .N, n_rows_estimated = sum(est),
                trade = sum(avg_trade, na.rm = TRUE)), by = good]
   gs <- x[est == TRUE & is.finite(gamma) & gamma > 0, .(gamma_median = stats::median(gamma)), by = good]
@@ -151,7 +162,7 @@ if (sys.nframe() == 0L) {
     sprintf("- product median gamma: %s", qd(dist$gamma_median)),
     sprintf("- product median opt_tariff: %s", qd(dist$opt_tariff_median)),
     sprintf("- product median sigma: %s", qd(dist$sigma_median)),
-    sprintf("- share of a product's cells with their own sigma: %s", qd(dist$share_cells_own_sigma)), "",
+    sprintf("- share of a product's cells with their own sigma (the update or a Stage-1 estimate, not the level / fallback): %s", qd(dist$share_cells_own_sigma)), "",
     "## Reproducibility across products", "",
     "Spearman correlation across products (95% bootstrap interval over products), and the level gap: how far a product's median moves between the two halves, |median_a / median_b - 1| at the median and the 90th percentile across products.", "",
     "| split | products | median gamma: Spearman | gap p50 / p90 | median opt_tariff: Spearman | gap p50 / p90 |", "|---|---|---|---|---|---|",

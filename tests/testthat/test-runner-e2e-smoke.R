@@ -76,6 +76,22 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   expect_length(list.files(td, pattern = "^baci_.*_(stage2_|fs_checkpoint)"), 0L)
   expect_equal(nrow(data.table::fread(f$passes)), 2L)
 
+  # (patch 0163) the summary's CONFIGURATION block reports what the final Stage-2b pass ran under -- the level
+  # sigma as the sigma_V default, the median good-level prior as the gamma_V default and gamma start -- not
+  # build_config()'s placeholders (sigma_V=2.880, gamma_V=0.690 in every summary through v0.12.0)
+  stxt <- paste(readLines(f$s2b_txt, warn = FALSE), collapse = "\n")
+  ulog <- data.table::fread(paste0(pre, "_country_hs4_sigma_update_passes.csv"))
+  expect_false(grepl("sigma_V=2.880, gamma_V=0.690", stxt, fixed = TRUE))
+  expect_match(stxt, sprintf("Structural defaults:  sigma_V=%.3f, gamma_V=%.3f", ulog$level_sigma[1L], ulog$prior_median_before[1L]), fixed = TRUE)
+  expect_match(stxt, sprintf("Starting value:       gamma=%.3f", ulog$prior_median_before[1L]), fixed = TRUE)
+  sprov <- readRDS(f$s2b_sum)$provenance
+  expect_equal(sprov$sigma_V_default, ulog$level_sigma[1L], tolerance = 1e-9)
+  expect_equal(sprov$gamma_V_default, ulog$prior_median_before[1L], tolerance = 1e-9)
+  rtxt2 <- paste(readLines(paste0(pre, "_regional_hs4_summary.txt"), warn = FALSE), collapse = "\n")
+  expect_match(rtxt2, "Structural defaults:  sigma_V=", fixed = TRUE)
+  expect_false(grepl("not recorded", rtxt2, fixed = TRUE))          # Stage 2a was estimated in this run
+  expect_false(grepl("sigma_V=2.880, gamma_V=0.690", rtxt2, fixed = TRUE))
+
   s2b <- data.table::as.data.table(readRDS(f$s2b))
   expect_setequal(names(s2b), c("importer", "exporter", "good", "sigma", "gamma", "gamma_se", "gamma_se_total",
                                 "sigma_robust", "sigma_se", "dgamma_dsigma", "gamma_se_status", "gamma_exposure",
@@ -146,6 +162,10 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
     expect_equal(pr$status, 0L, info = paste(utils::tail(pr$out, 20), collapse = "\n"))
     ptab <- data.table::fread(file.path(work, prod_path), colClasses = list(character = "good"))
     expect_identical(nrow(ptab), data.table::uniqueN(pub$good))
+    # (patch 0163) a cell's own sigma is the update: the share is the share of such cells, not ~0
+    own <- pub[, .(own = ug$sigma_is_cell_specific(sigma_source[1L])), by = .(good, importer)][, .(share = mean(own)), by = good]
+    expect_equal(ptab$share_cells_own_sigma, own$share[match(ptab$good, own$good)])
+    expect_gt(max(ptab$share_cells_own_sigma), 0.5)
   }
   # (patch 0138) since v0.11.2 the manifest also lists Parquet copies: write them
   # with the release's own tool (which checks each copy against its source)
@@ -169,6 +189,12 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
 
   ma <- .e2e_run(file.path("analysis", "master.R"), wd = work)
   expect_equal(ma$status, 0L, info = paste(utils::tail(ma$out, 40), collapse = "\n"))
+  # (patch 0163) pillar 1's headline line does not call a cell's updated sigma "the fallback"
+  mlog <- paste(ma$out, collapse = "\n")
+  expect_match(mlog, "published sigma median (Stage-2b rows, the README's headline)", fixed = TRUE)
+  expect_false(grepl("the fallback sigma [0-9.]+ is on", mlog))
+  lvl_share <- mean(!ug$sigma_is_cell_specific(pub$sigma_source))
+  if (lvl_share > 0) expect_match(mlog, sprintf("%.1f%% of rows carry the level / fallback sigma", 100 * lvl_share), fixed = TRUE)
   s1j  <- jsonlite::fromJSON(file.path(work, "results", "stage1_summary.json"))
   s2bj <- jsonlite::fromJSON(file.path(work, "results", "stage2b_summary.json"))
   expect_equal(s1j$n_cells, nrow(readRDS(f$s1)))
@@ -188,6 +214,10 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   txt <- paste(readLines(rd, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
   expect_match(txt, sprintf("Outputs cover %d HS4 products", data.table::uniqueN(pub$good)), fixed = TRUE)
   expect_false(grepl("{{", txt, fixed = TRUE))
+  # (patch 0163) the build stops on a table row GitHub would cut off (status 3); it did not, and the README
+  # says the standard-error columns' state from the JSON this run wrote
+  expect_match(txt, "| `gamma_exposure` | Number of moment rows that involve the row's", fixed = TRUE)
+  if (identical(as.numeric(s2bj$sigma_robust$robust), 0)) expect_match(txt, "so it is `NA` throughout", fixed = TRUE)
   rtxt <- paste(readLines(rec, warn = FALSE, encoding = "UTF-8"), collapse = "\n")   # patch 0143: the record renders too
   expect_match(rtxt, "the long-form record", fixed = TRUE)
   expect_false(grepl("{{", rtxt, fixed = TRUE))
