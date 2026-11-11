@@ -72,9 +72,10 @@ and v0.12.1 ships the file rebuilt under it. (3) The v0.12.0 Stage-2b summary fi
 (`…_summary.txt` / `.rds`) print `sigma_V=2.880, gamma_V=0.690` and starting values
 2.880 / 0.690 in their CONFIGURATION block. Those are the library's placeholders, not values
 a Stage-2 pass used: the final pass's σ_V default was the level σ (2.678) and its γ_V default
-and γ starting value the median good-level prior (`prior_median_before` in
-`…_sigma_update_passes.csv`). The runner writes each stage's own values since patch 0163,
-and v0.12.1 ships the two files rebuilt with the final pass's values.
+and γ starting value the median good-level prior (a number the v0.12.0 pass log does not
+record: its `prior_median_before` column arrived with patch 0161). The runner writes each
+stage's own values since patch 0163, and v0.12.1 ships the two files rebuilt with the level σ
+and with the two γ values printed as not recorded.
 (4) `gamma_exposure` is the number of moment rows that involve the row's γ — 1 or 2 for a
 non-reference exporter — not the number of exporters in the cell, as the README's column
 table said. (5) Since v0.12.0 the README's `sigma` row held two unescaped `|` inside its
@@ -155,9 +156,11 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > reproducibility census, which compares product medians of γ and `opt_tariff`
 > (`docs/results/product_summary_census.md`). (2) The Stage-2b summary files
 > (`…_summary.rds` / `.txt`): their CONFIGURATION block printed the library's placeholders
-> (σ_V 2.880, γ_V 0.690, and those as starting values); it now gives what the final Stage-2b pass
-> ran under — the level σ (2.678) as σ_V and the median good-level prior as γ_V and as the γ
-> starting value (`scripts/rebuild_stage2b_summary.R --passes`); their tables are unchanged. The
+> (σ_V 2.880, γ_V 0.690, and those as starting values); it now gives the level σ (2.678), the
+> σ_V default the final Stage-2b pass ran under, and prints the γ_V default and the γ starting
+> value as "not recorded": both were the median good-level prior, but the v0.12.0 pass log
+> predates the column that records it (patch 0161), so no shipped file holds the number
+> (`scripts/rebuild_stage2b_summary.R --passes`); their tables are unchanged. The
 > v0.12.0 entry below again carries its data revision, which patch 0162's card edit had
 > reverted to a placeholder. Data revision: `<fill>`. **v0.12.0 remains available pinned at
 > revision `73cf5702564820d35260a87974aed2ceed9c4f45`.**

@@ -1,11 +1,15 @@
 {
   "meta": {
-    "stage2b": "data\\derived\\stage2b\\baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
-    "table": "data\\derived\\product\\baci_hs92_v202601_elast_hs4_product_summary.csv",
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "table": "data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv",
     "products": 1240,
-    "git_rev": "2eae5c4",
-    "timestamp": "2026-11-08 01:47:56 EST",
-    "minutes": 0.3
+    "git_rev": "19a0fe5",
+    "timestamp": "2026-11-10 22:01:11 EST",
+    "minutes": 0.3,
+    "reproducibility_carried_from": {
+      "timestamp": "2026-11-08 01:47:56 EST",
+      "git_rev": "2eae5c4"
+    }
   },
   "reading": "publish",
   "distribution": {
@@ -31,11 +35,11 @@
       "p90": 2.75873294608498
     },
     "share_cells_own_sigma": {
-      "p10": 0,
-      "p25": 0,
-      "p50": 0,
-      "p75": 0.00613496932515337,
-      "p90": 0.01360853432282
+      "p10": 0.666666666666667,
+      "p25": 0.775391381849182,
+      "p50": 0.8743961352657,
+      "p75": 0.933407079646018,
+      "p90": 0.960715777482438
     }
   },
   "odd_even": {
