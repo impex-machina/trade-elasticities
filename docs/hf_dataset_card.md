@@ -162,7 +162,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > predates the column that records it (patch 0161), so no shipped file holds the number
 > (`scripts/rebuild_stage2b_summary.R --passes`); their tables are unchanged. The
 > v0.12.0 entry below again carries its data revision, which patch 0162's card edit had
-> reverted to a placeholder. Data revision: `<fill>`. **v0.12.0 remains available pinned at
+> reverted to a placeholder. Data revision: `4c20c839c20ae0457c6f44146278a97fa1f3b29c`. **v0.12.0 remains available pinned at
 > revision `73cf5702564820d35260a87974aed2ceed9c4f45`.**
 >
 > **v0.12.0 (2026-11-08).** One Stage-2b re-estimation on the v0.11.4 Stage-1 and
