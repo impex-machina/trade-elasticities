@@ -68,12 +68,13 @@ standard error of any kind. `sigma_se` and `dgamma_dsigma` are `NA` on every upd
 `estimated` — since v0.12.0 the few cells that keep a Stage-1 σ — and is 0 for most products
 (median 0, 90th percentile 0.014), although 97.0% of rows carry a σ of their own cell;
 `analysis/product_summary.R` counts the cells whose σ is their own value since patch 0163,
-and the file is corrected at the next data release. (3) The v0.12.0 Stage-2b summary files
+and v0.12.1 ships the file rebuilt under it. (3) The v0.12.0 Stage-2b summary files
 (`…_summary.txt` / `.rds`) print `sigma_V=2.880, gamma_V=0.690` and starting values
 2.880 / 0.690 in their CONFIGURATION block. Those are the library's placeholders, not values
 a Stage-2 pass used: the final pass's σ_V default was the level σ (2.678) and its γ_V default
 and γ starting value the median good-level prior (`prior_median_before` in
-`…_sigma_update_passes.csv`). The runner writes each stage's own values since patch 0163.
+`…_sigma_update_passes.csv`). The runner writes each stage's own values since patch 0163,
+and v0.12.1 ships the two files rebuilt with the final pass's values.
 (4) `gamma_exposure` is the number of moment rows that involve the row's γ — 1 or 2 for a
 non-reference exporter — not the number of exporters in the cell, as the README's column
 table said. (5) Since v0.12.0 the README's `sigma` row held two unescaped `|` inside its
@@ -144,6 +145,23 @@ does not do better (patch 0129, `docs/results/routing_ab.md`): less biased but n
 known truth, and worse at predicting the other period's σ on real data; the route stays,
 and switching would have moved the fallback σ only from 2.473 to 2.486.
 
+> **v0.12.1 (2026-11-09).** No re-estimation: the Stage-1, Stage-2a and Stage-2b tables and the
+> update's pass log are unchanged. Two files that the v0.12.0 train wrote with code from before
+> the σ update are rebuilt from them (patches 0163–0164). (1) The product table (CSV and
+> Parquet): `share_cells_own_sigma` counted only the cells labelled `estimated` — since v0.12.0
+> the few cells that keep a Stage-1 σ — and was 0 for most products (median 0, 90th percentile
+> 0.014); it now counts the cells whose σ is their own value, the Stage-2 update or a Stage-1
+> estimate, rather than the level. Every other column is unchanged, and so is the table's
+> reproducibility census, which compares product medians of γ and `opt_tariff`
+> (`docs/results/product_summary_census.md`). (2) The Stage-2b summary files
+> (`…_summary.rds` / `.txt`): their CONFIGURATION block printed the library's placeholders
+> (σ_V 2.880, γ_V 0.690, and those as starting values); it now gives what the final Stage-2b pass
+> ran under — the level σ (2.678) as σ_V and the median good-level prior as γ_V and as the γ
+> starting value (`scripts/rebuild_stage2b_summary.R --passes`); their tables are unchanged. The
+> v0.12.0 entry below again carries its data revision, which patch 0162's card edit had
+> reverted to a placeholder. Data revision: `<fill>`. **v0.12.0 remains available pinned at
+> revision `73cf5702564820d35260a87974aed2ceed9c4f45`.**
+>
 > **v0.12.0 (2026-11-08).** One Stage-2b re-estimation on the v0.11.4 Stage-1 and
 > Stage-2a tables, both loaded unchanged (patches 0150–0158). The published σ is now the
 > Stage-2 update: after the three γ_V passes — which reproduce v0.11.4's table exactly
@@ -185,7 +203,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > the level, B and b_full) is published beside the table. Release gate PASS under the
 > update's rules (`docs/results/gate_v0120.md`). Patch 0150 fixed a silent failure mode on
 > the box: a killed forked worker had shortened the tables with only a warning; both forked
-> paths now stop. Data revision: `<fill>`. **v0.11.4 remains available
+> paths now stop. Data revision: `73cf5702564820d35260a87974aed2ceed9c4f45`. **v0.11.4 remains available
 > pinned at revision `3397d5e60f1ea8a9c62b0e2268581945bc9a042b`.**
 >
 > **v0.11.4 (2026-10-26).** No re-estimation; every table is unchanged. The two Stage-2b summary

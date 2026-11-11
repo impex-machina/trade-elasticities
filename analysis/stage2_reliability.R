@@ -23,6 +23,7 @@
 # Usage:
 #   Rscript analysis/stage2_reliability.R --runs runs.csv --stage2a <regional rds> \
 #       [--out results/stage2_reliability.json] [--md docs/results/stage2_reliability.md]
+#       (patch 0164: with --md and no --out, the JSON is results/<the md's name>.json)
 #       [--boot-goods 2000 --boot-seed 20261015 --base v091_base]
 # runs.csv columns: config (label shared by a configuration's passes), split
 # (full | A | B), path (the 2b rds). Extra columns are carried into the tables.
@@ -136,11 +137,24 @@ reliability_report <- function(runs, priors) {
   c(hdr, sep, rows)
 }
 
+#' (patch 0164) The JSON written beside a record: results/<the record's name>.json
+#' when --md is given without --out. Through patch 0163 --out defaulted to
+#' results/stage2_reliability.json whatever --md said, so the runs that passed
+#' only --md (ship, D_tier1, D_other, Q) each overwrote that one file, the last
+#' (Q's) was committed by accident in 1f6afed and renamed in 6db9b2b, and the
+#' other three records have no JSON.
+reliability_default_out <- function(md = NULL) {
+  if (is.null(md) || !nzchar(md)) return("results/stage2_reliability.json")
+  file.path("results", sub("\\.md$", ".json", basename(md)))
+}
+
 if (sys.nframe() == 0L && !exists("RELIABILITY_NO_MAIN")) {
   args <- commandArgs(trailingOnly = TRUE)
   get_arg <- function(flag, default = NULL) { i <- match(flag, args); if (is.na(i) || i == length(args)) default else args[i + 1L] }
   runs_path <- get_arg("--runs"); s2a_path <- get_arg("--stage2a")
-  out_json <- get_arg("--out", "results/stage2_reliability.json"); out_md <- get_arg("--md", "docs/results/stage2_reliability.md")
+  md_arg <- get_arg("--md")                                                       # patch 0164
+  out_md <- if (is.null(md_arg)) "docs/results/stage2_reliability.md" else md_arg
+  out_json <- get_arg("--out", reliability_default_out(md_arg))
   if (is.null(runs_path) || is.null(s2a_path)) stop("--runs and --stage2a are required")
   runs <- fread(runs_path); s2a <- readRDS(s2a_path); setDT(s2a); if ("trim_reason" %in% names(s2a)) s2a <- s2a[is.na(trim_reason)]; s2a[, good := as.character(good)]
   priors <- s2a[!is.na(sigma) & !is.na(gamma) & gamma > 0, .(ln_gamma_prior = median(log(gamma))), by = good]

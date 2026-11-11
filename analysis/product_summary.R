@@ -57,9 +57,18 @@
 # numbers in hand). The subsample has ~25 products, so each correlation
 # carries a bootstrap interval over products.
 #
+# (patch 0164) --carry-reproducibility rebuilds the table and the distribution
+# block and carries the odd/even and early/late blocks (and so the reading)
+# from the existing --json census unchanged. For release v0.12.1: the table's
+# share_cells_own_sigma changed definition (patch 0163), while the
+# reproducibility rows compare product medians of gamma and opt_tariff, which
+# that change does not touch, and their input tables (the 2% parity halves and
+# windows of the v0.12.0 train) are no longer on disk. It refuses --odd /
+# --even / --early / --late, and a census file without an odd/even block.
+#
 # Usage (repo root; local; ~1 min on the full table):
 #   Rscript analysis/product_summary.R [--stage2b S2B.rds] [--odd O.rds --even E.rds]
-#       [--early A.rds --late B.rds]
+#       [--early A.rds --late B.rds] [--carry-reproducibility]
 #       [--table data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv]
 #       [--json results/product_summary_census.json] [--md docs/results/product_summary_census.md]
 # ============================================================================
@@ -126,6 +135,15 @@ if (sys.nframe() == 0L) {
   tab_p <- get_arg("--table", "data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv")
   json <- get_arg("--json", "results/product_summary_census.json"); md <- get_arg("--md", "docs/results/product_summary_census.md")
   t0 <- Sys.time()
+  carry <- "--carry-reproducibility" %in% args                                        # patch 0164
+  carried <- NULL
+  if (carry) {
+    if (any(c("--odd", "--even", "--early", "--late") %in% args))
+      stop("--carry-reproducibility carries the census's reproducibility blocks; it does not take --odd/--even/--early/--late")
+    if (!file.exists(json)) stop("--carry-reproducibility: no census to carry from at ", json)
+    carried <- jsonlite::fromJSON(json, simplifyVector = FALSE)
+    if (is.null(carried$odd_even) || !length(carried$odd_even)) stop("--carry-reproducibility: ", json, " has no odd/even block to carry")
+  }
   tab <- product_summary(readRDS(s2p))
   dir.create(dirname(tab_p), recursive = TRUE, showWarnings = FALSE)
   data.table::fwrite(tab, tab_p)
@@ -136,10 +154,15 @@ if (sys.nframe() == 0L) {
     list(paths = c(pa, pb), rep = product_reproducibility(product_summary(readRDS(pa)), product_summary(readRDS(pb))))
   }
   oe <- pair("--odd", "--even"); pe <- pair("--early", "--late")
+  if (carry) {                                                                         # patch 0164
+    from_json <- function(b) if (is.null(b) || !length(b)) NULL else list(paths = unlist(b$paths), rep = b[setdiff(names(b), "paths")])
+    oe <- from_json(carried$odd_even); pe <- from_json(carried$early_late)
+  }
   reading <- product_reading(if (is.null(oe)) NULL else oe$rep)
   rev <- tryCatch(system2("git", c("rev-parse", "--short", "HEAD"), stdout = TRUE, stderr = FALSE)[1], error = function(e) NA_character_)
   meta <- list(stage2b = s2p, table = tab_p, products = nrow(tab), git_rev = rev,
                timestamp = format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), minutes = round(as.numeric(difftime(Sys.time(), t0, units = "mins")), 1))
+  if (carry) meta$reproducibility_carried_from <- list(timestamp = carried$meta$timestamp, git_rev = carried$meta$git_rev)   # patch 0164
   q <- function(v) as.list(stats::setNames(stats::quantile(v, c(0.1, 0.25, 0.5, 0.75, 0.9), na.rm = TRUE, names = FALSE), c("p10", "p25", "p50", "p75", "p90")))
   dist <- list(gamma_median = q(tab$gamma_median), opt_tariff_median = q(tab$opt_tariff_median), sigma_median = q(tab$sigma_median),
                share_cells_own_sigma = q(tab$share_cells_own_sigma))
@@ -158,6 +181,8 @@ if (sys.nframe() == 0L) {
   writeLines(enc2utf8(c("# Product-level companion table (patches 0127-0128)", "",
     sprintf("Built from `%s` (%d products); written to `%s`; rev %s, %s.",
             s2p, nrow(tab), tab_p, rev, meta$timestamp), "",
+    if (carry) c(sprintf("The reproducibility rows are carried unchanged from the census of %s (rev %s) (patch 0164): they compare product medians of gamma and opt_tariff, which this rebuild does not change, and their input tables are no longer on disk.",
+                         carried$meta$timestamp %||% "an unrecorded date", carried$meta$git_rev %||% "unrecorded"), "") else character(0),
     "## Distribution across products (p10 / p25 / p50 / p75 / p90)", "",
     sprintf("- product median gamma: %s", qd(dist$gamma_median)),
     sprintf("- product median opt_tariff: %s", qd(dist$opt_tariff_median)),
