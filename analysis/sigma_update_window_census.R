@@ -44,6 +44,18 @@
 # shrinkage RULE above has no significance criterion and is not changed: this
 # block only says how sure the sign of the gain is.
 #
+# Reliability by cell size (patch 0165; rule fixed before its numbers). The
+# known-truth grid shows the update's bias falling with the number of import
+# rows J (+0.106 at J <= 6 against +0.014 at J 10-12, docs/results/
+# known_truth_eq11.md), and the profile is a J-row regression, so one b for
+# every cell may over-shrink large cells and under-shrink small ones. J is a
+# cell's import rows in the profile, the smaller of its two windows' values; the
+# common cells are split into terciles of J and a and b are fitted within each
+# tercile as in shrink_pair() (same two folds, both directions). Shrinkage by
+# cell size ADVANCES if its cross-fitted median |diff| is lower than the single
+# b's on the same cells AND the goods-bootstrap 95% interval of that gain lies
+# above zero; otherwise one b stays.
+#
 # Usage (from the repo root; the two --out-dir's of the window runs):
 #   Rscript analysis/sigma_update_window_census.R --early <out-dir-1995-2009> --late <out-dir-2010-2024> [--md docs/results/sigma_update_window_census.md]
 # Each window run: scripts/run_estimation.R --data <BACI> --out-dir <dir> --product-sample 0.02 --product-seed <s>
@@ -196,6 +208,48 @@ cat(sprintf("  goods bootstrap (%d goods, %d draws; both directions of a cell ke
 robust <- isTRUE(gb$lo > 0) && all(sens[, "gain"] > 0)
 cat("  Reading: the gain", if (robust) "is robust (goods-bootstrap CI above zero, positive under every fold seed)" else "is NOT robust (goods-bootstrap CI includes zero, or negative under some fold seed)", "\n")
 
+# ---- (patch 0165) the reliability ratio by cell size: rule in the header ----
+shrink_pair_bins <- function(x_e, x_l, bin, seed) {
+  n <- length(x_e); set.seed(seed); fold <- sample(rep(1:2, length.out = n))
+  le <- lr(x_e); ll <- lr(x_l); d_one <- numeric(0); d_bin <- numeric(0); bb <- list()
+  for (dir in c("early->late", "late->early")) {
+    x <- if (dir == "early->late") le else ll; y <- if (dir == "early->late") ll else le
+    p_one <- rep(NA_real_, n); p_bin <- rep(NA_real_, n)
+    for (f in 1:2) {
+      tr <- fold == f; te <- !tr
+      b <- unname(coef(lm(y[tr] ~ x[tr]))[2]); p_one[te] <- mean(y[tr]) - b * mean(x[tr]) + b * x[te]
+      for (k in sort(unique(bin))) {
+        trk <- tr & bin == k; tek <- te & bin == k
+        if (sum(trk) < 3L || !any(tek)) { p_bin[tek] <- p_one[tek]; next }
+        bk <- unname(coef(lm(y[trk] ~ x[trk]))[2]); p_bin[tek] <- mean(y[trk]) - bk * mean(x[trk]) + bk * x[tek]
+        bb[[length(bb) + 1L]] <- data.table(bin = k, b = bk)
+      }
+    }
+    d_one <- c(d_one, abs(y - p_one)); d_bin <- c(d_bin, abs(y - p_bin))
+  }
+  list(d_one = d_one, d_bin = d_bin, b_bin = if (length(bb)) rbindlist(bb)[, .(b = mean(b)), by = bin] else data.table(bin = integer(), b = numeric()))
+}
+jcol <- function(W) if (!is.null(W$prof) && "J" %in% names(W$prof)) unique(W$prof[, .(importer = as.character(importer), good = as.character(good), J)], by = c("importer", "good")) else NULL
+je <- jcol(E); jl <- jcol(L); byj <- NULL
+if (!is.null(je) && !is.null(jl)) {
+  cuj <- merge(merge(cu, je, by = c("importer", "good")), jl, by = c("importer", "good"), suffixes = c("_e", "_l"))
+  cuj <- cuj[is.finite(J_e) & is.finite(J_l)][, J := pmin(J_e, J_l)]
+  if (nrow(cuj) >= 30L) {
+    cuts <- unique(stats::quantile(cuj$J, c(1 / 3, 2 / 3), names = FALSE, type = 1))
+    cuj[, jbin := findInterval(J, cuts, left.open = TRUE) + 1L]
+    pb <- shrink_pair_bins(cuj$sigma_e, cuj$sigma_l, cuj$jbin, 20260926L)
+    gbj <- paired_gain_cluster_boot(pb$d_one, pb$d_bin, cluster = rep(cuj$good, 2L), B = 2000L, seed = 20261015L)
+    ranges <- merge(cuj[, .(cells = .N, J_min = min(J), J_max = max(J)), by = .(bin = jbin)], pb$b_bin, by = "bin", all.x = TRUE)[order(bin)]
+    adv_j <- isTRUE(gbj$gain > 0) && isTRUE(gbj$lo > 0)
+    byj <- list(ranges = ranges, gain = gbj, advances = adv_j)
+    cat(sprintf("\n=== reliability by cell size (patch 0165): %d common cells with J in both windows, terciles of min(J_early, J_late) ===\n", nrow(cuj)))
+    print(ranges[, .(tercile = bin, cells, J = sprintf("%d-%d", J_min, J_max), b = round(b, 3))])
+    cat(sprintf("  gain of tercile-specific b over the single b in median |diff|: %.4f | goods bootstrap (%d goods) 95%% CI [%.4f, %.4f], %.1f%% of draws <= 0\n",
+                gbj$gain, gbj$clusters, gbj$lo, gbj$hi, 100 * gbj$share_le_0))
+    cat("  Reading (rule, patch 0165):", if (adv_j) "ADVANCES: shrinkage by cell size beats one b out of sample, and the goods interval lies above zero" else "does not advance: one b stays", "\n")
+  }
+}
+
 if (nzchar(opt$md)) {
   f <- function(x) sprintf("%.3f", x)
   lines <- c("# The sigma update across windows (patch 0153)", "",
@@ -214,5 +268,11 @@ if (nzchar(opt$md)) {
              sprintf("Robustness of the shrinkage gain (updated sigma, all common cells): gain over the level predictor %.4f in median |diff|; goods bootstrap (%d goods, both directions of a cell kept together) 95%% CI [%.4f, %.4f], %.1f%% of draws <= 0; the bootstrap over cell-directions used through patch 0162, which treats the two directions of a cell and the cells of a good as independent, [%.4f, %.4f]; shrunk sigma closer in %.1f%% of cell-directions; over 10 fold seeds b %.3f-%.3f, gain %.4f-%.4f (negative in %d of 10). **%s** (read on the goods interval since patch 0163).",
                      gain, gb$clusters, gb$lo, gb$hi, 100 * gb$share_le_0, quantile(boot, 0.025), quantile(boot, 0.975), 100 * win, min(sens[, "b"]), max(sens[, "b"]), min(sens[, "gain"]), max(sens[, "gain"]), sum(sens[, "gain"] < 0),
                      if (robust) "Robust" else "Not robust"))
+  if (!is.null(byj)) lines <- c(lines, "", "Reliability by cell size (patch 0165; terciles of the smaller of a cell's two J):", "",
+                                "| tercile | cells | J | b |", "|---|---|---|---|",
+                                sprintf("| %d | %d | %d-%d | %s |", byj$ranges$bin, byj$ranges$cells, byj$ranges$J_min, byj$ranges$J_max, f(byj$ranges$b)), "",
+                                sprintf("Gain of tercile-specific b over one b in median |diff|: %.4f, goods bootstrap (%d goods) 95%% CI [%.4f, %.4f], %.1f%% of draws <= 0. **Reading (rule fixed in patch 0165): %s.**",
+                                        byj$gain$gain, byj$gain$clusters, byj$gain$lo, byj$gain$hi, 100 * byj$gain$share_le_0,
+                                        if (byj$advances) "shrinkage by cell size advances" else "one b stays"))
   writeLines(lines, opt$md); cat("Written:", opt$md, "\n")
 }

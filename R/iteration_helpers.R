@@ -405,6 +405,29 @@ apply_sigma_edge_se_rule <- function(dt, stage1) {
 #' iteration (patch 0086): |d ln gamma| on Tier-1 rows directly estimated and
 #' converged in both passes, the rows the iteration touches.
 #' @return named numeric: n, p50, p90, p99, max, share_lt_1e2.
+#' (patch 0165) How far a gamma_V refresh pass moves the table: |d ln gamma| over the
+#' rows directly estimated, converged and published in both tables (every tier but
+#' 3, not only Tier 1 as gamma_v_step() reads), the share of them that moved by more
+#' than 1%, and the share of cells whose opt_tariff moved by more than 1%.
+refresh_step <- function(prev, cur) {
+  key <- c("importer", "exporter", "good")
+  pick <- function(x) {
+    y <- x[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0 & is_published_row(x), c(key, "gamma"), with = FALSE]
+    for (k in key) y[[k]] <- as.character(y[[k]])
+    y
+  }
+  m <- merge(pick(prev), pick(cur), by = key, suffixes = c(".a", ".b"))
+  d <- abs(log(m$gamma.b) - log(m$gamma.a))
+  cell <- function(x) { y <- unique(x[is_published_row(x) & is.finite(opt_tariff) & opt_tariff > 0, .(importer = as.character(importer), good = as.character(good), opt_tariff)],
+                                    by = c("importer", "good")); y }
+  tm <- merge(cell(prev), cell(cur), by = c("importer", "good"), suffixes = c(".a", ".b"))
+  dt <- abs(log(tm$opt_tariff.b) - log(tm$opt_tariff.a))
+  q <- function(v, p) if (length(v)) unname(stats::quantile(v, p)) else NA_real_
+  list(rows = nrow(m), p50 = q(d, .5), p90 = q(d, .9), p99 = q(d, .99), max = if (length(d)) max(d) else NA_real_,
+       share_rows_gt_1pct = if (length(d)) mean(d > log(1.01)) else NA_real_,
+       cells = nrow(tm), share_cells_tariff_gt_1pct = if (length(dt)) mean(dt > log(1.01)) else NA_real_, tariff_p50 = q(dt, .5))
+}
+
 gamma_v_step <- function(prev, cur) {
   key <- c("importer", "exporter", "good")
   pick <- function(x) {

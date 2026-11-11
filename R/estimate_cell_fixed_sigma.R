@@ -613,8 +613,12 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   wt_imp_vec <- compute_exporter_weights(dt_nonref, exporter_order, cfg)
 
   # --- Export-side moments for Tier 1 only ---
+  # (patch 0165) return_moments = "import": the sigma profile reads the import
+  # block only, so the export moments (the expensive part of a cell) are not
+  # built; the cell is treated as having none, which nothing it returns uses.
+  import_only <- identical(return_moments, "import")
   gv_counts_cell <- c(exporter = 0L, regional = 0L, default = 0L)         # patch 0085
-  if (N_tier1 > 0L) {
+  if (N_tier1 > 0L && !import_only) {
     exp_mom <- build_export_moments(exporter_order[1:N_tier1],
                                      focal_importer, all_dt, cfg,
                                      exp_lookup = exp_lookup)
@@ -637,7 +641,7 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
   # largest import-row weight (the reference is the largest exporter by
   # construction). Without it gamma_k is identified only through the X3/X4
   # cross-terms and the prior.
-  if (ref_moment_on) {
+  if (ref_moment_on && !import_only) {
     ref_mom <- tryCatch(build_export_moments(ref_exporter, focal_importer, all_dt, cfg, exp_lookup = exp_lookup),
                         error = function(e) NULL)
     if (!is.null(ref_mom) && !is.null(ref_mom$gv_counts)) gv_counts_cell <- gv_counts_cell + ref_mom$gv_counts   # patch 0085
@@ -680,8 +684,9 @@ estimate_importer_product_fixed_sigma <- function(imp_dt, focal_importer,
 
   # (patch 0152) the sigma-update profile (R/sigma_update.R) needs the cell's
   # moments, weights and settings without the optimisation: return them here
-  # and stop. Default FALSE: the path below is unchanged.
-  if (isTRUE(return_moments)) {
+  # and stop. Default FALSE: the path below is unchanged. (patch 0165) "import":
+  # the same, without the export moments (exp_mom is then the empty list).
+  if (isTRUE(return_moments) || import_only) {
     return(list(imp_Y = imp_Y_vec, imp_X = imp_X_mat, wt_imp = wt_imp_vec, exp_mom = exp_mom,
                 sigma = sigma_val, sigma_is_fallback = sigma_is_fallback,
                 ref_exporter = ref_exporter, exporter_order = exporter_order, J = J, n_tier1 = N_tier1,

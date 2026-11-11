@@ -126,6 +126,11 @@ cat(sprintf("  Stage-2 sigma update: %s%s%s\n", opts$stage2_sigma_update_mode,  
             if (identical(opts$stage2_sigma_update_mode, "import") && !is.null(opts$stage2_sigma_shrink_b) && is.finite(opts$stage2_sigma_shrink_b) && opts$stage2_sigma_shrink_b > 0)
               sprintf(" | shrink: B = %.3f (half-window), b_full = %.3f", opts$stage2_sigma_shrink_b, 2 * opts$stage2_sigma_shrink_b / (1 + opts$stage2_sigma_shrink_b))
             else if (identical(opts$stage2_sigma_update_mode, "import")) " | shrink: off" else ""))   # patch 0154/0155
+if (identical(opts$stage2_sigma_update_mode, "import"))   # patch 0165
+  cat(sprintf("  Stage-2 sigma profile: %s | gamma_V refresh passes: %d | trim-grid diagnostic: %s\n",   # (%||% is not defined yet here)
+              if (is.null(opts$stage2_sigma_profile)) "grid" else opts$stage2_sigma_profile,
+              if (is.null(opts$stage2_gamma_v_refresh)) 0L else as.integer(opts$stage2_gamma_v_refresh),
+              if (is.null(opts$stage2_sigma_update_trim_grid)) "off" else opts$stage2_sigma_update_trim_grid))
 cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s | sigma pole: %s\n",   # patch 0085/0086/0099
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
             if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
@@ -790,7 +795,8 @@ if (should_run("2b", opts, paths)) {
         gam_tab <- prev[is.finite(gamma) & gamma > 0, .(importer = as.character(importer), exporter = as.character(exporter),
                                                         good = as.character(good), gamma)]
         t_prof <- Sys.time()
-        prof <- sigma_update_import(config_2b, dt_country, gam_tab, floor = 1.02, ceiling = config_2b$stage1_sigma_cap, ncores = ncores)   # patch 0155: parallel over goods
+        prof <- sigma_update_import(config_2b, dt_country, gam_tab, floor = 1.02, ceiling = config_2b$stage1_sigma_cap, ncores = ncores,   # patch 0155: parallel over goods
+                                    method = opts$stage2_sigma_profile %||% "grid")                                                    # patch 0165
         cat(sprintf("  sigma profile: %s cells in %.1f min on %d core(s)\n", format(nrow(prof), big.mark = ","), as.numeric(Sys.time() - t_prof, units = "mins"), ncores))
         ok <- prof[status == "ok"]
         cat(sprintf("\n--- sigma update pass %d of %d (Eq. (10) block at the gamma-hats of %s): %s cells profiled | updated %s | at the floor %s | at the cap %s | no profile %s | sigma median before %.3f after %.3f ---\n",
@@ -882,6 +888,36 @@ if (should_run("2b", opts, paths)) {
         rotate_pass_records(prefix_country, gv_passes + u)
         if (u < su_passes) saveRDS(finalize_saved_output(country_results), paste0(out_base_country, sprintf("_fixed_sigma_sigmaupd%d.rds", u)))
       }
+      # (patch 0165) --stage2-gamma-v-refresh N: the update pass ran with the exporter gamma_V lookup of the last
+      # gamma_V pass (built from the pass before it, at the Stage-1 sigma); each refresh pass rebuilds the lookup
+      # from the table before it -- the rule of the gamma_V passes -- and runs Stage 2b once more at the same
+      # sigma. The table before each refresh is kept, and the steps (rows and cells, gamma and opt_tariff) go to
+      # _gamma_v_refresh.csv for analysis/sigma_update_sensitivity_census.R. Default 0: nothing runs.
+      gvr_n <- as.integer(opts$stage2_gamma_v_refresh %||% 0L)
+      if (gvr_n > 0L) {
+        refresh_log <- list()
+        for (r in seq_len(gvr_n)) {
+          prev_r <- country_results
+          saveRDS(finalize_saved_output(prev_r), paste0(out_base_country, sprintf("_fixed_sigma_prerefresh%d.rds", r)))
+          gv_tab_r <- prev_r[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0 & is_published_row(prev_r),
+                             .(importer = as.character(importer), exporter = as.character(exporter), good = as.character(good), gamma)]
+          config_2b$gamma_V_exporter_lookup <- gv_tab_r
+          cat(sprintf("\n--- gamma_V refresh %d of %d: exporter-specific gamma_jV from the table before it (%s usable rows), sigma as updated ---\n",
+                      r, gvr_n, format(nrow(gv_tab_r), big.mark = ",")))
+          country_results <- estimate_all_fixed_sigma(config_2b, ncores = ncores, prepared_dt = dt_country)
+          st1 <- gamma_v_step(prev_r, country_results); st <- refresh_step(prev_r, country_results)
+          refresh_log[[r]] <- data.table(refresh = r, usable_rows = nrow(gv_tab_r), tier1_rows = st1[["n"]], tier1_abs_dlng_p90 = st1[["p90"]],
+                                         rows = st$rows, abs_dlng_p50 = st$p50, abs_dlng_p90 = st$p90, abs_dlng_p99 = st$p99, abs_dlng_max = st$max,
+                                         share_rows_gt_1pct = st$share_rows_gt_1pct, cells = st$cells, share_cells_tariff_gt_1pct = st$share_cells_tariff_gt_1pct,
+                                         tariff_abs_dln_p50 = st$tariff_p50)
+          cat(sprintf("  refresh %d: %s directly estimated rows | abs d ln gamma p50 %.3g p90 %.3g p99 %.3g | rows moved > 1%%: %.1f%% | cells whose opt_tariff moved > 1%%: %.1f%% of %s\n",
+                      r, format(st$rows, big.mark = ","), st$p50, st$p90, st$p99, 100 * st$share_rows_gt_1pct, 100 * st$share_cells_tariff_gt_1pct,
+                      format(st$cells, big.mark = ",")))
+          rotate_pass_records(prefix_country, gv_passes + su_passes + r)
+        }
+        fwrite(rbindlist(refresh_log), paste0(out_base_country, "_gamma_v_refresh.csv"))
+        cat(sprintf("  gamma_V refresh log: %s_gamma_v_refresh.csv (final table = refresh %d)\n", out_base_country, gvr_n))
+      }
       # (patch 0155) gamma_v_resid is the gamma_V iteration's residual (pass K vs K-1); the update-pass
       # table is a fresh estimation, so carry it over by key from the gamma_V final table
       if ("gamma_v_resid" %in% names(gv_final_tab)) {
@@ -892,6 +928,35 @@ if (should_run("2b", opts, paths)) {
       fwrite(rbindlist(su_log), paste0(out_base_country, "_sigma_update_passes.csv"))
       cat(sprintf("  sigma update log: %s_sigma_update_passes.csv (final table = update pass %d; the gamma_V final table is _fixed_sigma_pass%d.rds)\n",
                   out_base_country, su_passes, gv_passes))
+      # (patch 0165) --stage2-sigma-update-trim-grid: since v0.12.0 the published sigma is identified on the
+      # Stage-2 panel, which drops differenced observations with |d ln p| >= 2, while Stage 1 uses the untrimmed
+      # panel; inside Stage 1 that rule moved the median sigma from 2.50 to 3.78 with no plateau
+      # (docs/methodology/sample_rule_decision.md). This re-profiles sigma at the final gammas on the panel
+      # prepared at each threshold -- the gammas held at their published values, so it measures the profile's
+      # sensitivity, not a re-estimation -- and writes one row per cell and threshold. Nothing published changes.
+      if (!is.null(opts$stage2_sigma_update_trim_grid)) {
+        tg <- parse_trim_grid(opts$stage2_sigma_update_trim_grid)
+        gam_fin <- country_results[is.finite(gamma) & gamma > 0, .(importer = as.character(importer), exporter = as.character(exporter),
+                                                                   good = as.character(good), gamma)]
+        tg_rows <- list()
+        for (thr in tg) {
+          t_tg <- Sys.time()
+          cfg_t <- config_country; cfg_t$uv_outlier_threshold <- thr
+          dt_t <- prepare_data(cfg_t, raw_cache = raw_cache)$dt
+          if (!is.null(opts$t_parity)) { y0_t <- min(dt_t$t) - 1L; dt_t <- dt_t[t_parity_keep(t, opts$t_parity, y0 = y0_t)] }
+          pt <- sigma_update_import(config_2b, dt_t, gam_fin, floor = 1.02, ceiling = config_2b$stage1_sigma_cap, ncores = ncores,
+                                    method = opts$stage2_sigma_profile %||% "grid")
+          pt[, threshold := if (is.na(thr)) "off" else format(thr)]
+          tg_rows[[length(tg_rows) + 1L]] <- pt
+          cat(sprintf("  trim-grid diagnostic: |d ln p| %s -- %s observations, %s cells profiled, %s ok, median sigma (ok) %.3f, in %.1f min\n",
+                      if (is.na(thr)) "untrimmed" else sprintf("< %s", format(thr)), format(nrow(dt_t), big.mark = ","), format(nrow(pt), big.mark = ","),
+                      format(sum(pt$status == "ok"), big.mark = ","), median(pt$sigma[pt$status == "ok"]), as.numeric(Sys.time() - t_tg, units = "mins")))
+          rm(dt_t)
+        }
+        fwrite(rbindlist(tg_rows, fill = TRUE), paste0(out_base_country, "_sigma_update_trimgrid.csv"))
+        cat(sprintf("  trim-grid diagnostic: %s_sigma_update_trimgrid.csv (the run's own threshold: %s)\n", out_base_country,
+                    if (is.na(config_country$uv_outlier_threshold)) "off" else format(config_country$uv_outlier_threshold)))
+      }
     }
     # (patch 0103) sigma_source: where each row's sigma comes from
     data.table::setDT(country_results)   # patch 0114: restore the over-allocation the passes may have lost

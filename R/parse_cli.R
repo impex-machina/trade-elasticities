@@ -298,6 +298,12 @@ parse_cli <- function(args = commandArgs(trailingOnly = TRUE)) {
       help = "Minimum number of other destinations an exporter needs to be Tier 1 (its own export row enters Eq. (11); below it the exporter is import-only, Tier 2). 2 is the shipped rule; 'Inf' makes every exporter but the reference import-only -- the hybrid arm D of docs/results/known_truth_eq11.md (patch 0159). Default: %default"),
     optparse::make_option(c("--stage2-sigma-update-scope"), type = "character", default = "2b", metavar = "SCOPE",
       help = "Reach of the sigma update: '2b' (Stage 2b only; the Stage-2a priors stay on the Stage-1 omega; shipped since v0.12.0) or '2a2b' (patch 0161: between the profile and the final pass, Stage 2a is re-estimated at the region medians of the updated sigma and the good-level priors and regional gamma_V medians are rebuilt from it; the Stage-1-sigma Stage 2a keeps its outputs, its records rotate to _pass<u>, the re-run is saved as _regional_hs4_fixed_sigma_sigmaupd<u>.rds; arm Q of docs/results/known_truth_eq11.md section 13). Default: %default"),
+    optparse::make_option(c("--stage2-sigma-profile"), type = "character", default = "grid", metavar = "METHOD",
+      help = "How the sigma update solves each cell's profile (patch 0165): 'grid' (a 240-point log grid and optimize(); every release through v0.12.1), 'closed' (the closed form -- at fixed gammas the import residual is linear in 1/(sigma - 1), so the profile is a one-regressor weighted least squares; a cell whose objective fails the form's structure check falls back to the grid) or 'both' (the closed form published; the grid's sigma and status kept beside it in _sigma_update_pass<u>.csv as sigma_grid / status_grid for analysis/sigma_update_sensitivity_census.R). Default: %default"),
+    optparse::make_option(c("--stage2-gamma-v-refresh"), type = "integer", default = 0L, metavar = "N",
+      help = "Under --stage2-sigma-update import: N more Stage-2b passes after the update pass(es), each with the exporter gamma_V lookup rebuilt from the table before it (patch 0165). Through v0.12.1 the final pass reused the lookup of the last gamma_V pass, built at the Stage-1 sigma. The table before each refresh is kept as _fixed_sigma_prerefresh<r>.rds and the steps go to _gamma_v_refresh.csv. Default: %default"),
+    optparse::make_option(c("--stage2-sigma-update-trim-grid"), type = "character", default = NULL, metavar = "T1,T2,...",
+      help = "Diagnostic under --stage2-sigma-update import (patch 0165): after the final pass, re-profile sigma at the final gammas on the country panel prepared with each unit-value threshold T (differenced observations with |d ln p| >= T dropped; 'off' = none) and write _sigma_update_trimgrid.csv. Nothing published changes. Default: off"),
     optparse::make_option(c("--stage2-sigma-edge"), type = "character", default = "fallback", metavar = "RULE",
       help = "Stage-1 cells whose published sigma is a box edge (sigma_capped): 'fallback' (v0.9.0 default, patch 0087: treat as no estimate -- fallback sigma, sigma_robust FALSE, no sigma_V, out of the priors) or 'publish' (keep sigma = cap in Stage 2; every release through v0.8.3). Default: %default"),
     optparse::make_option(c("--stage2-export-total"), type = "character", default = "quantity", metavar = "TOTAL",
@@ -466,6 +472,15 @@ validate_cli_opts <- function(opts, parser = NULL) {
   .t1 <- if (is.null(opts[["min_dests_spec"]])) "2" else as.character(opts[["min_dests_spec"]])   # patch 0159
   if (!tolower(.t1) %in% c("inf", "infinite")) { .t1n <- suppressWarnings(as.integer(.t1)); if (is.na(.t1n) || .t1n < 1L) fail(sprintf("--stage2-tier1-min-dests must be an integer >= 1 or 'Inf', got: '%s'", .t1)) }
   if (!.su_scope %in% c("2b", "2a2b")) fail(sprintf("--stage2-sigma-update-scope must be '2b' or '2a2b', got: '%s'", .su_scope))   # patch 0161
+  # patch 0165 (absent == default, as above)
+  .sp <- if (is.null(opts$stage2_sigma_profile)) "grid" else opts$stage2_sigma_profile
+  if (!.sp %in% c("grid", "closed", "both")) fail(sprintf("--stage2-sigma-profile must be 'grid', 'closed' or 'both', got: '%s'", .sp))
+  .gvr <- if (is.null(opts$stage2_gamma_v_refresh)) 0L else opts$stage2_gamma_v_refresh
+  if (is.na(.gvr) || .gvr < 0L) fail(sprintf("--stage2-gamma-v-refresh must be an integer >= 0, got: '%s'", .gvr))
+  if (!is.null(opts$stage2_sigma_update_trim_grid)) {
+    .tg <- parse_trim_grid(opts$stage2_sigma_update_trim_grid)
+    if (is.null(.tg)) fail(sprintf("--stage2-sigma-update-trim-grid must be a comma-separated list of positive thresholds or 'off', got: '%s'", opts$stage2_sigma_update_trim_grid))
+  }
   if (!opts$stage2_sigma_edge %in% c("publish", "fallback")) fail(sprintf("--stage2-sigma-edge must be 'publish' or 'fallback', got: '%s'", opts$stage2_sigma_edge))   # patch 0086
   if (!opts$stage2_export_moment %in% c("share", "value")) fail(sprintf("--stage2-export-moment must be 'share' or 'value', got: '%s'", opts$stage2_export_moment))   # patch 0110
   if (!opts$stage2a_handoff_rows %in% c("all", "published")) fail(sprintf("--stage2a-handoff-rows must be 'all' or 'published', got: '%s'", opts$stage2a_handoff_rows))   # patch 0110
@@ -535,4 +550,19 @@ validate_cli_opts <- function(opts, parser = NULL) {
   }
 
   invisible(TRUE)
+}
+
+
+#' (patch 0165) --stage2-sigma-update-trim-grid "1.5,3,off" -> c(1.5, 3, NA): NA is no unit-value trim
+#' (prepare_data()'s own reading of an NA threshold). NULL when any entry is neither a positive number nor
+#' 'off' / 'none' / 'inf'.
+parse_trim_grid <- function(spec) {
+  if (is.null(spec) || !nzchar(trimws(spec))) return(NULL)
+  parts <- trimws(strsplit(as.character(spec), ",", fixed = TRUE)[[1L]])
+  vals <- vapply(parts, function(p) {
+    if (tolower(p) %in% c("off", "none", "inf", "infinite")) return(NA_real_)
+    v <- suppressWarnings(as.numeric(p)); if (is.na(v) || !is.finite(v) || v <= 0) -1 else v
+  }, numeric(1), USE.NAMES = FALSE)
+  if (!length(vals) || any(!is.na(vals) & vals < 0)) return(NULL)
+  vals
 }
