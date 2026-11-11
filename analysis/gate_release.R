@@ -33,7 +33,12 @@
 # Stage-1 sigma if its Stage-1 label is 'estimated', else the level (the
 # fallback under the flag; the clean-set median unshrunk); sigma_source_stage1
 # equals the Stage-1 reconstruction; sigma_robust is FALSE on every row whose
-# sigma_source is not 'estimated'.
+# sigma_source is not 'estimated'. (patch 0167) When the log's `unprofiled`
+# column says 'level' (--stage2-sigma-update-unprofiled level, the default since
+# 0167) and the update is shrunk, an unprofiled cell whose Stage-1 label is
+# 'estimated' carries the level and 'updated_level' instead; a log without the
+# column (v0.12.0-v0.12.1) is read under the old rule. A run with no sigma tail
+# in its trim has no 'sigma_lo' rows, which H7 accepts as it is.
 # Report: headline medians, fallback sigma and share, |d ln gamma| by sigma
 # source on shared directly estimated rows, the pass log.
 #
@@ -121,6 +126,8 @@ if (!update_mode) {
     else { exp_sigma[notok] <- ifelse(s1_lab[notok] == "estimated", s1_sig[notok], fb); exp_src[notok] <- s1_lab[notok] }
     np <- is.na(mp)
     exp_sigma[np] <- ifelse(s1_lab[np] == "estimated", s1_sig[np], if (shrunk) level else fb); exp_src[np] <- s1_lab[np]
+    unprof_level <- shrunk && "unprofiled" %in% names(ul) && identical(as.character(ul$unprofiled), "level")   # patch 0167
+    if (unprof_level) { npe <- np & s1_lab == "estimated"; exp_sigma[npe] <- level; exp_src[npe] <- "updated_level" }
     bad4 <- sum(!close(new$sigma, exp_sigma))
     if (bad4 > 0L) fail("H4", sprintf("%s rows carry a sigma the sigma update's rules do not imply (%s; level %.6f, b_full %s)", format(bad4, big.mark = ","),
                                      if (shrunk) "shrunk profile on ok cells, the level elsewhere" else "the unshrunk profile on ok cells", level, format(b_full)))

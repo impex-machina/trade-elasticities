@@ -131,7 +131,7 @@ test_that("the runner under --stage2-sigma-update import updates sigma, labels a
   r1 <- .su_run(c(runner, "--data", shQuote(w$baci), "--out-dir", shQuote(out1), "--ncores", "1", "--stage2-sigma-update", "import", "--stage2-sigma-shrink", "0"), wd = td)   # the unshrunk update
   expect_equal(r1$status, 0L, info = paste(utils::tail(r1$out, 30), collapse = "\n"))
   log1 <- paste(r1$out, collapse = "\n")
-  expect_match(log1, "Stage-2 sigma update: import (passes: 1, scope: 2b", fixed = TRUE)
+  expect_match(log1, "Stage-2 sigma update: import (passes: 1, scope: 2a2b", fixed = TRUE)   # 2a2b is the default since patch 0167
   expect_match(log1, "| shrink: off", fixed = TRUE)
   expect_match(log1, "sigma update pass 1 of 1", fixed = TRUE)
   expect_match(log1, "updated_import", fixed = TRUE)

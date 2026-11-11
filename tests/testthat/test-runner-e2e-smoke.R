@@ -82,11 +82,12 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   stxt <- paste(readLines(f$s2b_txt, warn = FALSE), collapse = "\n")
   ulog <- data.table::fread(paste0(pre, "_country_hs4_sigma_update_passes.csv"))
   expect_false(grepl("sigma_V=2.880, gamma_V=0.690", stxt, fixed = TRUE))
-  expect_match(stxt, sprintf("Structural defaults:  sigma_V=%.3f, gamma_V=%.3f", ulog$level_sigma[1L], ulog$prior_median_before[1L]), fixed = TRUE)
-  expect_match(stxt, sprintf("Starting value:       gamma=%.3f", ulog$prior_median_before[1L]), fixed = TRUE)
+  pmed <- if ("prior_median_after" %in% names(ulog) && is.finite(ulog$prior_median_after[1L])) ulog$prior_median_after[1L] else ulog$prior_median_before[1L]   # 2a2b (default since 0167): the rebuilt priors
+  expect_match(stxt, sprintf("Structural defaults:  sigma_V=%.3f, gamma_V=%.3f", ulog$level_sigma[1L], pmed), fixed = TRUE)
+  expect_match(stxt, sprintf("Starting value:       gamma=%.3f", pmed), fixed = TRUE)
   sprov <- readRDS(f$s2b_sum)$provenance
   expect_equal(sprov$sigma_V_default, ulog$level_sigma[1L], tolerance = 1e-9)
-  expect_equal(sprov$gamma_V_default, ulog$prior_median_before[1L], tolerance = 1e-9)
+  expect_equal(sprov$gamma_V_default, pmed, tolerance = 1e-9)
   rtxt2 <- paste(readLines(paste0(pre, "_regional_hs4_summary.txt"), warn = FALSE), collapse = "\n")
   expect_match(rtxt2, "Structural defaults:  sigma_V=", fixed = TRUE)
   expect_false(grepl("not recorded", rtxt2, fixed = TRUE))          # Stage 2a was estimated in this run

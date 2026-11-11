@@ -428,6 +428,39 @@ refresh_step <- function(prev, cur) {
        cells = nrow(tm), share_cells_tariff_gt_1pct = if (length(dt)) mean(dt > log(1.01)) else NA_real_, tariff_p50 = q(dt, .5))
 }
 
+#' (patch 0167) The gamma_V-final table of an earlier run, checked before --stage2b-resume-from uses it.
+#'
+#' A resumed run skips the gamma_V passes, so the table must be the one this run's passes would have
+#' written: the columns the update reads, cells that are all in this run's panel, and on every row of a
+#' cell with a Stage-1 sigma that sigma (a table from another Stage 1, another sigma rule or another panel
+#' fails here, not silently later). It does not prove the Stage-2 flags matched: the run sheet pairs the
+#' table with the run it came from.
+#' @param tab the table (readRDS of _fixed_sigma_pass<K>.rds); @param panel this run's prepared country
+#'   panel; @param cfg this run's config_2b (its sigma_lookup).
+#' @return list(table, cells, cover = share of the panel's cells the table covers, sigma_checked).
+check_resume_table <- function(tab, panel, cfg) {
+  tab <- data.table::as.data.table(tab)
+  need <- c("importer", "exporter", "good", "gamma", "sigma", "tier", "convergence")
+  miss <- setdiff(need, names(tab))
+  if (length(miss)) stop("--stage2b-resume-from: the table lacks column(s) ", paste(miss, collapse = ", "), call. = FALSE)
+  key <- function(i, g) paste(as.character(i), as.character(g), sep = "\r")
+  kt <- unique(key(tab$importer, tab$good)); kp <- unique(key(panel$importer, panel$good))
+  extra <- sum(!kt %in% kp)
+  if (extra > 0L) stop(sprintf("--stage2b-resume-from: %d of the table's %d cells are not in this run's panel: the table comes from another panel (window, product sample, data)",
+                               extra, length(kt)), call. = FALSE)
+  n_chk <- 0L
+  sl <- cfg$sigma_lookup
+  if (!is.null(sl) && nrow(sl)) {
+    m <- match(key(tab$importer, tab$good), key(sl$importer, sl$good))
+    has <- !is.na(m) & is.finite(tab$sigma)
+    n_chk <- sum(has)
+    bad <- sum(abs(tab$sigma[has] - sl$sigma[m[has]]) > 1e-8 * pmax(1, abs(sl$sigma[m[has]])))
+    if (bad > 0L) stop(sprintf("--stage2b-resume-from: %d of %d rows carry a sigma this run's Stage 1 does not give their cell: the table comes from another Stage 1 or sigma rule",
+                               bad, n_chk), call. = FALSE)
+  }
+  list(table = tab, cells = length(kt), cover = mean(kp %in% kt), sigma_checked = n_chk)
+}
+
 gamma_v_step <- function(prev, cur) {
   key <- c("importer", "exporter", "good")
   pick <- function(x) {

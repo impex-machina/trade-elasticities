@@ -29,7 +29,10 @@
 #      the v0.11.0 re-estimation and is reported, not required to match.
 #
 # Usage (repo root):
-#   Rscript scripts/refresh_table_censuses.R [--fallback-csv PATH] [--only a,b] [--dry-run]
+#   Rscript scripts/refresh_table_censuses.R [--fallback-csv PATH] [--only a,b] [--dry-run] [--re-estimated]
+#     --re-estimated       (patch 0167) the release re-estimated the tables: every census
+#                          is expected to move, so a moved census is reported, not a stop
+#                          (exit 0); the new census files are the release's records
 #     --fallback-csv PATH  the <prefix>_stage2_fallbacks*.csv the shipped run wrote
 #                          beside its checkpoint; without it the restart census is
 #                          skipped and stays dated
@@ -198,11 +201,12 @@ census_plan <- function(sfx, tabs, fallback_csv = "") {
 }
 
 parse_refresh_args <- function(args) {
-  opt <- list(fallback_csv = "", only = character(0), dry_run = FALSE)
+  opt <- list(fallback_csv = "", only = character(0), dry_run = FALSE, re_estimated = FALSE)
   i <- 1L
   while (i <= length(args)) {
     a <- args[i]
     if (identical(a, "--dry-run")) { opt$dry_run <- TRUE; i <- i + 1L; next }
+    if (identical(a, "--re-estimated")) { opt$re_estimated <- TRUE; i <- i + 1L; next }   # patch 0167
     if (a %in% c("--fallback-csv", "--only")) {
       if (i == length(args) || startsWith(args[i + 1L], "--")) stop(a, " needs a value", call. = FALSE)
       v <- args[i + 1L]
@@ -239,6 +243,10 @@ main <- function(args = commandArgs(trailingOnly = TRUE)) {
   }
   cat("  all three match the manifest's sha256\n\n")
   plan <- census_plan(sfx, tabs, opt$fallback_csv)
+  if (opt$re_estimated) {   # patch 0167: a re-estimated release; every census may move
+    plan <- lapply(plan, function(p) { p$expect <- "changed"; p })
+    cat("Re-estimated release: each census is compared with its predecessor and reported; none is required to match.\n\n")
+  }
   if (length(opt$only)) {
     unknown <- setdiff(opt$only, vapply(plan, `[[`, "", "name"))
     if (length(unknown)) stop("--only: unknown census name(s): ", paste(unknown, collapse = ", "), call. = FALSE)
@@ -281,4 +289,4 @@ main <- function(args = commandArgs(trailingOnly = TRUE)) {
   quit(status = 0L)
 }
 
-main()
+if (sys.nframe() == 0L) main()   # patch 0167: sourcing the file for its helpers runs nothing

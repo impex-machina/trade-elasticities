@@ -173,7 +173,7 @@ stage2_psock_provision <- function(cl, cpp_dir,
             "stage2_sigma_shrink_b",                                  # patch 0154
             "tier1_min_dests",                                        # patch 0159
             "ridge_scale", "ridge_tau2",                              # patch 0134 (0132's flags)
-            "tail_trim_pct", "exporter_weight", "weight_period_floor",
+            "tail_trim_pct", "stage2_trim_sigma", "exporter_weight", "weight_period_floor",
             "tier1_min_periods", "tier1_min_dests", "tier2_min_periods",
             "min_exporters", "min_destinations", "min_periods",
             "sigma_fallback", "sigma_V_default", "gamma_V_default",
@@ -525,7 +525,15 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
       trim_src <- output
     }
 
-    if (trim_mode == "v2") {
+    if (identical(cfg[["stage2_trim_sigma"]], FALSE)) {
+      # (patch 0167) no sigma tail: set by the runner once sigma is the shrunk
+      # sigma update (--stage2-trim-sigma-tail auto, the default, or off). The
+      # shrunk sigma lies in [1.54, 4.96] by construction, so the low tail the
+      # trim exists for (sigma near the 1/(sigma - 1) pole) is empty and the
+      # cut removed ordinary cells (278 rows on the 2% subsample,
+      # docs/results/sigma_update_sensitivity_census.md). The gamma tails stay.
+      sig_lo <- -Inf; sig_hi <- Inf
+    } else if (trim_mode == "v2") {
       # (patch 0089) v2's sigma trim is LOW-tail only, taken over cells. The
       # low tail has a rationale (sigma near 1 breaks the 1/(sigma - 1)
       # terms); the high tail has none once the sigma-edge rule handles the
@@ -556,7 +564,7 @@ estimate_all_fixed_sigma <- function(cfg, ncores = NULL, prepared_dt = NULL) {
     n_trim_total <- n_b - nrow(output)
     cat(sprintf("  Trimmed: %s rows (%.1f%% each tail; sigma bounds over %s)\n",
                 format(n_trim_total, big.mark = ","), 100 * trim_pct,
-                if (trim_mode == "v2") "cells" else "rows"))
+                if (identical(cfg[["stage2_trim_sigma"]], FALSE)) "none: no sigma tail (patch 0167)" else if (trim_mode == "v2") "cells" else "rows"))
     cat(sprintf("    Sigma kept: [%.2f, %.2f]  Gamma kept: [%.3f, %.3f]\n",
                 sig_lo, sig_hi, gam_lo, gam_hi))
     if (!is.null(trimmed_rows)) {

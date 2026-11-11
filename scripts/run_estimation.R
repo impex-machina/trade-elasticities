@@ -131,6 +131,11 @@ if (identical(opts$stage2_sigma_update_mode, "import"))   # patch 0165
               if (is.null(opts$stage2_sigma_profile)) "grid" else opts$stage2_sigma_profile,
               if (is.null(opts$stage2_gamma_v_refresh)) 0L else as.integer(opts$stage2_gamma_v_refresh),
               if (is.null(opts$stage2_sigma_update_trim_grid)) "off" else opts$stage2_sigma_update_trim_grid))
+if (identical(opts$stage2_sigma_update_mode, "import"))   # patch 0167
+  cat(sprintf("  Stage-2 sigma tail of the trim: %s | unprofiled cells with a Stage-1 sigma: %s | resume from: %s\n",
+              if (is.null(opts$stage2_trim_sigma_tail)) "auto" else opts$stage2_trim_sigma_tail,
+              if (is.null(opts$stage2_sigma_update_unprofiled)) "level" else opts$stage2_sigma_update_unprofiled,
+              if (is.null(opts$stage2b_resume_from)) "off (gamma_V passes run)" else opts$stage2b_resume_from))
 cat(sprintf("  Stage-2 gamma_V source: %s%s | passes: %s | export period count: %s | sigma edge: %s | sigma pole: %s\n",   # patch 0085/0086/0099
             opts$stage2_gamma_v_source, if (identical(opts$stage2_gamma_v_source, "table")) paste0(" (", opts$stage2_gamma_v_table, ")") else "",
             if (is.null(opts$stage2_gamma_v_passes)) 1L else opts$stage2_gamma_v_passes, opts$stage2_export_period_count,
@@ -722,7 +727,21 @@ if (should_run("2b", opts, paths)) {
     }
 
     config_2b <- init_from_regional(config_2b, regional_handoff)   # patch 0110 ('all' == regional_results)
+    if (identical(opts$stage2_trim_sigma_tail, "off")) config_2b$stage2_trim_sigma <- FALSE   # patch 0167: never a sigma tail
 
+    # (patch 0167) --stage2b-resume-from PATH: the gamma_V passes are skipped and the run resumes from an
+    # earlier run's gamma_V-final table, checked first against this run's panel and Stage-1 sigma
+    # (check_resume_table(), R/iteration_helpers.R). With the update pass's lookup rebuilt from that table
+    # (below), the run from here on is the one a full run makes: the sandbox test reproduces it exactly.
+    if (!is.null(opts$stage2b_resume_from)) {
+      gv_passes <- if (is.null(opts$stage2_gamma_v_passes)) 1L else as.integer(opts$stage2_gamma_v_passes)
+      t_res <- Sys.time()
+      res_chk <- check_resume_table(readRDS(opts$stage2b_resume_from), dt_country, config_2b)
+      country_results <- res_chk$table
+      cat(sprintf("\n--- Stage 2b resumed from %s: the gamma_V-final table (pass %d), %s rows, %s cells (%.1f%% of this run's panel cells); %s rows checked against this run's Stage-1 sigma; gamma_V passes 1-%d not re-run (%.1f s) ---\n",
+                  opts$stage2b_resume_from, gv_passes, format(nrow(country_results), big.mark = ","), format(res_chk$cells, big.mark = ","),
+                  100 * res_chk$cover, format(res_chk$sigma_checked, big.mark = ","), gv_passes, as.numeric(Sys.time() - t_res, units = "secs")))
+    } else {
     country_results <- estimate_all_fixed_sigma(
       config_2b, ncores = ncores, prepared_dt = dt_country)
     # (patch 0134) a Stage 2b in which every cell failed stops here: no real run
@@ -774,6 +793,7 @@ if (should_run("2b", opts, paths)) {
       fwrite(rbindlist(pass_log), paste0(out_base_country, "_gamma_v_passes.csv"))
       cat(sprintf("  gamma_V pass log: %s_gamma_v_passes.csv (final table = pass %d)\n", out_base_country, gv_passes))
     }
+    }   # patch 0167: end of the gamma_V passes (skipped under --stage2b-resume-from)
     # (patch 0152) --stage2-sigma-update import: after the gamma_V passes, sigma
     # is re-solved per cell from the Eq. (10) block at the final pass's
     # gamma-hats (R/sigma_update.R) and Stage 2b runs once more at the updated
@@ -793,14 +813,25 @@ if (should_run("2b", opts, paths)) {
       saveRDS(finalize_saved_output(country_results), paste0(out_base_country, sprintf("_fixed_sigma_pass%d.rds", gv_passes)))
       sigma_stage1_tab <- unique(country_results[, .(importer = as.character(importer), good = as.character(good), sigma_stage1 = sigma)])
       gv_final_tab <- data.table::copy(country_results)   # patch 0155: the gamma_V final table, for gamma_v_resid
+      # (patch 0167) the update pass's exporter gamma_V lookup is rebuilt from the gamma_V-final table (the rule
+      # of the gamma_V passes). Through patch 0166 it kept the lookup of the last gamma_V pass, built from the
+      # pass before it -- immaterial once the passes converge, and the one input a resumed run could not rebuild.
+      if (gv_passes > 1L) {
+        config_2b$gamma_V_exporter_lookup <- gv_final_tab[is_estimated_row(tier, convergence) & convergence == 0L & is.finite(gamma) & gamma > 0 & is_published_row(gv_final_tab),
+                                                          .(importer = as.character(importer), exporter = as.character(exporter), good = as.character(good), gamma)]
+        cat(sprintf("  update pass: exporter gamma_V lookup rebuilt from the gamma_V-final table (%s usable rows)\n", format(nrow(config_2b$gamma_V_exporter_lookup), big.mark = ",")))
+      }
+      su_unprof <- if (is.null(opts$stage2_sigma_update_unprofiled)) "level" else opts$stage2_sigma_update_unprofiled   # patch 0167
+      su_trim_tail <- if (is.null(opts$stage2_trim_sigma_tail)) "auto" else opts$stage2_trim_sigma_tail                  # patch 0167
       su_log <- list()
       for (u in seq_len(su_passes)) {
         prev <- country_results
+        n_unprof_level <- NA_integer_   # patch 0167
         gam_tab <- prev[is.finite(gamma) & gamma > 0, .(importer = as.character(importer), exporter = as.character(exporter),
                                                         good = as.character(good), gamma)]
         t_prof <- Sys.time()
         prof <- sigma_update_import(config_2b, dt_country, gam_tab, floor = 1.02, ceiling = config_2b$stage1_sigma_cap, ncores = ncores,   # patch 0155: parallel over goods
-                                    method = opts$stage2_sigma_profile %||% "grid")                                                    # patch 0165
+                                    method = opts$stage2_sigma_profile %||% "closed")                                                  # patch 0165; absent == closed since 0167
         cat(sprintf("  sigma profile: %s cells in %.1f min on %d core(s)\n", format(nrow(prof), big.mark = ","), as.numeric(Sys.time() - t_prof, units = "mins"), ncores))
         ok <- prof[status == "ok"]
         cat(sprintf("\n--- sigma update pass %d of %d (Eq. (10) block at the gamma-hats of %s): %s cells profiled | updated %s | at the floor %s | at the cap %s | no profile %s | sigma median before %.3f after %.3f ---\n",
@@ -822,12 +853,27 @@ if (should_run("2b", opts, paths)) {
           cat(sprintf("  shrink: B = %.3f, b_full = %.3f, level L = %.4f (sigma %.3f) | updated-cell sigma median before shrink %.3f after %.3f | %d cells with no updated sigma set to the level; fallback and sigma_V default = level\n",
                       su_b, b_full, L, level_sigma, median(ok$sigma), median(prof[status == "ok", sigma_shrunk]), sum(prof$status != "ok")))
           config_2b$sigma_fallback <- level_sigma; config_2b$sigma_V_default <- level_sigma
+          if (!identical(su_trim_tail, "on")) config_2b$stage2_trim_sigma <- FALSE   # patch 0167: no sigma tail on the shrunk sigma
         }
         fwrite(prof, paste0(out_base_country, sprintf("_sigma_update_pass%d.csv", u)))
         if (nrow(ok)) {
           upd <- if (is.finite(su_b)) prof[, .(importer = as.character(importer), good = as.character(good), sigma = sigma_shrunk,
                                                sigma_source_new = fifelse(status == "ok", "updated_import_shrunk", "updated_level"))]
                  else ok[, .(importer = as.character(importer), good = as.character(good), sigma, sigma_source_new = "updated_import")]
+          upd_prof <- upd   # the profiled cells (Stage 2a's re-run under 2a2b takes its region medians from these)
+          # (patch 0167) --stage2-sigma-update-unprofiled level: a cell with a Stage-1 sigma that the profile never
+          # reached (no fitted exporter: every row imputed) takes the level, like every other cell without an update;
+          # through patch 0166 it kept its Stage-1 sigma (4,646 rows of v0.12.0). Cells without a Stage-1 sigma
+          # already take the level through the fallback.
+          if (is.finite(su_b) && identical(su_unprof, "level") && !is.null(config_2b$sigma_lookup) && nrow(config_2b$sigma_lookup)) {
+            k_prof <- paste(as.character(prof$importer), as.character(prof$good), sep = "\r")
+            sl <- config_2b$sigma_lookup; k_sl <- paste(as.character(sl$importer), as.character(sl$good), sep = "\r")
+            k_done <- if (is.null(sigma_updated_cells)) character(0) else paste(sigma_updated_cells$importer, sigma_updated_cells$good, sep = "\r")
+            np_cells <- unique(sl[!(k_sl %in% k_prof) & !(k_sl %in% k_done), .(importer = as.character(importer), good = as.character(good))])
+            n_unprof_level <- nrow(np_cells)
+            if (n_unprof_level) upd <- rbind(upd, np_cells[, .(importer, good, sigma = level_sigma, sigma_source_new = "updated_level")])
+            cat(sprintf("  unprofiled cells with a Stage-1 sigma set to the level: %s\n", format(n_unprof_level, big.mark = ",")))
+          }
           k_upd <- paste(upd$importer, upd$good, sep = "\r")
           sigma_update_cols <- merge(prof[status == "ok", .(importer = as.character(importer), good = as.character(good), sigma_update = sigma)],
                                      sigma_stage1_tab, by = c("importer", "good"), all = TRUE)
@@ -851,20 +897,21 @@ if (should_run("2b", opts, paths)) {
         # table; its trim / fallback records rotate to _pass<u>; the re-run is saved beside it. Known truth:
         # arm Q, docs/results/known_truth_eq11.md section 13 (equal to the 2b scope where sigma has no importer
         # structure, better where it has).
-        su_scope <- opts$stage2_sigma_update_scope %||% "2b"
+        su_scope <- opts$stage2_sigma_update_scope %||% "2a2b"   # patch 0167: absent == 2a2b
         prior_med_before <- exp(median(config_2b$shrinkage_priors$ln_gamma_prior)); prior_med_after <- NA_real_; n_reg_u <- NA_integer_
         if (identical(su_scope, "2a2b") && nrow(ok)) {
           t2a <- Sys.time()
           rmap_u <- build_region_map()
-          upd_r <- data.table::copy(upd)[, region := assign_regions(as.integer(importer), rmap_u)]
+          upd_r <- data.table::copy(upd_prof)[, region := assign_regions(as.integer(importer), rmap_u)]   # patch 0167: the profiled cells
           regional_sigma_u <- upd_r[, .(sigma = median(sigma, na.rm = TRUE)), by = .(importer = region, good)]
-          level_u <- if (is.finite(su_b)) level_sigma else median(upd$sigma)
+          level_u <- if (is.finite(su_b)) level_sigma else median(upd_prof$sigma)
           cfg_2a <- config_regional
           cfg_2a$shrinkage_lambda <- 0.05; cfg_2a$ridge_scale <- "none"; cfg_2a$shrinkage_priors <- feenstra_priors
           cfg_2a$sigma_lookup <- regional_sigma_u; cfg_2a$sigma_V_lookup <- regional_sigma_u
           cfg_2a$sigma_fallback <- level_u; cfg_2a$sigma_V_default <- level_u; cfg_2a$sigma_start <- level_u
           cfg_2a$gamma_V_default <- stage2a_gamma_v_default(sigma_clean, feenstra_gamma_clean, config$stage2a_gamma_v_default)
           cfg_2a$gamma_start <- cfg_2a$gamma_V_default; cfg_2a$gamma_V_lookup <- NULL
+          if (is.finite(su_b) && !identical(su_trim_tail, "on")) cfg_2a$stage2_trim_sigma <- FALSE   # patch 0167: region medians of the shrunk sigma
           rotate_pass_records(run_record_base(cfg_2a), u)
           regional_results_u <- estimate_all_fixed_sigma(cfg_2a, ncores = ncores, prepared_dt = dt_regional)
           saveRDS(finalize_saved_output(regional_results_u), paste0(out_base_regional, sprintf("_fixed_sigma_sigmaupd%d.rds", u)))
@@ -887,6 +934,8 @@ if (should_run("2b", opts, paths)) {
                                                      sigma_median_before = median(prof$sigma_before), sigma_median_after = median(ok$sigma),
                                                      shrink_b_half = su_b, shrink_b_full = b_full, level_sigma = level_sigma,   # patch 0154
                                                      scope = su_scope, prior_median_before = prior_med_before, prior_median_after = prior_med_after, stage2a_rows = n_reg_u,   # patch 0161
+                                                     unprofiled = su_unprof, cells_unprofiled_level = n_unprof_level,   # patch 0167
+                                                     trim_sigma_tail = !identical(config_2b$stage2_trim_sigma, FALSE),                                                 # patch 0167
                                                      sigma_median_shrunk = if (is.finite(su_b)) median(prof[status == "ok", sigma_shrunk]) else NA_real_,
                                                      tier1_rows = step[["n"]], abs_dlng_p50 = step[["p50"]], abs_dlng_p90 = step[["p90"]], abs_dlng_max = step[["max"]])
         rotate_pass_records(prefix_country, gv_passes + u)
@@ -897,7 +946,7 @@ if (should_run("2b", opts, paths)) {
       # from the table before it -- the rule of the gamma_V passes -- and runs Stage 2b once more at the same
       # sigma. The table before each refresh is kept, and the steps (rows and cells, gamma and opt_tariff) go to
       # _gamma_v_refresh.csv for analysis/sigma_update_sensitivity_census.R. Default 0: nothing runs.
-      gvr_n <- as.integer(opts$stage2_gamma_v_refresh %||% 0L)
+      gvr_n <- as.integer(opts$stage2_gamma_v_refresh %||% 1L)   # patch 0167: absent == 1
       if (gvr_n > 0L) {
         refresh_log <- list()
         for (r in seq_len(gvr_n)) {
@@ -924,7 +973,13 @@ if (should_run("2b", opts, paths)) {
       }
       # (patch 0155) gamma_v_resid is the gamma_V iteration's residual (pass K vs K-1); the update-pass
       # table is a fresh estimation, so carry it over by key from the gamma_V final table
-      if ("gamma_v_resid" %in% names(gv_final_tab)) {
+      # (patch 0167) after a gamma_V refresh the column is the last refresh's step instead: the published gamma
+      # against the table before it, i.e. the published table's own distance from its gamma_V fixed point.
+      if (gvr_n > 0L) {
+        gvr_f <- attach_gamma_v_resid(country_results, prev_r)
+        cat(sprintf("  gamma_v_resid (refresh %d vs the table before it): filled on %s of %s rows | p50 %.2e p90 %.3f p99 %.3f max %.3f | %.1f%% below 1e-2\n",
+                    gvr_n, format(gvr_f$n_filled, big.mark = ","), format(gvr_f$n_rows, big.mark = ","), gvr_f$p50, gvr_f$p90, gvr_f$p99, gvr_f$max, 100 * gvr_f$share_lt_1e2))
+      } else if ("gamma_v_resid" %in% names(gv_final_tab)) {
         kk <- paste(as.character(country_results$importer), as.character(country_results$exporter), as.character(country_results$good), sep = "\r")
         mm <- match(kk, paste(as.character(gv_final_tab$importer), as.character(gv_final_tab$exporter), as.character(gv_final_tab$good), sep = "\r"))
         data.table::setDT(country_results); data.table::set(country_results, j = "gamma_v_resid", value = gv_final_tab$gamma_v_resid[mm])
@@ -949,7 +1004,7 @@ if (should_run("2b", opts, paths)) {
           dt_t <- prepare_data(cfg_t, raw_cache = raw_cache)$dt
           if (!is.null(opts$t_parity)) { y0_t <- min(dt_t$t) - 1L; dt_t <- dt_t[t_parity_keep(t, opts$t_parity, y0 = y0_t)] }
           pt <- sigma_update_import(config_2b, dt_t, gam_fin, floor = 1.02, ceiling = config_2b$stage1_sigma_cap, ncores = ncores,
-                                    method = opts$stage2_sigma_profile %||% "grid")
+                                    method = opts$stage2_sigma_profile %||% "closed")
           pt[, threshold := if (is.na(thr)) "off" else format(thr)]
           tg_rows[[length(tg_rows) + 1L]] <- pt
           cat(sprintf("  trim-grid diagnostic: |d ln p| %s -- %s observations, %s cells profiled, %s ok, median sigma (ok) %.3f, in %.1f min\n",

@@ -50,7 +50,7 @@ test_that("the runner under --stage2-sigma-update import --stage2-sigma-shrink p
   r <- .ss_run(c(shQuote(file.path(root, "scripts", "run_estimation.R")), "--data", shQuote(baci), "--out-dir", shQuote(out), "--ncores", "1"), wd = td)
   expect_equal(r$status, 0L, info = paste(utils::tail(r$out, 30), collapse = "\n"))
   log <- paste(r$out, collapse = "\n")
-  expect_match(log, "Stage-2 sigma update: import (passes: 1, scope: 2b", fixed = TRUE)
+  expect_match(log, "Stage-2 sigma update: import (passes: 1, scope: 2a2b", fixed = TRUE)   # 2a2b is the default since patch 0167
   expect_match(log, "shrink: B = 0.146 (half-window), b_full = 0.255", fixed = TRUE)
   expect_match(log, "sigma profile: ", fixed = TRUE)
   expect_match(log, "fallback and sigma_V default = level", fixed = TRUE)

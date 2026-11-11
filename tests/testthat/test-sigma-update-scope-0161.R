@@ -22,7 +22,8 @@ test_that("the scope flag accepts 2b and 2a2b and rejects others", {
   src_dir <- locate_source_dir(); source(file.path(src_dir, "parse_cli.R"), local = TRUE)
   td <- tempfile("te_s61_"); dir.create(td); on.exit(unlink(td, recursive = TRUE), add = TRUE)
   base <- c("--data", td, "--out-dir", td)
-  expect_equal(parse_cli(args = base)$stage2_sigma_update_scope, "2b")
+  expect_equal(parse_cli(args = base)$stage2_sigma_update_scope, "2a2b")   # the default since patch 0167
+  expect_equal(parse_cli(args = c(base, "--stage2-sigma-update-scope", "2b"))$stage2_sigma_update_scope, "2b")
   expect_equal(parse_cli(args = c(base, "--stage2-sigma-update-scope", "2a2b"))$stage2_sigma_update_scope, "2a2b")
   expect_error(parse_cli(args = c(base, "--stage2-sigma-update-scope", "2a")), "must be '2b' or '2a2b'")
 })
@@ -38,7 +39,7 @@ test_that("under 2a2b Stage 2a is re-estimated at the updated sigma and the prio
   sb$make_synthetic_baci_dir(baci, n_goods = 3L, countries = c(842L, 276L, 392L, 156L, 251L, 826L, 124L, 410L, 528L, 724L), years = 1995:2014, seed = 20261015L)
   runner <- shQuote(file.path(root, "scripts", "run_estimation.R"))
   o2b <- file.path(td, "s2b"); dir.create(o2b)
-  r0 <- .ss61_run(c(runner, "--data", shQuote(baci), "--out-dir", shQuote(o2b), "--ncores", "1"), wd = td)
+  r0 <- .ss61_run(c(runner, "--data", shQuote(baci), "--out-dir", shQuote(o2b), "--ncores", "1", "--stage2-sigma-update-scope", "2b"), wd = td)   # 2a2b is the default since patch 0167
   expect_equal(r0$status, 0L, info = paste(utils::tail(r0$out, 20), collapse = "\n"))
   oq <- file.path(td, "s2a2b"); dir.create(oq)
   r1 <- .ss61_run(c(runner, "--data", shQuote(baci), "--out-dir", shQuote(oq), "--ncores", "1", "--stage2-sigma-update-scope", "2a2b"), wd = td)

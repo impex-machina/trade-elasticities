@@ -159,7 +159,7 @@ test_that("CLI: the three flags are accepted and validated; the runner wires the
   td <- tempfile("te_s65c_"); dir.create(td); on.exit(unlink(td, recursive = TRUE), add = TRUE)
   base <- c("--data", td, "--out-dir", td)
   o <- parse_cli(args = base)
-  expect_identical(o$stage2_sigma_profile, "grid"); expect_identical(o$stage2_gamma_v_refresh, 0L); expect_null(o$stage2_sigma_update_trim_grid)
+  expect_identical(o$stage2_sigma_profile, "closed"); expect_identical(o$stage2_gamma_v_refresh, 1L); expect_null(o$stage2_sigma_update_trim_grid)   # defaults since patch 0167
   o2 <- parse_cli(args = c(base, "--stage2-sigma-profile", "both", "--stage2-gamma-v-refresh", "1", "--stage2-sigma-update-trim-grid", "1.5,2,3,off"))
   expect_identical(o2$stage2_sigma_profile, "both"); expect_identical(o2$stage2_gamma_v_refresh, 1L)
   expect_equal(parse_trim_grid(o2$stage2_sigma_update_trim_grid), c(1.5, 2, 3, NA))
@@ -167,8 +167,8 @@ test_that("CLI: the three flags are accepted and validated; the runner wires the
   expect_error(parse_cli(args = c(base, "--stage2-gamma-v-refresh", "-1")), "must be an integer >= 0")
   expect_error(parse_cli(args = c(base, "--stage2-sigma-update-trim-grid", "2,zero")), "comma-separated list")
   run <- paste(readLines(file.path(.s65_root(), "scripts", "run_estimation.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")
-  expect_match(run, 'method = opts$stage2_sigma_profile %||% "grid")', fixed = TRUE)
-  expect_match(run, "gvr_n <- as.integer(opts$stage2_gamma_v_refresh %||% 0L)", fixed = TRUE)
+  expect_match(run, 'method = opts$stage2_sigma_profile %||% "closed")', fixed = TRUE)   # absent == closed since patch 0167
+  expect_match(run, "gvr_n <- as.integer(opts$stage2_gamma_v_refresh %||% 1L)", fixed = TRUE)   # absent == 1 since patch 0167
   expect_match(run, "if (!is.null(opts$stage2_sigma_update_trim_grid)) {", fixed = TRUE)
   expect_match(run, '"_gamma_v_refresh.csv"', fixed = TRUE); expect_match(run, '"_sigma_update_trimgrid.csv"', fixed = TRUE)
   su <- paste(readLines(file.path(.s65_root(), "R", "sigma_update.R"), warn = FALSE, encoding = "UTF-8"), collapse = "\n")

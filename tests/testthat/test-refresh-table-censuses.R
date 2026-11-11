@@ -100,7 +100,7 @@ test_that("verify_tables() and the argument parser", {
   expect_match(e$verify_tables(tabs), "^stage2a: .* the manifest pins 000000000000")
   tabs$stage2b$path <- file.path(d, "gone.rds")
   expect_length(e$verify_tables(tabs), 2L)
-  expect_identical(e$parse_refresh_args(character(0)), list(fallback_csv = "", only = character(0), dry_run = FALSE))
+  expect_identical(e$parse_refresh_args(character(0)), list(fallback_csv = "", only = character(0), dry_run = FALSE, re_estimated = FALSE))   # re_estimated: patch 0167
   o <- e$parse_refresh_args(c("--only", "a,b", "--dry-run", "--fallback-csv", "C:\\x\\f.csv"))
   expect_identical(o$only, c("a", "b")); expect_true(o$dry_run); expect_identical(o$fallback_csv, "C:\\x\\f.csv")
   expect_error(e$parse_refresh_args("--frob"), "unknown argument")
