@@ -128,8 +128,14 @@ Stated forthrightly:
   (`docs/methodology/sample_rule_decision.md`), while since v0.12.0 the
   published σ is re-solved from the import block of the Stage-2 panel, which
   carries that rule. The two σ columns of the table therefore rest on different
-  samples (`sigma` trimmed, `sigma_stage1` untrimmed), and how the updated σ
-  moves with the threshold has not been measured. These data-construction choices
+  samples (`sigma` trimmed, `sigma_stage1` untrimmed). Measured on the 2% subsample
+  with γ held at its final values (patch 0165), the updated σ moves with the
+  threshold as Stage 1's does: median 2.29 untrimmed, 2.50 at 3, 2.75 at the
+  shipped 2 and 3.22 at 1.5, the level ln(σ − 1) 0.39 apart between 1.5 and 3,
+  with a Spearman correlation of 0.59 between the cells' values at those two
+  (`docs/results/sigma_update_sensitivity_census.md`). No threshold is privileged
+  by the data, and the profile uses the panel γ is estimated on, so the shipped
+  rule stays and the published level is conditional on it. These data-construction choices
   reshape the cross-exporter second moments that identify σ and ω, and
   contribute to differences from Soderbery independently of the estimator
   and period.

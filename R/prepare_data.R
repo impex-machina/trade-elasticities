@@ -6,7 +6,8 @@
 #' content identical to the original, only sectioned.
 #'
 #' Exported functions:
-#'   prepare_raw_data(cfg)         — load and pre-clean raw BACI
+#'   prepare_raw_data(cfg)         — load and pre-clean raw BACI (patch 0166: the product universe of the
+#'                                   whole panel rides along as attr "goods_universe")
 #'   prepare_data(cfg, raw_cache)  — build the cell-level estimation panel
 #'
 #' Depends on: load_baci.R, hs_codes.R, region_map.R, quality_log.R
@@ -33,6 +34,14 @@ prepare_raw_data <- function(cfg) {
     skip_absent = TRUE)
 
   raw <- raw[cusval > 0 & quantity > 0 & !is.na(cusval) & !is.na(quantity)]
+  # (patch 0166) the products of the whole panel, before the year window cuts it.
+  # --product-sample draws from this list (sample_products_universe(), R/utils_general.R):
+  # drawn from the window's own products, a window missing one code -- 2010-2024
+  # has 1,239 of the 1,240 HS4 codes -- shifted the sorted list and so the draw,
+  # and the 2% late window of 2026-11-11 shared 4 of its 25 products with the early one.
+  universe <- pad_hs6(unique(raw$good)); universe <- universe[nchar(universe) == 6L]
+  if (cfg$agg_level == "hs4") universe <- hs6_to_hs4(universe)
+  universe <- sort(unique(as.character(universe)))
   raw <- raw[year >= cfg$minyear]
   if (!is.null(cfg$maxyear) && !is.na(cfg$maxyear)) raw <- raw[year <= cfg$maxyear]
 
@@ -48,6 +57,7 @@ prepare_raw_data <- function(cfg) {
   cat(sprintf("  Raw data cached: %s obs, %d products, years %d-%d\n",
               format(nrow(raw), big.mark = ","), uniqueN(raw$good),
               min(raw$year), max(raw$year)))
+  data.table::setattr(raw, "goods_universe", universe)   # patch 0166; saveRDS keeps it in the cache
   raw
 }
 

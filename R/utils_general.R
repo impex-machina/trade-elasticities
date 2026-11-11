@@ -142,6 +142,28 @@ cell_failure <- function(reason) {
 #' Every quantity in prepare_data() is within good, so subsetting the raw cache
 #' to the sampled goods BEFORE prepare_data() is exact for Stage 2. Returns the
 #' sorted vector of goods to keep; frac = 1 returns all goods.
+#' (patch 0166) The product sample of a run, drawn from the whole panel's products.
+#'
+#' The raw cache carries attr "goods_universe": the products of the whole BACI
+#' panel before the year window (prepare_raw_data()). Drawing from it gives two
+#' windows the same products; a sampled product with no trade in a window simply
+#' has no rows there. Through patch 0165 the draw used the cache's own products,
+#' and a window missing one code drew a different sample (the late window of
+#' 2026-11-11: 25 of 1,239, sharing 4 products with the early window). A cache
+#' written before patch 0166 has no such attribute: the draw then falls back to
+#' the cache's products, as before, and says so.
+#' @return list(keep, n_universe, n_absent = sampled products with no rows in the
+#'   cache, from_universe = TRUE when the attribute was used).
+sample_products_universe <- function(raw_cache, frac, seed) {
+  universe <- attr(raw_cache, "goods_universe")
+  from_universe <- !is.null(universe) && length(universe) > 0L
+  if (!from_universe) universe <- raw_cache$good
+  universe <- sort(unique(as.character(universe)))
+  keep <- sample_products(universe, frac, seed)
+  present <- unique(as.character(raw_cache$good))
+  list(keep = keep, n_universe = length(universe), n_absent = sum(!keep %in% present), from_universe = from_universe)
+}
+
 sample_products <- function(goods, frac, seed) {
   goods <- sort(unique(as.character(goods)))
   if (!is.finite(frac) || frac <= 0 || frac > 1) stop("product sample fraction must be in (0, 1]")

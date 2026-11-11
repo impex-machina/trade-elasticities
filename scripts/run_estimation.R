@@ -234,13 +234,17 @@ cat("Preparing country-level estimation data...\n")
 config_country <- config
 config_country$use_regions <- FALSE
 # (patch 0071) --product-sample FRAC --product-seed N: exact for Stage 2
+# (patch 0166) drawn from the whole panel's products (the cache's "goods_universe"), so two year
+# windows get the same products; a cache written before patch 0166 falls back to its own products.
 if (!is.null(opts$product_sample) && is.finite(opts$product_sample) && opts$product_sample < 1) {
+  .ps <- sample_products_universe(raw_cache, opts$product_sample, opts$product_seed)
   data.table::setDT(raw_cache)
-  .keep <- sample_products(raw_cache$good, opts$product_sample, opts$product_seed)
-  .n_all <- data.table::uniqueN(raw_cache$good)
-  raw_cache <- raw_cache[good %in% .keep]
-  cat(sprintf("Product sample: %d of %d goods kept (frac %.4f, seed %d); %s obs\n\n",
-              length(.keep), .n_all, opts$product_sample, as.integer(opts$product_seed), format(nrow(raw_cache), big.mark = ",")))
+  raw_cache <- raw_cache[good %in% .ps$keep]
+  cat(sprintf("Product sample: %d of %d goods kept (frac %.4f, seed %d)%s%s; %s obs\n\n",
+              length(.ps$keep), .ps$n_universe, opts$product_sample, as.integer(opts$product_seed),
+              if (.ps$from_universe) "" else " [drawn from this cache's own products: it predates patch 0166]",
+              if (.ps$n_absent > 0L) sprintf("; %d of them have no trade in this window", .ps$n_absent) else "",
+              format(nrow(raw_cache), big.mark = ",")))
 }
 prep_country <- prepare_data(config_country, raw_cache = raw_cache)
 # (patch 0074) --t-parity odd|even: keep half the differenced observations by t

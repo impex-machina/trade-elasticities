@@ -58,6 +58,7 @@ cleaning rule must say which rule. *Addendum 2026-11-09 (patch 0163): since v0.1
 describes the Stage-1 table and the `sigma_stage1` column only. The published `sigma` is the
 Stage-2 update, re-solved from the import block of the Stage-2 panel, and that panel carries
 the |Δ ln p| ≥ 2 rule; how the updated σ moves with the threshold has not been measured.*
+*Measured since (2026-11-11, patch 0166): see "Measurements" below.*
 
 **Corrections (2026-11-09, patch 0163; no estimate changes).** (1) The v0.12.0 entry says
 `gamma_se_total` is populated on the 4,646 rows that keep a Stage-1 σ. It is populated on
@@ -85,11 +86,30 @@ since patch 0163. (6) The interval quoted for the shrinkage gain ([0.004, 0.016]
 a bootstrap over cell-directions, which draws the two directions of a cell and the cells of a
 product as independent observations; `analysis/sigma_update_window_census.R` computes a
 product-clustered interval since patch 0163, not yet run, and until it is the gain's sign
-should be read as less certain than the quoted interval suggests. (7) Since v0.12.0
+should be read as less certain than the quoted interval suggests (run 2026-11-11: the sign
+holds; see "Measurements" below). (7) Since v0.12.0
 `gamma_v_resid` is carried over from the γ_V-final table (pass 3 against pass 2, at the σ
 before the update); the published γ comes from one more pass at the updated σ with the same
 γ_V inputs as pass 3, so the column does not measure the published γ's own distance from a
 fixed point.
+
+**Measurements (2026-11-11, patches 0165–0166; no estimate changes).** Local runs on the 2%
+product subsample (`docs/results/sigma_update_sensitivity_census.md`,
+`docs/results/sigma_update_window_census.md`; rules fixed before the numbers). (1) The
+shrinkage gain of the published σ over one number, 0.011 in median |Δ ln(σ − 1)|, has a 95%
+interval of [0.002, 0.018] when the subsample's 25 products are resampled (0.6% of draws at or
+below zero) and stays positive under each of 10 fold seeds: its sign holds, and correction (6)
+above is resolved. A separate shrinkage weight for small and large cells does not beat one
+weight (gain 0.0005, interval [−0.003, 0.005]). (2) The published σ's level depends on the
+unit-value threshold of the Stage-2 panel as Stage 1's does: with γ held at its final values the
+median updated σ is 2.29 untrimmed, 2.50 at |Δ ln p| < 3, 2.75 at the shipped 2 and 3.22 at
+1.5, with no plateau; read the level as conditional on the shipped rule. (3) The published γ is
+not at its own γ_V fixed point after the σ update: one more pass with the exporter γ_V lookup
+rebuilt from the update's table moves 15.0% of directly estimated rows by more than 1% and the
+`opt_tariff` of 37.5% of cells by more than 1%. The next re-estimation includes that pass.
+(4) The profile's closed form (weighted least squares in 1/(σ − 1)) reproduces the grid search
+on every cell but one near the floor (largest gap 6.8e-7 in ln(σ − 1)); the next
+re-estimation uses it.
 
 **Corrections (2026-10-15, patches 0116–0118; no estimate changes).** (1) The
 v0.10.0 and v0.11.0 entries give optimizer non-convergence as 0.42%: that was the

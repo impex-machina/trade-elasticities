@@ -217,8 +217,8 @@ test_that("the generated documents say what the v0.12.0 table holds", {
   expect_match(readme, "| `gamma_exposure` | Number of moment rows that involve the row's \u03b3", fixed = TRUE)
   expect_false(grepl("Number of exporters in the estimating set for the cell", readme, fixed = TRUE))
   expect_match(readme, "carried over from the \u03b3_V-final table", fixed = TRUE)
-  expect_match(readme, "has not been measured", fixed = TRUE)                    # the update's sensitivity to the unit-value trim
-  expect_match(readme, "resamples cell-directions", fixed = TRUE)
+  expect_match(readme, "drops differenced observations with |Δ ln p| ≥ 2", fixed = TRUE)   # the trimmed-panel caveat (measured since patch 0166)
+  expect_match(readme, "sigma_update_window_census.md", fixed = TRUE)            # the shrinkage gain's record (product-clustered since patch 0166)
   expect_false(grepl("small, robust margin", readme, fixed = TRUE))
   # the product table's sigma: near the level, not on it, once the census shows a spread
   ps <- jsonlite::fromJSON(file.path(root, "results", "product_summary_census.json"), simplifyVector = FALSE)
