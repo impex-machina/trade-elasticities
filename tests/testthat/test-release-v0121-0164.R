@@ -169,18 +169,18 @@ test_that("stage2_reliability.R: the JSON follows the record", {
   expect_false(file.exists(file.path(.r121_root(), "results", "stage2_reliability.json")))
 })
 
-test_that("the card: v0.12.1 on top, v0.12.0 pinned, and only the top entry may lack its data revision", {
+# (patch 0168) v0.13.0 is the card's top entry since that release: v0.12.1's entry is found by its
+# version and must carry its data revision; the only-the-top-entry rule moved to test-release-v0130-0168.R
+test_that("the card: the v0.12.1 entry, its data revision, v0.12.0 pinned", {
   card <- readLines(file.path(.r121_root(), "docs", "hf_dataset_card.md"), warn = FALSE, encoding = "UTF-8")
   hi <- grep("^> \\*\\*v[0-9]+\\.[0-9]+\\.[0-9]+ \\(", card)
-  expect_match(card[hi[1]], "^> \\*\\*v0\\.12\\.1 \\(2026-11-(09|1[0-2])\\)\\.\\*\\*")
-  entry <- paste(sub("^> ?", "", card[hi[1]:(hi[2] - 1L)]), collapse = " ")
+  i0 <- grep("^> \\*\\*v0\\.12\\.1 \\(2026-11-(09|1[0-2])\\)\\.\\*\\*", card)
+  expect_length(i0, 1L)
+  entry <- paste(sub("^> ?", "", card[i0:(hi[match(i0, hi) + 1L] - 1L)]), collapse = " ")
   for (s in c("No re-estimation", "share_cells_own_sigma", "median 0, 90th percentile 0.014", "2.880", "0.690", "(2.678)",
               "rebuild_stage2b_summary.R --passes", "product_summary_census.md", "patches 0163\u20130164"))
     expect_true(grepl(s, entry, fixed = TRUE), info = s)
-  expect_match(entry, "Data revision: `(<fill>|[0-9a-f]{40})`. \\*\\*v0\\.12\\.0 remains available pinned at revision `73cf5702564820d35260a87974aed2ceed9c4f45`\\.\\*\\*")
-  fills <- grep("Data revision: `<fill>`", card)
-  expect_lte(length(fills), 1L)
-  if (length(fills)) expect_true(fills > hi[1] && fills < hi[2], info = "a <fill> outside the top entry")
+  expect_match(entry, "Data revision: `4c20c839c20ae0457c6f44146278a97fa1f3b29c`. \\*\\*v0\\.12\\.0 remains available pinned at revision `73cf5702564820d35260a87974aed2ceed9c4f45`\\.\\*\\*")
   i0 <- grep("^> \\*\\*v0\\.12\\.0 ", card)
   expect_true(any(grepl("Data revision: `73cf5702564820d35260a87974aed2ceed9c4f45`", card[i0:(hi[match(i0, hi) + 1L] - 1L)], fixed = TRUE)))
 })

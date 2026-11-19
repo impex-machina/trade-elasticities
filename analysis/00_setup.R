@@ -399,6 +399,7 @@ rm(.sig_spikes, sigma_cap_value, sigma_fallback_value, .n_fb)
 .su_log <- file.path(DERIVED_S2B, "baci_hs92_v202601_elast_country_hs4_sigma_update_passes.csv")
 .su <- if (file.exists(.su_log)) { u <- data.table::fread(.su_log); as.list(u[which.max(u$update_pass), ]) } else list()
 .g <- function(k) { v <- .su[[k]]; if (is.null(v) || length(v) != 1L || !is.finite(suppressWarnings(as.numeric(v)))) NA_real_ else as.numeric(v) }
+.gs <- function(k) { v <- .su[[k]]; if (is.null(v) || length(v) != 1L || is.na(v)) NA_character_ else as.character(v) }   # patch 0168
 stage2b_summary$sigma_update <- list(
   present        = any(startsWith(.su_src, "updated_")),
   n_shrunk       = sum(.su_src == "updated_import_shrunk"),
@@ -409,9 +410,40 @@ stage2b_summary$sigma_update <- list(
   denominator    = nrow(stage2b_dt),
   cells_profiled = .g("cells_profiled"), cells_updated = .g("cells_updated"),
   at_floor = .g("at_floor"), at_cap = .g("at_cap"), level_sigma = .g("level_sigma"),
-  shrink_b_half = .g("shrink_b_half"), shrink_b_full = .g("shrink_b_full")
+  shrink_b_half = .g("shrink_b_half"), shrink_b_full = .g("shrink_b_full"),
+  # (patch 0168) the rules the final pass ran under (pass-log columns of patches 0161 and 0167; NA in
+  # a log that predates them): the scope, the Stage-2a priors' median before and after the 2a2b
+  # re-run, the unprofiled-cell rule and how many cells it set to the level, the sigma tail of the trim
+  scope = .gs("scope"), prior_median_before = .g("prior_median_before"), prior_median_after = .g("prior_median_after"),
+  stage2a_rows = .g("stage2a_rows"), unprofiled = .gs("unprofiled"), cells_unprofiled_level = .g("cells_unprofiled_level"),
+  trim_sigma_tail = .gs("trim_sigma_tail")
 )
-rm(.su_src, .su_log, .su, .g)
+rm(.su_src, .su_log, .su, .g, .gs)
+
+# (patch 0168) the gamma_V refreshes after the update (patch 0165; one by default in patch 0167, two
+# since 0168) and the published gamma's own distance from its gamma_V fixed point: the run's
+# _gamma_v_refresh.csv, which the release carries beside the table since v0.13.0 (no steps
+# otherwise), and gamma_v_resid over the published rows -- since v0.13.0 the last refresh's step,
+# through v0.12.1 pass 3 against pass 2 at the Stage-1 sigma.
+.gr_log <- file.path(DERIVED_S2B, "baci_hs92_v202601_elast_country_hs4_gamma_v_refresh.csv")
+.gr <- if (file.exists(.gr_log)) data.table::fread(.gr_log) else data.table::data.table()
+.gr_num <- function(z, k) { v <- if (k %in% names(z)) suppressWarnings(as.numeric(z[[k]])) else NA_real_; if (length(v) != 1L || !is.finite(v)) NA_real_ else v }
+.gr_steps <- lapply(seq_len(nrow(.gr)), function(i) {
+  z <- .gr[i]
+  list(refresh = .gr_num(z, "refresh"), rows = .gr_num(z, "rows"), abs_dlng_p50 = .gr_num(z, "abs_dlng_p50"),
+       abs_dlng_p90 = .gr_num(z, "abs_dlng_p90"), abs_dlng_p99 = .gr_num(z, "abs_dlng_p99"),
+       share_rows_gt_1pct = .gr_num(z, "share_rows_gt_1pct"), cells = .gr_num(z, "cells"),
+       share_cells_tariff_gt_1pct = .gr_num(z, "share_cells_tariff_gt_1pct"))
+})
+.gvr <- if ("gamma_v_resid" %in% names(stage2b_dt)) stage2b_dt$gamma_v_resid else numeric(0)
+.gvr <- .gvr[is.finite(.gvr)]
+.gq <- function(p) if (length(.gvr)) unname(stats::quantile(.gvr, p)) else NA_real_
+stage2b_summary$gamma_v_refresh <- list(
+  present = length(.gr_steps) > 0L, n_refresh = length(.gr_steps), steps = .gr_steps,
+  resid = list(n_filled = length(.gvr), denominator = nrow(stage2b_dt), p50 = .gq(0.5), p90 = .gq(0.9), p99 = .gq(0.99),
+               max = if (length(.gvr)) max(.gvr) else NA_real_, share_lt_1e2 = if (length(.gvr)) mean(.gvr < 1e-2) else NA_real_)
+)
+rm(.gr_log, .gr, .gr_num, .gr_steps, .gvr, .gq)
 
 # (b) published-gamma floor. Stage 2b floors gamma at 0 for both the J
 # exporters and the reference exporter (estimate_cell_fixed_sigma.R:

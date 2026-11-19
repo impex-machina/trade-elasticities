@@ -145,6 +145,7 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   file.copy(f$s1, file.path(dv, "stage1")); file.copy(f$s2a, file.path(dv, "stage2a"))
   file.copy(c(f$s2b, f$s2b_sum, f$s2b_txt), file.path(dv, "stage2b"))
   file.copy(file.path(dirname(f$s2b), "baci_hs92_v202601_elast_country_hs4_sigma_update_passes.csv"), file.path(dv, "stage2b"))   # patch 0158: the update's pass log travels with the release
+  file.copy(file.path(dirname(f$s2b), "baci_hs92_v202601_elast_country_hs4_gamma_v_refresh.csv"), file.path(dv, "stage2b"))      # patch 0168: so does the refresh log
   meth <- file.path(root, "docs", "methodology")
   file.copy(file.path(meth, c("liml_validation_tier1a.csv", "liml_validation_tier1b.csv",
                               "se_calibration_mc_summary.csv", "bootstrap_se_summary.csv")), file.path(dv, "validation"))
@@ -206,6 +207,10 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   expect_equal(s2bj$sigma_update$n_shrunk, sum(pub$sigma_source == "updated_import_shrunk"))
   expect_equal(s2bj$sigma_update$shrink_b_full, 2 * 0.146 / 1.146, tolerance = 1e-9)
   expect_true(is.finite(s2bj$sigma_update$level_sigma) && s2bj$sigma_update$cells_profiled > 0)
+  # (patch 0168) the refreshes and the rules of the final pass reach the summary (two refreshes by default)
+  expect_true(isTRUE(s2bj$gamma_v_refresh$present)); expect_equal(s2bj$gamma_v_refresh$n_refresh, 2)
+  expect_equal(s2bj$gamma_v_refresh$resid$n_filled, sum(is.finite(pub$gamma_v_resid)))
+  expect_identical(s2bj$sigma_update$scope, "2a2b"); expect_identical(s2bj$sigma_update$unprofiled, "level")
 
   # --- 3. the README build on the JSONs that run wrote ------------------------
   rd <- file.path(td, "README.md"); rec <- file.path(td, "known_limitations_record.md")   # patch 0143
@@ -219,6 +224,7 @@ test_that("runner -> analysis layer -> README build run end to end on synthetic 
   # says the standard-error columns' state from the JSON this run wrote
   expect_match(txt, "| `gamma_exposure` | Number of moment rows that involve the row's", fixed = TRUE)
   if (identical(as.numeric(s2bj$sigma_robust$robust), 0)) expect_match(txt, "so it is `NA` throughout", fixed = TRUE)
+  expect_match(txt, "Since v0.13.0 it is the step of the last of two \u03b3_V refreshes", fixed = TRUE)   # patch 0168
   rtxt <- paste(readLines(rec, warn = FALSE, encoding = "UTF-8"), collapse = "\n")   # patch 0143: the record renders too
   expect_match(rtxt, "the long-form record", fixed = TRUE)
   expect_false(grepl("{{", rtxt, fixed = TRUE))

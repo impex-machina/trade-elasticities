@@ -336,6 +336,8 @@ n_robust <- function(s2b) { rb <- s2b[["sigma_robust"]]; v <- if (is.null(rb)) N
 se_total_row_tail <- function(s2b) {
   n <- n_robust(s2b)
   if (is.na(n)) return("")
+  if (n == 0 && no_stage1_rows(s2b))   # patch 0168: since v0.13.0 no row keeps a Stage-1 sigma
+    return(" \u2014 and on every other row as well: the column is filled only where `sigma_robust` is `TRUE`, which no row of this release is (since v0.13.0 no row keeps a Stage-1 \u03c3; through v0.12.1 the few that did belonged to cells with no fitted exporter and carried no standard error of any kind), so it is `NA` throughout")
   if (n == 0) return(sprintf(" \u2014 and on every other row as well: the column is filled only where `sigma_robust` is `TRUE`, which no row of this release is (the %s of rows that keep a Stage-1 \u03c3 belong to cells with no fitted exporter and carry no standard error of any kind), so it is `NA` throughout", su_pct(s2b, "n_stage1")))
   sprintf(", which leaves it possible only on the %s rows where `sigma_robust` is `TRUE`", format_int(n))
 }
@@ -350,6 +352,9 @@ robust_filter_sentence <- function(s2b) {
 se_total_scope <- function(s2b, form = c("bullet", "record")) {
   form <- match.arg(form); n <- n_robust(s2b)
   none <- !is.na(n) && n == 0
+  if (none && no_stage1_rows(s2b))   # patch 0168
+    return(if (form == "bullet") "since v0.12.0 on no row: the update's profile has no SE, and since v0.13.0 no row keeps a Stage-1 \u03c3"
+           else "since v0.12.0 on no row: the update's profile carries no SE, and since\n  v0.13.0 no row keeps a Stage-1 \u03c3")
   if (form == "bullet")
     return(if (none) "since v0.12.0 on no row: the update's profile has no SE, and the rows that keep a Stage-1 \u03c3 are imputed rows without one"
            else sprintf("since v0.12.0 at most on the %s of rows that keep a Stage-1 \u03c3, since the update's profile has no SE", su_pct(s2b, "n_stage1")))
@@ -366,8 +371,9 @@ level_sigma_sentence <- function(s2b) {
   if (!su_present(s2b))
     return(sprintf("A cell whose \u03c3 is a box edge, or within one standard error of the pole, takes the global fallback \u03c3 (%s) like a cell with no estimate: %s of Stage-2b rows carry it (`sigma_source`).",
                    fb, format_pct(req(sp, "n_fallback"), req(sp, "denominator"))))
-  sprintf("Through v0.11.4 a cell whose Stage-1 \u03c3 was a box edge, or within one standard error of the pole, took the global fallback \u03c3 like a cell with no estimate. Since v0.12.0 every cell with import rows is profiled whatever its Stage-1 status (kept in `sigma_source_stage1`), and one level \u03c3 (%s) goes to the cells whose profile sat at the cap or floor and to the cells with no import rows to profile: %s and %s of Stage-2b rows carry it (`sigma_source`).",
-          fb, su_pct(s2b, "n_level"), format_pct(req(sp, "n_fallback"), req(sp, "denominator")))
+  sprintf("Through v0.11.4 a cell whose Stage-1 \u03c3 was a box edge, or within one standard error of the pole, took the global fallback \u03c3 like a cell with no estimate. Since v0.12.0 every cell with import rows is profiled whatever its Stage-1 status (kept in `sigma_source_stage1`), and one level \u03c3 (%s) goes to the cells whose profile sat at the cap or floor and to the cells with no import rows to profile%s: %s and %s of Stage-2b rows carry it (`sigma_source`).",
+          fb, if (unprof_level(s2b)) sprintf(" \u2014 since v0.13.0 also to the %s cells with a Stage-1 \u03c3 and no fitted exporter, which kept that \u03c3 through v0.12.1", su_int(s2b, "cells_unprofiled_level")) else "",   # patch 0168
+          su_pct(s2b, "n_level"), format_pct(req(sp, "n_fallback"), req(sp, "denominator")))
 }
 
 # A8: the headline sigma. On a table where the fallback sigma covers the row
@@ -594,6 +600,10 @@ product_table_section <- function(ps, sigma_fallback, pw = NULL, update_present 
   # periods' gap below is.
   gap <- ""
   across <- if (is.null(el)) "" else sprintf(" (%s and %s between 1995\u20132009 and 2010\u20132024)", sp(el, "gamma_median"), sp(el, "opt_tariff_median"))
+  # (patch 0168) rows carried across a re-estimation (analysis/product_summary.R --carried-release): say whose they are
+  cf <- ps$meta$reproducibility_carried_from
+  if (is.list(cf) && !is.null(cf$release) && nzchar(cf$release))
+    across <- paste0(across, sprintf("; measured on the 2%% runs of the %s configuration and carried, not re-measured, to this table", cf$release))
   indep <- " A test on independently estimated periods is pending."
   if (!is.null(pw)) {
     r <- req(pw, "reproducibility")
@@ -898,6 +908,146 @@ asymmetry_phrase <- function(n_asym) {
 # diffs trivially against any editor / git config. R unescapes \uXXXX in
 # string literals regardless of source-file encoding.
 
+# --- patch 0168 phrases (release v0.13.0) -------------------------------------
+# The configuration v0.13.0 ships (patches 0165-0168): the closed-form profile, two gamma_V
+# refreshes after the update, the 2a2b scope (the published Stage 2a is the re-run at the
+# updated sigma), no sigma tail in the trim once sigma is the shrunk update, and the level for
+# the unprofiled cells that had a Stage-1 sigma. The phrases read stage2b_summary.json -- the
+# pass-log columns of the sigma_update block and the gamma_v_refresh block (00_setup.R, patch
+# 0168) -- and the sensitivity censuses, and keep the v0.12.x wording on a summary without
+# those fields, so each sentence follows the table it describes.
+su_str <- function(s2b, key) {
+  blk <- s2b[["sigma_update"]]; v <- if (is.null(blk)) NULL else blk[[key]]
+  if (is.null(v) || length(v) != 1L || is.na(v) || identical(as.character(v), "NA")) NA_character_ else as.character(v)
+}
+gvr_steps <- function(s2b) { g <- s2b[["gamma_v_refresh"]]; if (is.null(g) || is.null(g[["steps"]])) list() else g[["steps"]] }
+gvr_n <- function(s2b) length(gvr_steps(s2b))
+gvr_step <- function(s2b, i, key) {
+  st <- gvr_steps(s2b); if (length(st) < i) return(NA_real_)
+  v <- suppressWarnings(as.numeric(st[[i]][[key]])); if (length(v) != 1L || !is.finite(v)) NA_real_ else v
+}
+gvr_resid <- function(s2b, key) {
+  g <- s2b[["gamma_v_refresh"]]; v <- if (is.null(g) || is.null(g[["resid"]])) NULL else g[["resid"]][[key]]
+  v <- suppressWarnings(as.numeric(v)); if (length(v) != 1L || !is.finite(v)) NA_real_ else v
+}
+num_word <- function(n) if (length(n) == 1L && n %in% 1:5) c("one", "two", "three", "four", "five")[n] else format(n)
+.p1 <- function(v) if (is.na(v)) "n/a" else format_prop_pct(v)
+.g2 <- function(v) if (is.na(v)) "n/a" else formatC(v, digits = 2, format = "g")
+scope_2a2b <- function(s2b) identical(su_str(s2b, "scope"), "2a2b")
+unprof_level <- function(s2b) identical(su_str(s2b, "unprofiled"), "level") && !is.na(su_field(s2b, "cells_unprofiled_level"))
+no_stage1_rows <- function(s2b) isTRUE(su_field(s2b, "n_stage1") == 0)
+
+# the Overview: which sigma the published Stage 2a is at, and what runs after the update
+overview_2a_tail <- function(s2b) if (scope_2a2b(s2b))
+  "; since v0.13.0 the published Stage 2a is re-estimated at the region medians of the updated \u03c3 (below), and it is the source of the priors the final Stage-2b passes shrink toward" else ""
+overview_update_tail <- function(s2b) {
+  n <- gvr_n(s2b)
+  if (n == 0L) return(if (scope_2a2b(s2b)) ", Stage 2a re-run at that \u03c3, and a final Stage-2b pass at it" else ", and a final Stage-2b pass at that \u03c3")
+  runs <- sprintf("%s times, the last %s with the exporter \u03b3_V lookup rebuilt from the table before each", num_word(n + 1L), num_word(n))
+  if (scope_2a2b(s2b)) return(sprintf("; since v0.13.0 Stage 2a is re-run at that \u03c3 and Stage 2b then runs at it %s", runs))
+  sprintf(", and Stage 2b at that \u03c3 %s", runs)
+}
+# the `sigma` row: what follows "and Stage 2b runs once more at that sigma"
+sigma_row_pass_tail <- function(s2b) {
+  n <- gvr_n(s2b)
+  if (!scope_2a2b(s2b) && n == 0L) return("")
+  parts <- c(if (scope_2a2b(s2b)) "after Stage 2a has been re-run at the region medians of the updated \u03c3 and the priors rebuilt from it",
+             if (n > 0L) sprintf("followed by %s \u03b3_V refresh%s", num_word(n), if (n > 1L) "es" else ""))
+  sprintf(" (since v0.13.0 %s%s)", paste(parts, collapse = ", "), if (n > 0L) "; see `gamma_v_resid`" else "")
+}
+# the `sigma` row: who carries which sigma
+sigma_rows_sentence <- function(s2b) {
+  sp <- req(s2b, "sigma_provenance"); fb <- format_num(req(sp, "fallback_value"))
+  fbp <- format_pct(req(sp, "n_fallback"), req(sp, "denominator"))
+  capfloor <- sprintf("(%s and %s of %s profiled cells)", su_int(s2b, "at_cap"), su_int(s2b, "at_floor"), su_int(s2b, "cells_profiled"))
+  if (unprof_level(s2b))
+    return(sprintf("%s of rows carry it; %s carry the level \u03c3 \u2248 %s: the cells whose profile sat at the \u03c3 cap or floor %s and, since v0.13.0, the %s cells with a Stage-1 \u03c3 and no fitted exporter, which the profile cannot reach (every row of them is an imputed one; through v0.12.1 they kept their Stage-1 \u03c3); %s carry the same level as the fallback because the cell has no import rows to profile%s.",
+                   su_pct(s2b, "n_shrunk"), su_pct(s2b, "n_level"), fb, capfloor, su_int(s2b, "cells_unprofiled_level"), fbp,
+                   if (no_stage1_rows(s2b)) ", so no row keeps a Stage-1 \u03c3" else sprintf(", and %s keep a Stage-1 \u03c3", su_pct(s2b, "n_stage1"))))
+  sprintf("%s of rows carry it; %s carry the level \u03c3 \u2248 %s because the cell's profile sat at the \u03c3 cap or floor %s; %s carry the same level as the fallback because the cell has no import rows to profile, and %s keep a Stage-1 \u03c3 (cells with a Stage-1 \u03c3 and no fitted exporter, so every such row is an imputed one).",
+          su_pct(s2b, "n_shrunk"), su_pct(s2b, "n_level"), fb, capfloor, fbp, su_pct(s2b, "n_stage1"))
+}
+# the `sigma_source` row: the two glosses that changed in v0.13.0
+updated_level_gloss <- function(s2b) if (unprof_level(s2b))
+  "(the cell's profile sat at the \u03c3 cap or floor, or \u2014 since v0.13.0 \u2014 the cell has a Stage-1 \u03c3 but no fitted exporter, so there is no estimated \u03b3 to profile at; the level \u03c3)" else
+  "(the cell was profiled but its profile sat at the \u03c3 cap or floor; the level \u03c3)"
+estimated_gloss <- function(s2b) if (unprof_level(s2b) && no_stage1_rows(s2b))
+  "(the cell's own Stage-1 \u03c3; through v0.12.1 the cells that could not be profiled kept it, and since v0.13.0 they carry the level, so no row of this release is `estimated`)" else
+  "(the cell's own Stage-1 \u03c3; cells that could not be profiled)"
+# the `sigma_update` row: how the profile is solved (the measurement is the 2% census of patch 0165)
+profile_method_phrase <- function(p) {
+  pm <- if (is.null(p)) NULL else p[["profile_methods"]]
+  if (is.null(pm)) return("240-point log grid from 1.02 to the cap, then `optimize()`")
+  n <- as.numeric(req(pm, "cells")); agree <- round(n * as.numeric(req(pm, "share_status_agree")))
+  sprintf("since v0.13.0 in closed form: at fixed \u03b3 the import residual is linear in 1/(\u03c3 \u2212 1), so the minimiser is a one-regressor weighted least squares, with the grid search kept as the fallback where the objective is not of that form; on the 2%% subsample the two give the same status on %s of %s cells and agree to %s in ln(\u03c3 \u2212 1) (`docs/results/sigma_update_sensitivity_census.md`); through v0.12.1 a 240-point log grid from 1.02 to the cap, then `optimize()`",
+          format_int(agree), format_int(n), formatC(as.numeric(req(pm, "max_abs_dln")), digits = 1, format = "e"))
+}
+# the `gamma_v_resid` row since v0.12.0
+gvr_row_tail <- function(s2b) {
+  n <- gvr_n(s2b)
+  if (n == 0L)
+    return(" Since v0.12.0 the column is carried over from the \u03b3_V-final table (pass 3 against pass 2, at the \u03c3 before the update): the published \u03b3 comes from one more pass at the updated \u03c3, run with the same \u03b3_V inputs as pass 3, so the column describes the iteration the published \u03b3 started from, not the published \u03b3's own distance from a fixed point.")
+  ord <- c("the first", "the second", "the third", "the fourth", "the fifth")
+  steps <- vapply(seq_len(n), function(i) {
+    if (i == 1L) sprintf("%s moved %s of directly estimated rows by more than 1%% and the `opt_tariff` of %s of cells", if (n == 1L) "it" else ord[1L],
+                         .p1(gvr_step(s2b, 1L, "share_rows_gt_1pct")), .p1(gvr_step(s2b, 1L, "share_cells_tariff_gt_1pct")))
+    else sprintf("%s %s and %s", ord[min(i, 5L)], .p1(gvr_step(s2b, i, "share_rows_gt_1pct")), .p1(gvr_step(s2b, i, "share_cells_tariff_gt_1pct")))
+  }, "")
+  sprintf(paste0(" In v0.12.0\u2013v0.12.1 the column was carried over from the \u03b3_V-final table (pass 3 against pass 2, at the \u03c3 before the update), so it did not describe the published \u03b3, which came from one more pass at the updated \u03c3 with pass 3's \u03b3_V inputs. ",
+                 "Since v0.13.0 it is the step of %s at the updated \u03c3 \u2014 a Stage-2b pass with the exporter \u03b3_V lookup rebuilt from the table before it \u2014 ",
+                 "so it measures the published \u03b3 against the table one refresh earlier: filled on %s rows, median %s, p90 %s, p99 %s, below 0.01 on %s. ",
+                 "%s (`docs/results/sigma_update_sensitivity_census_v0130.md`)%s: read a large value as unsettled, as above."),   # patch 0168
+          if (n == 1L) "the \u03b3_V refresh" else sprintf("the last of %s \u03b3_V refreshes", num_word(n)),
+          format_int(gvr_resid(s2b, "n_filled")), .g2(gvr_resid(s2b, "p50")), .g2(gvr_resid(s2b, "p90")), .g2(gvr_resid(s2b, "p99")),
+          .p1(gvr_resid(s2b, "share_lt_1e2")),
+          if (n == 1L) paste0("The refresh: ", steps) else paste0("The refreshes contract \u2014 ", paste(steps, collapse = ", ")),
+          if (n == 1L) ", and the published \u03b3 is not at its fixed point" else " \u2014 but the published \u03b3 is not at its fixed point")
+}
+# the `trim_reason` row: the trim's sigma tail
+shrunk_sigma_range <- function(s2b, s1) {
+  L <- su_field(s2b, "level_sigma"); b <- su_field(s2b, "shrink_b_full")
+  cap <- suppressWarnings(as.numeric(.nz(s1[["sigma_cap"]], 50)))
+  if (is.na(L) || is.na(b) || !is.finite(cap) || L <= 1) return(NULL)
+  f <- function(s) 1 + exp(log(L - 1) + b * (log(s - 1) - log(L - 1)))
+  c(lo = f(1.02), hi = f(cap))
+}
+trim_sigma_tail_sentence <- function(s2b, s1) {
+  if (!identical(su_str(s2b, "trim_sigma_tail"), "FALSE")) return("")
+  rg <- shrunk_sigma_range(s2b, s1)
+  sprintf(" Since v0.13.0 no row is `sigma_lo`: once \u03c3 is the shrunk update it lies in [%s, %s] by construction (the profile's range from the floor 1.02 to the cap, pulled toward the level by b_full), so no \u03c3 tail can hold a pole or an explosive cell and the trim cuts the \u03b3 tails only (`--stage2-trim-sigma-tail auto`); through v0.12.1 it also flagged the cells in the lowest 0.5%% of \u03c3 (12,123 `sigma_lo` rows in v0.12.0).",
+          if (is.null(rg)) "n/a" else format_num(rg[["lo"]], 2L), if (is.null(rg)) "n/a" else format_num(rg[["hi"]], 2L))
+}
+# Known limitations, "Data and sample" (and record section 11): the update's sensitivity to the
+# unit-value threshold, from the full-data census when there is one (patch 0168), else the 2% one
+uv_curve_val <- function(p, thr, key) {
+  cv <- if (is.null(p)) NULL else p[["trim_grid"]][["curve"]]
+  for (z in cv) if (identical(as.character(z[["threshold"]]), thr)) {
+    v <- suppressWarnings(as.numeric(z[[key]])); return(if (length(v) == 1L && is.finite(v)) v else NA_real_)
+  }
+  NA_real_
+}
+uv_census <- function(full, sub) if (!is.null(full) && !is.null(full$data[["trim_grid"]])) full else if (!is.null(sub)) list(data = sub, key = "sigma_update_sensitivity_census") else NULL
+uv_threshold_phrase <- function(full, sub, detail = FALSE) {
+  p <- uv_census(full, sub)
+  if (is.null(p) || is.null(p$data[["trim_grid"]])) return("how the updated \u03c3 moves with the threshold has not been measured")
+  f2 <- function(v) if (is.na(v)) "n/a" else format_num(v, 2L)
+  curve4 <- function(d) c(f2(uv_curve_val(d, "off", "median_sigma")), f2(uv_curve_val(d, "3", "median_sigma")), f2(uv_curve_val(d, "2", "median_sigma")), f2(uv_curve_val(d, "1.5", "median_sigma")))
+  v <- curve4(p$data); is_full <- !identical(p$key, "sigma_update_sensitivity_census")
+  s <- sprintf("%s, with \u03b3 held at its final values, the median updated \u03c3 is %s untrimmed, %s at 3, %s at the shipped 2 and %s at 1.5, with no plateau",
+               if (is_full) "on the full panel (the v0.13.0 run's diagnostic)" else "on the 2% subsample", v[1], v[2], v[3], v[4])
+  if (detail) s <- paste0(s, uv_threshold_detail(full, sub))
+  paren <- c(if (is_full && !is.null(sub) && !is.null(sub[["trim_grid"]])) sprintf("the 2%% subsample: %s", paste(curve4(sub), collapse = " / ")),
+             sprintf("`docs/results/%s.md`", p$key))
+  sprintf("%s (%s)", s, paste(paren, collapse = "; "))
+}
+uv_threshold_detail <- function(full, sub) {
+  p <- uv_census(full, sub); b <- if (is.null(p)) NULL else p$data[["trim_grid"]][["between_1.5_and_3"]]
+  if (is.null(b)) return("")
+  sprintf(", the level ln(\u03c3 \u2212 1) %s apart between 1.5 and 3, with a Spearman correlation of %s between the cells' values at those two",
+          format_num(as.numeric(req(b, "level_gap")), 2L), format_num(as.numeric(req(b, "spearman")), 2L))
+}
+# --- end patch 0168 phrases ---------------------------------------------------
+
 # --- Render ----------------------------------------------------------------
 
 template <- readLines(TEMPLATE_PATH, encoding = "UTF-8", warn = FALSE)
@@ -941,6 +1091,11 @@ render_env$headline_sigma_note <- headline_sigma_note           # patch 0116
 render_env$su_num <- su_num; render_env$su_int <- su_int; render_env$su_pct <- su_pct   # patch 0158: the sigma update
 render_env$su_present <- su_present; render_env$se_total_row_tail <- se_total_row_tail; render_env$robust_filter_sentence <- robust_filter_sentence   # patch 0163
 render_env$se_total_scope <- se_total_scope; render_env$level_sigma_sentence <- level_sigma_sentence                                               # patch 0163
+for (.f in c("overview_2a_tail", "overview_update_tail", "sigma_row_pass_tail", "sigma_rows_sentence", "updated_level_gloss", "estimated_gloss",
+             "profile_method_phrase", "gvr_row_tail", "trim_sigma_tail_sentence", "uv_threshold_phrase", "uv_threshold_detail"))   # patch 0168
+  assign(.f, get(.f), envir = render_env)
+render_env$SUSC <- r[["sigma_update_sensitivity_census"]]              # patch 0168: the 2% census of patch 0165 (the measurement that set the defaults)
+render_env$SUSC_FULL <- pick_latest("sigma_update_sensitivity_census")  # patch 0168: the full-data census of a release run (_v0130), NULL until committed
 render_env$convergence_clause <- convergence_clause             # patch 0116
 render_env$pillar2_coverage_clause <- pillar2_coverage_clause   # patch 0116
 render_env$CONV <- pick_census_opt("stage2b_convergence_census")   # patch 0116: NULL until committed

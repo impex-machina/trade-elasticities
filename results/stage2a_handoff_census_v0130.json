@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "stage2a": "data/derived/stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds",
+    "stage2a_sha256": "e2f958608e0916b93ff270fa13ba837ef9c8efcdf707d8640855c704e45a9c67",
+    "n_rows": 428035,
+    "git_rev": "215a579",
+    "timestamp": "2026-11-19 01:08:12 EST"
+  },
+  "n_flagged": 3992,
+  "flagged_by_reason": {
+    "gamma_hi": 1996,
+    "gamma_lo": 1996
+  },
+  "n_rows_used": {
+    "all": 399154,
+    "published": 395162
+  },
+  "prior": {
+    "n_goods": 1240,
+    "n_moved": 708,
+    "n_missing": 0,
+    "abs_dln": {
+      "p50": 0.00004306,
+      "p90": 0.00667253,
+      "p99": 0.0925928,
+      "max": 0.302371
+    }
+  },
+  "gamma_v_regional": {
+    "n_cells": 25064,
+    "n_moved": 2754,
+    "n_missing": 8,
+    "abs_dln": {
+      "p50": 0,
+      "p90": 0.00161105,
+      "p99": 0.330905,
+      "max": 4.98489
+    }
+  }
+}

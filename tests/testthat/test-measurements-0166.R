@@ -82,13 +82,15 @@ test_that("README, record and card state the 2026-11-11 measurements, and cite r
   expect_match(readme, "a small margin that holds when the subsample's products are resampled", fixed = TRUE)
   expect_false(grepl("resamples cell-directions", readme, fixed = TRUE))
   expect_false(grepl("its sign is less certain than that interval suggests", readme, fixed = TRUE))
-  # the threshold curve
-  expect_match(readme, "2.29 untrimmed, 2.50 at 3, 2.75 at the shipped 2 and 3.22 at 1.5", fixed = TRUE)
+  # the threshold curve (patch 0168: rendered from the census JSON, the full-data census of a release run first, with
+  # the subsample's curve beside it; 3.22 was 0166's hand rounding of 3.2149)
+  sub_curve <- function(x) grepl("the 2% subsample: 2.29 / 2.50 / 2.75 / 3.21", x, fixed = TRUE) ||
+    grepl("2.29 untrimmed, 2.50 at 3, 2.75 at the shipped 2 and 3.21 at 1.5", x, fixed = TRUE)
+  expect_true(sub_curve(readme)); expect_true(sub_curve(rec))
   expect_false(grepl("has not been measured", readme, fixed = TRUE))
-  expect_match(rec, "median 2.29 untrimmed, 2.50 at 3, 2.75 at the\n  shipped 2 and 3.22 at 1.5", fixed = TRUE)
   expect_false(grepl("moves with the threshold has not been measured", rec, fixed = TRUE))
-  # the gamma_V refresh
-  expect_match(readme, "moves 15.0% of directly estimated rows by more than 1% in γ and the `opt_tariff` of 37.5% of cells", fixed = TRUE)
+  # the gamma_V refresh: the 2% measurement stays on the card (below); since v0.13.0 the README's gamma_v_resid row
+  # describes the shipped refreshes instead (test-release-v0130-0168.R)
   # the card
   expect_match(card, "**Measurements (2026-11-11, patches 0165–0166; no estimate changes).**", fixed = TRUE)
   for (s in c("[0.002, 0.018]", "correction (6)\nabove is resolved", "2.29 untrimmed", "15.0% of directly estimated rows", "largest gap 6.8e-7"))

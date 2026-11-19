@@ -58,7 +58,7 @@ cleaning rule must say which rule. *Addendum 2026-11-09 (patch 0163): since v0.1
 describes the Stage-1 table and the `sigma_stage1` column only. The published `sigma` is the
 Stage-2 update, re-solved from the import block of the Stage-2 panel, and that panel carries
 the |Δ ln p| ≥ 2 rule; how the updated σ moves with the threshold has not been measured.*
-*Measured since (2026-11-11, patch 0166): see "Measurements" below.*
+*Measured since (2026-11-11, patch 0166): see "Measurements" below; on the full panel, the v0.13.0 entry.*
 
 **Corrections (2026-11-09, patch 0163; no estimate changes).** (1) The v0.12.0 entry says
 `gamma_se_total` is populated on the 4,646 rows that keep a Stage-1 σ. It is populated on
@@ -91,7 +91,7 @@ holds; see "Measurements" below). (7) Since v0.12.0
 `gamma_v_resid` is carried over from the γ_V-final table (pass 3 against pass 2, at the σ
 before the update); the published γ comes from one more pass at the updated σ with the same
 γ_V inputs as pass 3, so the column does not measure the published γ's own distance from a
-fixed point.
+fixed point. *(Since v0.13.0 it does: the column is the last γ_V refresh's step; see that entry.)*
 
 **Measurements (2026-11-11, patches 0165–0166; no estimate changes).** Local runs on the 2%
 product subsample (`docs/results/sigma_update_sensitivity_census.md`,
@@ -106,10 +106,11 @@ median updated σ is 2.29 untrimmed, 2.50 at |Δ ln p| < 3, 2.75 at the shipped 
 1.5, with no plateau; read the level as conditional on the shipped rule. (3) The published γ is
 not at its own γ_V fixed point after the σ update: one more pass with the exporter γ_V lookup
 rebuilt from the update's table moves 15.0% of directly estimated rows by more than 1% and the
-`opt_tariff` of 37.5% of cells by more than 1%. The next re-estimation includes that pass.
+`opt_tariff` of 37.5% of cells by more than 1%. The next re-estimation includes that pass. *(v0.13.0
+runs two such refreshes; see its entry.)*
 (4) The profile's closed form (weighted least squares in 1/(σ − 1)) reproduces the grid search
 on every cell but one near the floor (largest gap 6.8e-7 in ln(σ − 1)); the next
-re-estimation uses it.
+re-estimation uses it. *(v0.13.0 does.)*
 
 **Corrections (2026-10-15, patches 0116–0118; no estimate changes).** (1) The
 v0.10.0 and v0.11.0 entries give optimizer non-convergence as 0.42%: that was the
@@ -166,6 +167,48 @@ does not do better (patch 0129, `docs/results/routing_ab.md`): less biased but n
 known truth, and worse at predicting the other period's σ on real data; the route stays,
 and switching would have moved the fallback σ only from 2.473 to 2.486.
 
+> **v0.13.0 (2026-11-19).** One Stage-2b re-estimation on the v0.12.1 Stage-1 table, resumed from the
+> v0.12.0 run's γ_V-final table (pass 3, checked against this run's panel and Stage 1 before use;
+> `--stage2b-resume-from`, patch 0167), under the configuration the measurements of 2026-11-11 decided
+> (patches 0165–0168; `docs/results/sigma_update_sensitivity_census.md`). (1) The σ profile is solved in
+> closed form: at fixed γ the import residual is linear in 1/(σ − 1), so the minimiser is a one-regressor
+> weighted least squares (the same status as the grid search on 4,498 of 4,499 cells of the 2% subsample,
+> agreement to 6.8e-7 in ln(σ − 1); 2.5 minutes on the box against the grid's 20.6). (2) The `2a2b` scope:
+> after the profile, Stage 2a is re-estimated at the region medians of the updated σ and the good-level
+> priors are rebuilt from it (their median γ 0.753 → 0.770), and that re-run is the published Stage-2a table
+> (`stage2a/…_regional_hs4_fixed_sigma.rds` / `.parquet`; v0.12.1's was estimated at the Stage-1 σ:
+> published rows 422,212 → 424,043, γ median 0.781 → 0.805, `opt_tariff` 0.883 → 0.906). Written by the
+> current code, it also carries `total_trade` and `opt_tariff_total`, as the Stage-2b table does since
+> v0.11.3: 24 columns, against the 22 of the Stage-2a table v0.11.0–v0.12.1 shipped. (3) Two γ_V
+> refreshes after the update pass, each a Stage-2b pass with the exporter γ_V lookup rebuilt from the table
+> before it: the first moved 17.9% of directly estimated rows by more than 1% and the `opt_tariff` of 40.3%
+> of cells, the second 5.8% and 13.7%, so by the rule fixed in patch 0167 two ship
+> (`--stage2-gamma-v-refresh 2`, the default since patch 0168). `gamma_v_resid` is now the second
+> refresh's step, the published γ against the table before it (median 8.6e-5, p99 0.088, below 0.01 on
+> 94.2% of the 4,992,802 rows it fills); the published γ is closer to its γ_V fixed point than in v0.12.x,
+> not at it. The run's `_gamma_v_refresh.csv` is published beside the table. (4) No σ tail in the trim
+> once σ is the shrunk update, which lies in [1.54, 4.96] by construction: no `sigma_lo` rows (12,123 in
+> v0.12.0), the 0.5% γ tails only (`--stage2-trim-sigma-tail auto`). (5) The 1,545 cells with a Stage-1 σ
+> and no fitted exporter, which the profile cannot reach and which kept their Stage-1 σ through v0.12.1
+> (4,646 imputed rows in v0.12.0), carry the level (`--stage2-sigma-update-unprofiled level`), so no row
+> is `estimated`. Numbers (v0.12.1 → v0.13.0): published rows 6,829,595 → 6,841,382 (+0.17%; flagged
+> trimmed rows 62,413 → 50,626); γ median 0.8219 → 0.8262, `opt_tariff` 0.8976 → 0.8983, σ median
+> 2.6636 → 2.6635 (the level 2.678 unchanged; 211,313 cells profiled, 199,888 updated, 11,383 at the cap
+> and 42 at the floor); on the 4,896,672 shared directly estimated rows with a shrunk updated σ, γ moved
+> by a median 0.31% (p90 3.4%, p99 32%), on the 89,773 at the level by 0.66% (p90 9.3%); Tier 3 26.4%
+> unchanged; optimizer non-convergence 0.18% → 0.19% of directly estimated rows (646 → 678 cells).
+> `sigma_source` reads `updated_import_shrunk` on 96.9% of rows, `updated_level` on 2.3% and a
+> `fallback_*` label on 0.8%. On the full panel the update depends on the unit-value threshold as it did
+> on the 2% subsample — with γ held at its final values the median updated σ is 2.289 untrimmed, 2.479 at
+> |Δ ln p| < 3, 2.735 at the shipped 2 and 3.250 at 1.5 (2.286 / 2.499 / 2.748 / 3.215 on the subsample),
+> and the level ln(σ − 1) lies 0.419 apart between 1.5 and 3, with a Spearman correlation of 0.58 across
+> the 184,712 cells at both (`docs/results/sigma_update_sensitivity_census_v0130.md`) — so the published
+> level stays conditional on the shipped rule. The product table is rebuilt from the new table; its reproducibility rows are
+> v0.12.0's, carried and not re-measured (`docs/results/product_summary_census.md`). The six table
+> censuses are re-run on this table (`_v0130`; `scripts/refresh_table_censuses.R --re-estimated`).
+> Release gate PASS under the update's rules (`docs/results/gate_v0130.md`). Data revision: `<fill>`.
+> **v0.12.1 remains available pinned at revision `4c20c839c20ae0457c6f44146278a97fa1f3b29c`.**
+>
 > **v0.12.1 (2026-11-09).** No re-estimation: the Stage-1, Stage-2a and Stage-2b tables and the
 > update's pass log are unchanged. Two files that the v0.12.0 train wrote with code from before
 > the σ update are rebuilt from them (patches 0163–0164). (1) The product table (CSV and
@@ -878,9 +921,13 @@ repo; the table below mirrors its human-readable view.
 | Path | Pillar | Description |
 |---|---|---|
 | `stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds` | 1 | Stage 1 sigma estimates (HLIML primary, Step 2 fallback) |
-| `stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds` | 1 | Stage 2a regional gamma with fixed sigma |
+| `stage2a/baci_hs92_v202601_elast_regional_hs4_fixed_sigma.rds` | 1 | Stage 2a regional gamma with fixed sigma (since v0.13.0 at the region medians of the updated sigma) |
 | `stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds` | 1 | Stage 2b country-level gamma with shrinkage + SE |
 | `stage2b/..._summary.rds` / `.txt` | 1 | Country-pair summary table (binary + human-readable) |
+| `stage2b/..._sigma_update_passes.csv` | 1 | The sigma update's pass log: cells profiled / updated / at the floor / at the cap, the level, B and b_full, the rules the pass ran under (since v0.12.0) |
+| `stage2b/..._gamma_v_refresh.csv` | 1 | The gamma_V refreshes after the update: each refresh's step in gamma and opt_tariff (since v0.13.0) |
+| `product/baci_hs92_v202601_elast_hs4_product_summary.csv` | 1 | Product-level (HS4) companion table: median gamma and opt_tariff per product, sigma, counts (since v0.11.1) |
+| `stage1/`, `stage2a/`, `stage2b/`, `product/` `….parquet` | 1 | Parquet copies of the four tables above, checked value for value against them (since v0.11.2; the `.rds` / `.csv` are canonical) |
 | `validation/liml_validation_tier1a.csv` | 2 | Synthetic recovery: Tier 1a sigma grid |
 | `validation/liml_validation_tier1b.csv` | 2 | Synthetic recovery: Tier 1b sample-size convergence |
 | `validation/se_calibration_mc_summary.csv` | 3 | SE calibration Monte Carlo (4 regimes x 3 formulas) |

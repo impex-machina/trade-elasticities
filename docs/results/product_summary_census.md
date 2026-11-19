@@ -1,15 +1,15 @@
 # Product-level companion table (patches 0127-0128)
 
-Built from `data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds` (1240 products); written to `data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv`; rev 19a0fe5, 2026-11-10 22:01:11 EST.
+Built from `data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds` (1240 products); written to `data/derived/product/baci_hs92_v202601_elast_hs4_product_summary.csv`; rev 215a579, 2026-11-19 01:58:43 EST.
 
-The reproducibility rows are carried unchanged from the census of 2026-11-08 01:47:56 EST (rev 2eae5c4) (patch 0164): they compare product medians of gamma and opt_tariff, which this rebuild does not change, and their input tables are no longer on disk.
+The reproducibility rows are carried from the census of 2026-11-08 01:47:56 EST (rev 2eae5c4), measured on the 2% subsample runs of the v0.12.0 configuration (patches 0164, 0168). The table above comes from a later estimation, and the rows were not re-measured on its configuration: read them as v0.12.0's, not as this table's.
 
 ## Distribution across products (p10 / p25 / p50 / p75 / p90)
 
-- product median gamma: 0.410 / 0.538 / 0.745 / 1.045 / 1.360
-- product median opt_tariff: 0.416 / 0.540 / 0.745 / 1.046 / 1.361
-- product median sigma: 2.605 / 2.666 / 2.678 / 2.688 / 2.759
-- share of a product's cells with their own sigma (the update or a Stage-1 estimate, not the level / fallback): 0.667 / 0.775 / 0.874 / 0.933 / 0.961
+- product median gamma: 0.417 / 0.546 / 0.753 / 1.058 / 1.366
+- product median opt_tariff: 0.421 / 0.542 / 0.750 / 1.051 / 1.361
+- product median sigma: 2.605 / 2.666 / 2.678 / 2.684 / 2.754
+- share of a product's cells with their own sigma (the update or a Stage-1 estimate, not the level / fallback): 0.658 / 0.766 / 0.871 / 0.933 / 0.961
 
 ## Reproducibility across products
 

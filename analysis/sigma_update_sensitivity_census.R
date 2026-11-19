@@ -20,7 +20,13 @@
 #      sigma. ADOPT the refresh if it moves at least 10% of directly estimated
 #      published rows by more than 1% in gamma, or the opt_tariff of at least
 #      10% of cells by more than 1%; otherwise CLOSE it -- the stale lookup then
-#      moves the table less than its other uncertainties.
+#      moves the table less than its other uncertainties. (patch 0168) Read on
+#      the run's FIRST refresh (through 0167 on its last, the same row in a
+#      one-refresh run). A run with two refreshes is also read by the rule fixed
+#      in patch 0167 (docs/next_session_queue.md): ONE SHIPS if the second
+#      refresh moves fewer than 1% of those rows by more than 1% and the
+#      opt_tariff of fewer than 1% of cells by more than 1%; TWO SHIP otherwise.
+#      Every refresh's step is reported.
 #   3. The update's sensitivity to the unit-value threshold, gammas held at the
 #      run's final values. ROBUST if the median ln(sigma - 1) over the cells
 #      'ok' at each threshold moves by less than 0.05 between |d ln p| < 1.5 and
@@ -58,15 +64,27 @@ profile_method_reading <- function(prof) {
        disagreements = dis, reading = if (ok) "ADOPTABLE" else "NOT ADOPTABLE")
 }
 
-#' 2. the gamma_V refresh, from _gamma_v_refresh.csv (its last row)
+#' 2. the gamma_V refresh, from _gamma_v_refresh.csv: the adoption rule on its first row (patch 0168;
+#' its last through 0167), the second-refresh rule of patch 0167 when there are two or more, and
+#' every refresh's step in `steps`
 refresh_reading <- function(rf) {
-  rf <- as.data.table(rf)
+  rf <- data.table::copy(as.data.table(rf))                     # a copy: the reorder below must not reach the caller's table
   if (!nrow(rf)) return(NULL)
-  z <- rf[nrow(rf)]
+  if ("refresh" %in% names(rf)) data.table::setorderv(rf, "refresh")
+  z <- rf[1L]
   adopt <- isTRUE(z$share_rows_gt_1pct >= 0.10) || isTRUE(z$share_cells_tariff_gt_1pct >= 0.10)
-  list(refresh = z$refresh, rows = z$rows, abs_dlng_p50 = z$abs_dlng_p50, abs_dlng_p90 = z$abs_dlng_p90, abs_dlng_p99 = z$abs_dlng_p99,
-       share_rows_gt_1pct = z$share_rows_gt_1pct, cells = z$cells, share_cells_tariff_gt_1pct = z$share_cells_tariff_gt_1pct,
-       reading = if (adopt) "ADOPT" else "CLOSE")
+  out <- list(refresh = z$refresh, rows = z$rows, abs_dlng_p50 = z$abs_dlng_p50, abs_dlng_p90 = z$abs_dlng_p90, abs_dlng_p99 = z$abs_dlng_p99,
+              share_rows_gt_1pct = z$share_rows_gt_1pct, cells = z$cells, share_cells_tariff_gt_1pct = z$share_cells_tariff_gt_1pct,
+              reading = if (adopt) "ADOPT" else "CLOSE", n_refresh = nrow(rf),
+              steps = rf[, intersect(c("refresh", "rows", "abs_dlng_p50", "abs_dlng_p90", "abs_dlng_p99", "abs_dlng_max", "share_rows_gt_1pct",
+                                       "cells", "share_cells_tariff_gt_1pct"), names(rf)), with = FALSE])
+  if (nrow(rf) >= 2L) {
+    z2 <- rf[2L]
+    one <- isTRUE(z2$share_rows_gt_1pct < 0.01) && isTRUE(z2$share_cells_tariff_gt_1pct < 0.01)
+    out$second <- list(refresh = z2$refresh, share_rows_gt_1pct = z2$share_rows_gt_1pct, share_cells_tariff_gt_1pct = z2$share_cells_tariff_gt_1pct,
+                       reading = if (one) "ONE SHIPS" else "TWO SHIP")
+  }
+  out
 }
 
 #' 3. the threshold curve, from _sigma_update_trimgrid.csv; `ref` the run's own threshold ("2")
@@ -138,9 +156,17 @@ if (sys.nframe() == 0L) {
     if (nrow(r1$disagreements)) c("", "| grid | closed form | cells |", "|---|---|---|", sprintf("| %s | %s | %d |", r1$disagreements$grid, r1$disagreements$closed, r1$disagreements$N)) else character(0),
     "", sprintf("**Reading: %s.**", r1$reading)), "", "## 2. One gamma_V refresh after the update", "")
   L <- c(L, if (is.null(r2)) "Not measured (the run was not made with `--stage2-gamma-v-refresh`)." else c(
-    sprintf("%s directly estimated rows: |d ln gamma| p50 %.2e, p90 %.2e, p99 %.2e; moved by more than 1%%: %s of rows; opt_tariff moved by more than 1%% in %s of %s cells.",
-            format(r2$rows, big.mark = ","), r2$abs_dlng_p50, r2$abs_dlng_p90, r2$abs_dlng_p99, pc(r2$share_rows_gt_1pct), pc(r2$share_cells_tariff_gt_1pct),
-            format(r2$cells, big.mark = ",")), "", sprintf("**Reading: %s.**", r2$reading)), "", "## 3. The unit-value threshold, gammas held", "")
+    sprintf("Refresh %s: %s directly estimated rows: |d ln gamma| p50 %.2e, p90 %.2e, p99 %.2e; moved by more than 1%%: %s of rows; opt_tariff moved by more than 1%% in %s of %s cells.",
+            format(r2$refresh), format(r2$rows, big.mark = ","), r2$abs_dlng_p50, r2$abs_dlng_p90, r2$abs_dlng_p99, pc(r2$share_rows_gt_1pct), pc(r2$share_cells_tariff_gt_1pct),
+            format(r2$cells, big.mark = ",")), "", sprintf("**Reading (the first refresh): %s.**", r2$reading),
+    if (!is.null(r2$second)) {                                                                   # patch 0168
+      st <- r2$steps
+      c("", sprintf("The run made %d refreshes; each step against the table before it:", r2$n_refresh), "",
+        "| refresh | rows | p50 | p90 | p99 | rows moved > 1% | cells | opt_tariff moved > 1% |", "|---|---|---|---|---|---|---|---|",
+        sprintf("| %s | %s | %.2e | %.2e | %.2e | %s | %s | %s |", format(st$refresh), format(st$rows, big.mark = ","), st$abs_dlng_p50, st$abs_dlng_p90,
+                st$abs_dlng_p99, pc(st$share_rows_gt_1pct), format(st$cells, big.mark = ","), pc(st$share_cells_tariff_gt_1pct)),
+        "", sprintf("**Reading (the second refresh, rule of patch 0167): %s.** One ships if the second refresh moves fewer than 1%% of rows and of cells' opt_tariff by more than 1%%; two otherwise.", r2$second$reading))
+    } else character(0)), "", "## 3. The unit-value threshold, gammas held", "")
   if (is.null(r3)) L <- c(L, "Not measured (the run was not made with `--stage2-sigma-update-trim-grid`).") else {
     cv <- r3$curve; has_vs <- "med_abs" %in% names(cv)
     L <- c(L, sprintf("Reference: the run's own threshold (|d ln p| < %s). Cells 'ok' at both thresholds are compared on ln(sigma - 1).", r3$reference), "",

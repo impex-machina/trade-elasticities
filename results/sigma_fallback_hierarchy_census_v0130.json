@@ -1,0 +1,85 @@
+{
+  "meta": {
+    "stage1": "data/derived/stage1/baci_hs92_v202601_elast_country_hs4_feenstra_sigma.rds",
+    "stage1_sha256": "908c8f53f2ea653835a0c1506df44df9e378fba94f8afed1a0f1bae6146e5b7b",
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "stage2b_sha256": "c71ab4053a101b6c160bf6fbbc4cae486044535dd74cdfca600c1008d7fc3f75",
+    "label": "v0130",
+    "min_cells": 3,
+    "git_rev": "215a579",
+    "timestamp": "2026-11-19 01:07:30 EST"
+  },
+  "census": {
+    "k": 3,
+    "clean_cells": 113706,
+    "global_fallback": 2.47279916,
+    "z_variance": 1.0947242,
+    "r2_good": 0.05713212,
+    "r2_region_good": 0.23265926,
+    "good_sigma_median_quantiles": {
+      "p10": 2.0066,
+      "p25": 2.2273,
+      "p50": 2.4634,
+      "p75": 2.7661,
+      "p90": 3.1158
+    },
+    "loo": {
+      "cells": 113706,
+      "err_global": 0.69319955,
+      "err_good": 0.67371897,
+      "err_ladder": 0.69930202,
+      "ladder_level_share": {
+        "global": 0.00003518,
+        "good": 0.11498074,
+        "region_good": 0.88498408
+      }
+    },
+    "fallback": {
+      "cells": 118527,
+      "rows": 2774427,
+      "level_cells": {
+        "global": 29,
+        "good": 13711,
+        "region_good": 104787
+      },
+      "ladder_quantiles": {
+        "p10": 1.8694,
+        "p25": 2.1133,
+        "p50": 2.4431,
+        "p75": 2.8927,
+        "p90": 3.5317
+      },
+      "cells_move_gt_25pct": 67302,
+      "rows_move_gt_25pct": 1544946,
+      "by_source": [
+        {
+          "sigma_source": "fallback_no_estimate",
+          "cells": 49338,
+          "rows": 730779,
+          "ladder_median": 2.43057554,
+          "move_median": 0.27061181,
+          "cells_move_gt_25pct": 28126,
+          "rows_move_gt_25pct": 408038
+        },
+        {
+          "sigma_source": "fallback_sigma_edge",
+          "cells": 13804,
+          "rows": 297659,
+          "ladder_median": 2.43864743,
+          "move_median": 0.26940695,
+          "cells_move_gt_25pct": 7840,
+          "rows_move_gt_25pct": 165419
+        },
+        {
+          "sigma_source": "fallback_sigma_pole",
+          "cells": 55385,
+          "rows": 1745989,
+          "ladder_median": 2.45643823,
+          "move_median": 0.26162234,
+          "cells_move_gt_25pct": 31336,
+          "rows_move_gt_25pct": 971489
+        }
+      ]
+    }
+  }
+}

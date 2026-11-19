@@ -2,7 +2,8 @@
 # test-defaults-0167.R  (patch 0167, fresh-eyes audit #11: the configuration
 # the next re-estimation ships, decided by the measurements of 2026-11-11)
 #
-#   1. the CLI: closed-form profile, one gamma_V refresh and the 2a2b scope by
+#   1. the CLI: closed-form profile, the gamma_V refresh (one in 0167, two
+#      since patch 0168) and the 2a2b scope by
 #      default; the sigma tail of the trim 'auto'; unprofiled cells with a
 #      Stage-1 sigma at the level; --stage2b-resume-from validated;
 #   2. check_resume_table(): a table from this run's panel and Stage 1 passes,
@@ -27,7 +28,7 @@ test_that("CLI: the new defaults, and the three new options validated", {
   td <- tempfile("te_d67c_"); dir.create(td); on.exit(unlink(td, recursive = TRUE), add = TRUE)
   base <- c("--data", td, "--out-dir", td)
   o <- parse_cli(args = base)
-  expect_identical(o$stage2_sigma_profile, "closed"); expect_identical(o$stage2_gamma_v_refresh, 1L)
+  expect_identical(o$stage2_sigma_profile, "closed"); expect_identical(o$stage2_gamma_v_refresh, 2L)   # 1 in patch 0167, 2 since 0168
   expect_identical(o$stage2_sigma_update_scope, "2a2b"); expect_identical(o$stage2_trim_sigma_tail, "auto")
   expect_identical(o$stage2_sigma_update_unprofiled, "level"); expect_null(o$stage2b_resume_from)
   expect_error(parse_cli(args = c(base, "--stage2-trim-sigma-tail", "low")), "must be 'auto', 'on' or 'off'")
@@ -67,10 +68,10 @@ test_that("a run under the defaults has no sigma tail, no Stage-1 sigma left, th
   r1 <- .d67_run(c(runner, "--data", shQuote(baci), "--out-dir", shQuote(oa), "--ncores", "1"), wd = td)
   expect_equal(r1$status, 0L, info = paste(utils::tail(r1$out, 25), collapse = "\n"))
   log1 <- paste(r1$out, collapse = "\n")
-  expect_match(log1, "Stage-2 sigma profile: closed | gamma_V refresh passes: 1", fixed = TRUE)
+  expect_match(log1, "Stage-2 sigma profile: closed | gamma_V refresh passes: 2", fixed = TRUE)   # two since patch 0168
   expect_match(log1, "update pass: exporter gamma_V lookup rebuilt from the gamma_V-final table", fixed = TRUE)
   expect_match(log1, "sigma bounds over none: no sigma tail (patch 0167)", fixed = TRUE)
-  expect_match(log1, "gamma_v_resid (refresh 1 vs the table before it)", fixed = TRUE)
+  expect_match(log1, "gamma_v_resid (refresh 2 vs the table before it)", fixed = TRUE)
   pre <- file.path(oa, "baci_hs92_v202601_elast_country_hs4")
   s2b <- data.table::as.data.table(readRDS(paste0(pre, "_fixed_sigma.rds")))
   expect_false(any(s2b$trim_reason %in% "sigma_lo"))                         # no sigma tail on the shrunk sigma
@@ -79,8 +80,8 @@ test_that("a run under the defaults has no sigma tail, no Stage-1 sigma left, th
   ulog <- data.table::fread(paste0(pre, "_sigma_update_passes.csv"))
   expect_identical(as.character(ulog$unprofiled[1L]), "level"); expect_false(as.logical(ulog$trim_sigma_tail[1L]))
   expect_identical(as.character(ulog$scope[1L]), "2a2b")
-  rf <- data.table::fread(paste0(pre, "_gamma_v_refresh.csv")); expect_identical(nrow(rf), 1L)
-  pre_ref <- data.table::as.data.table(readRDS(paste0(pre, "_fixed_sigma_prerefresh1.rds")))
+  rf <- data.table::fread(paste0(pre, "_gamma_v_refresh.csv")); expect_identical(nrow(rf), 2L)
+  pre_ref <- data.table::as.data.table(readRDS(paste0(pre, "_fixed_sigma_prerefresh2.rds")))   # the table before the last refresh
   k <- function(d) paste(d$importer, d$exporter, d$good)
   mm <- match(k(s2b), k(pre_ref)); okr <- !is.na(s2b$gamma_v_resid)
   expect_gt(sum(okr), 0L)

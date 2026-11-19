@@ -128,8 +128,8 @@ cat(sprintf("  Stage-2 sigma update: %s%s%s\n", opts$stage2_sigma_update_mode,  
             else if (identical(opts$stage2_sigma_update_mode, "import")) " | shrink: off" else ""))   # patch 0154/0155
 if (identical(opts$stage2_sigma_update_mode, "import"))   # patch 0165
   cat(sprintf("  Stage-2 sigma profile: %s | gamma_V refresh passes: %d | trim-grid diagnostic: %s\n",   # (%||% is not defined yet here)
-              if (is.null(opts$stage2_sigma_profile)) "grid" else opts$stage2_sigma_profile,
-              if (is.null(opts$stage2_gamma_v_refresh)) 0L else as.integer(opts$stage2_gamma_v_refresh),
+              if (is.null(opts$stage2_sigma_profile)) "closed" else opts$stage2_sigma_profile,             # patch 0168: the absent defaults
+              if (is.null(opts$stage2_gamma_v_refresh)) 2L else as.integer(opts$stage2_gamma_v_refresh),   # of parse_cli() (closed, 2)
               if (is.null(opts$stage2_sigma_update_trim_grid)) "off" else opts$stage2_sigma_update_trim_grid))
 if (identical(opts$stage2_sigma_update_mode, "import"))   # patch 0167
   cat(sprintf("  Stage-2 sigma tail of the trim: %s | unprofiled cells with a Stage-1 sigma: %s | resume from: %s\n",
@@ -945,8 +945,9 @@ if (should_run("2b", opts, paths)) {
       # gamma_V pass (built from the pass before it, at the Stage-1 sigma); each refresh pass rebuilds the lookup
       # from the table before it -- the rule of the gamma_V passes -- and runs Stage 2b once more at the same
       # sigma. The table before each refresh is kept, and the steps (rows and cells, gamma and opt_tariff) go to
-      # _gamma_v_refresh.csv for analysis/sigma_update_sensitivity_census.R. Default 0: nothing runs.
-      gvr_n <- as.integer(opts$stage2_gamma_v_refresh %||% 1L)   # patch 0167: absent == 1
+      # _gamma_v_refresh.csv for analysis/sigma_update_sensitivity_census.R. Default 0 through patch 0166, 1 in 0167,
+      # 2 since 0168 (the v0.13.0 table: the second refresh still moved 5.8% of rows by more than 1%).
+      gvr_n <- as.integer(opts$stage2_gamma_v_refresh %||% 2L)   # patch 0168: absent == 2
       if (gvr_n > 0L) {
         refresh_log <- list()
         for (r in seq_len(gvr_n)) {

@@ -1,0 +1,56 @@
+{
+  "meta": {
+    "csv": "..\\te_release\\v0.13.0rc1\\baci_hs92_v202601_elast_country_hs4_stage2_fallbacks_pass6.csv",
+    "label": "universe",
+    "rules": "best",
+    "git_rev": "215a579",
+    "timestamp": "2026-11-19 01:08:02 EST",
+    "stage2b": "data/derived/stage2b/baci_hs92_v202601_elast_country_hs4_fixed_sigma.rds",
+    "stage2b_sha256": "c71ab4053a101b6c160bf6fbbc4cae486044535dd74cdfca600c1008d7fc3f75"
+  },
+  "n_cells": 834,
+  "lbfgsb_codes": {
+    "52": 834
+  },
+  "n_comparable": 834,
+  "n_lbfgsb_error": 0,
+  "n_nm_error": 0,
+  "n_nm_worse": 660,
+  "share_nm_worse": 0.79136691,
+  "n_nm_better": 174,
+  "n_tie": 0,
+  "excess_quantiles": {
+    "p10": -0.00013208,
+    "p25": 5.64486141e-09,
+    "p50": 0.00038886,
+    "p75": 0.01622164,
+    "p90": 0.08402799,
+    "p99": 1.59084569
+  },
+  "excess_quantiles_where_worse": {
+    "p10": 1.10921051e-08,
+    "p25": 1.0161115e-07,
+    "p50": 0.00359735,
+    "p75": 0.02569122,
+    "p90": 0.10963758,
+    "p99": 1.81466673
+  },
+  "n_nm_converged": 689,
+  "n_relabel_ok_to_nonconverged": 535,
+  "chosen": {
+    "lbfgsb": 660,
+    "nelder_mead": 174
+  },
+  "J_quantiles": {
+    "p10": 1,
+    "p50": 6,
+    "p90": 31.7,
+    "p100": 149
+  },
+  "M_quantiles": {
+    "p10": 2,
+    "p50": 6,
+    "p90": 32,
+    "p100": 146
+  }
+}
