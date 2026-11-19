@@ -206,7 +206,7 @@ and switching would have moved the fallback σ only from 2.473 to 2.486.
 > level stays conditional on the shipped rule. The product table is rebuilt from the new table; its reproducibility rows are
 > v0.12.0's, carried and not re-measured (`docs/results/product_summary_census.md`). The six table
 > censuses are re-run on this table (`_v0130`; `scripts/refresh_table_censuses.R --re-estimated`).
-> Release gate PASS under the update's rules (`docs/results/gate_v0130.md`). Data revision: `<fill>`.
+> Release gate PASS under the update's rules (`docs/results/gate_v0130.md`). Data revision: `38c7a786e4b9c4f201e41ed831fe3849a7138c9b`.
 > **v0.12.1 remains available pinned at revision `4c20c839c20ae0457c6f44146278a97fa1f3b29c`.**
 >
 > **v0.12.1 (2026-11-09).** No re-estimation: the Stage-1, Stage-2a and Stage-2b tables and the
